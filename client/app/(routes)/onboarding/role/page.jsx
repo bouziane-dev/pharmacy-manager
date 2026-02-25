@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Globe, Moon, Sun } from 'lucide-react'
 import { useSession } from '@/app/providers'
-import { getCopy } from '@/app/lib/i18n'
+import { getCopy, getLocaleButtonLabel, getNextLocale } from '@/app/lib/i18n'
 
 export default function OnboardingRolePage() {
   const router = useRouter()
-  const { chooseRole, isReady, user, locale } = useSession()
+  const { chooseRole, isReady, user, locale, setLocale, theme, setTheme } =
+    useSession()
   const t = getCopy(locale).onboarding
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
@@ -40,9 +42,26 @@ export default function OnboardingRolePage() {
   return (
     <div className='flex min-h-screen items-center justify-center bg-[var(--background)] px-4 py-8'>
       <section className='panel w-full max-w-xl p-6'>
-        <p className='text-xs uppercase tracking-[0.2em] text-[var(--muted)]'>
-          {t.label}
-        </p>
+        <div className='flex items-center justify-between'>
+          <p className='text-xs uppercase tracking-[0.2em] text-[var(--muted)]'>
+            {t.label}
+          </p>
+          <div className='flex items-center gap-2'>
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className='inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border)] text-[var(--foreground)] transition hover:bg-[var(--surface-soft)]'
+            >
+              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+            </button>
+            <button
+              onClick={() => setLocale(getNextLocale(locale))}
+              className='inline-flex items-center gap-1 rounded-md border border-[var(--border)] px-2 py-1 text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-soft)]'
+            >
+              <Globe size={12} />
+              {getLocaleButtonLabel(locale)}
+            </button>
+          </div>
+        </div>
         <h1 className='mt-2 text-2xl font-semibold text-[var(--foreground)]'>
           {t.title}
         </h1>

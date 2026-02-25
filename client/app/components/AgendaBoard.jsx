@@ -97,54 +97,63 @@ export default function AgendaBoard() {
         </div>
       </div>
 
-      <div className='grid grid-cols-7 gap-2'>
-        {dayHeaders.map(day => (
-          <div key={day} className='px-2 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]'>
-            {day}
-          </div>
-        ))}
-
-        {dayCells.map((cell, index) =>
-          cell ? (
-            <article
-              key={cell.fullDate}
-              onDragOver={e => e.preventDefault()}
-              onDrop={() => handleDrop(cell.fullDate)}
-              className='panel min-h-[150px] p-2'
+      <div className='overflow-x-auto'>
+        <div className='grid min-w-[720px] grid-cols-7 gap-2'>
+          {dayHeaders.map(day => (
+            <div
+              key={day}
+              className='px-2 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]'
             >
-              <header className='mb-2 flex items-center justify-between'>
-                <p className='text-xs font-semibold text-[var(--foreground)]'>{cell.dayNumber}</p>
-                <span className='rounded bg-[var(--surface-soft)] px-1.5 py-0.5 text-[10px] text-[var(--muted)]'>
-                  {cell.orders.length}
-                </span>
-              </header>
-              {cell.orders.length === 0 ? (
-                <p className='text-[11px] text-[var(--muted)]'>{t.noOrders}</p>
-              ) : (
-                <div className='space-y-2'>
-                  {cell.orders.map(order => (
-                    <div
-                      key={order.id}
-                      draggable
-                      onDragStart={() => setDraggedId(order.id)}
-                      className='cursor-grab rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-2 active:cursor-grabbing'
-                    >
-                      <p className='text-[10px] font-semibold uppercase text-[var(--muted)]'>
-                        {order.id}
-                      </p>
-                      <p className='mt-1 text-xs font-semibold text-[var(--foreground)]'>
-                        {order.productName}
-                      </p>
-                      <p className='text-[11px] text-[var(--muted)]'>{order.patientName}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </article>
-          ) : (
-            <div key={`empty-${index}`} className='min-h-[150px] rounded-xl border border-dashed border-[var(--border)]/60 bg-transparent' />
-          )
-        )}
+              {day}
+            </div>
+          ))}
+
+          {dayCells.map((cell, index) =>
+            cell ? (
+              <article
+                key={cell.fullDate}
+                onDragOver={e => e.preventDefault()}
+                onDrop={() => handleDrop(cell.fullDate)}
+                className='panel min-h-[150px] p-2'
+              >
+                <header className='mb-2 flex items-center justify-between'>
+                  <p className='text-xs font-semibold text-[var(--foreground)]'>
+                    {cell.dayNumber}
+                  </p>
+                  <span className='rounded bg-[var(--surface-soft)] px-1.5 py-0.5 text-[10px] text-[var(--muted)]'>
+                    {cell.orders.length}
+                  </span>
+                </header>
+                {cell.orders.length === 0 ? (
+                  <p className='text-[11px] text-[var(--muted)]'>{t.noOrders}</p>
+                ) : (
+                  <div className='space-y-2'>
+                    {cell.orders.map(order => (
+                      <div
+                        key={order.id}
+                        draggable
+                        onDragStart={() => setDraggedId(order.id)}
+                        className='cursor-grab rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-2 active:cursor-grabbing'
+                      >
+                        <p className='mt-1 line-clamp-2 break-words text-xs font-semibold text-[var(--foreground)]'>
+                          {order.productName}
+                        </p>
+                        <p className='line-clamp-2 break-words text-[11px] text-[var(--muted)]'>
+                          {order.patientName}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </article>
+            ) : (
+              <div
+                key={`empty-${index}`}
+                className='min-h-[150px] rounded-xl border border-dashed border-[var(--border)]/60 bg-transparent'
+              />
+            )
+          )}
+        </div>
       </div>
     </section>
   )

@@ -8,7 +8,6 @@ export function getHomePathForUser(user) {
   if (!user) return '/auth'
   if (!user.onboardingCompleted) return '/onboarding/role'
   if (user.primaryRole === 'owner' && !user.subscriptionActive) return '/subscription'
-  if (user.primaryRole === 'pharmacist') return '/invitations/pending'
   return '/dashboard'
 }
 

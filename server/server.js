@@ -8,6 +8,7 @@ const onboardingRoutes = require("./routes/onboardingRoutes");
 const pharmacyRoutes = require("./routes/pharmacyRoutes");
 const invitationRoutes = require("./routes/invitationRoutes");
 const sessionRoutes = require("./routes/sessionRoutes");
+const orderRoutes = require("./routes/orderRoutes");
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use("/api/onboarding", onboardingRoutes);
 app.use("/api/pharmacy", pharmacyRoutes);
 app.use("/api/invitations", invitationRoutes);
 app.use("/api/session", sessionRoutes);
+app.use("/api/orders", orderRoutes);
 
 app.get("/", (req, res) => {
   res.send("Pharmacy Manager API");

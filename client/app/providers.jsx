@@ -1,7 +1,6 @@
 ﻿'use client'
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { mockOrders } from '@/app/lib/mock-data'
 
 const SessionContext = createContext(null)
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
@@ -27,10 +26,8 @@ export function AppProviders({ children }) {
   const [theme, setTheme] = useState('light')
   const [user, setUser] = useState(null)
   const [authToken, setAuthToken] = useState(null)
-  const [locale, setLocale] = useState('en')
-  const [orders, setOrders] = useState(
-    mockOrders.map(order => ({ ...order, workspaceId: null }))
-  )
+  const [locale, setLocale] = useState('fr')
+  const [orders, setOrders] = useState([])
   const [workspaces, setWorkspaces] = useState([])
   const [memberships, setMemberships] = useState({})
   const [activeWorkspaceByEmail, setActiveWorkspaceByEmail] = useState({})
@@ -38,6 +35,7 @@ export function AppProviders({ children }) {
   const [profiles, setProfiles] = useState({})
   const [isReady, setIsReady] = useState(false)
   const [isBootstrappingSession, setIsBootstrappingSession] = useState(false)
+  const [isOrdersLoading, setIsOrdersLoading] = useState(false)
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem('pm-theme')
@@ -56,11 +54,6 @@ export function AppProviders({ children }) {
     const savedLocale = window.localStorage.getItem('pm-locale')
     if (savedLocale === 'fr' || savedLocale === 'en') {
       setLocale(savedLocale)
-    }
-    const savedOrders = window.localStorage.getItem('pm-orders')
-    if (savedOrders) {
-      const parsed = JSON.parse(savedOrders).map(order => ({ ...order }))
-      setOrders(parsed)
     }
     const savedWorkspaces = window.localStorage.getItem('pm-workspaces')
     if (savedWorkspaces) {
@@ -111,10 +104,6 @@ export function AppProviders({ children }) {
     document.documentElement.lang = locale
     document.documentElement.dir = 'ltr'
   }, [locale])
-
-  useEffect(() => {
-    window.localStorage.setItem('pm-orders', JSON.stringify(orders))
-  }, [orders])
 
   useEffect(() => {
     window.localStorage.setItem('pm-workspaces', JSON.stringify(workspaces))
@@ -209,7 +198,27 @@ export function AppProviders({ children }) {
     bootstrapSession(authToken)
   }, [authToken])
 
-  function createOrder({
+  async function refreshWorkspaceOrders(tokenOverride = null, workspaceOverride = null) {
+    const sessionToken = tokenOverride || authToken
+    const workspaceId = workspaceOverride || currentWorkspace?.id
+    if (!sessionToken || !workspaceId) {
+      setIsOrdersLoading(false)
+      setOrders([])
+      return
+    }
+
+    try {
+      setIsOrdersLoading(true)
+      const result = await apiRequest(`/api/orders?pharmacyId=${workspaceId}`, {
+        token: sessionToken
+      })
+      setOrders(result.orders || [])
+    } finally {
+      setIsOrdersLoading(false)
+    }
+  }
+
+  async function createOrder({
     patientName,
     phone,
     productName,
@@ -217,75 +226,67 @@ export function AppProviders({ children }) {
     arrivalDate,
     urgency
   }) {
-    if (!currentWorkspace) return
-    const id = `ORD-${Math.floor(1000 + Math.random() * 9000)}`
-    const now = new Date().toISOString()
-    const createdComment = comment?.trim()
-      ? [
-          {
-            id: `${id}-c-${Date.now()}`,
-            author: user?.name || 'Unknown',
-            text: comment.trim(),
-            createdAt: now
-          }
-        ]
-      : []
-
-    const newOrder = {
-      id,
-      patientName: patientName.trim(),
-      phone: phone.trim(),
-      productName: productName.trim(),
-      status: 'Not Yet',
-      urgency,
-      arrivalDate,
-      createdAt: now,
-      workspaceId: currentWorkspace.id,
-      comments: createdComment
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
     }
-
-    setOrders(prev => [newOrder, ...prev])
+    const result = await apiRequest('/api/orders', {
+      method: 'POST',
+      token: authToken,
+      body: {
+        pharmacyId: currentWorkspace.id,
+        patientName,
+        phone,
+        productName,
+        arrivalDate,
+        urgency,
+        comment
+      }
+    })
+    setOrders(prev => [result.order, ...prev])
   }
 
-  function addOrderComment(orderId, text) {
+  async function addOrderComment(orderId, text) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
     const cleanText = text.trim()
     if (!cleanText) return
+    const result = await apiRequest(`/api/orders/${orderId}/comments`, {
+      method: 'POST',
+      token: authToken,
+      body: {
+        pharmacyId: currentWorkspace.id,
+        text: cleanText
+      }
+    })
     setOrders(prev =>
-      prev.map(order =>
-        order.id === orderId
-          ? {
-              ...order,
-              comments: [
-                ...(order.comments || []),
-                {
-                  id: `${orderId}-c-${Date.now()}`,
-                  author: user?.name || 'Unknown',
-                  text: cleanText,
-                  createdAt: new Date().toISOString()
-                }
-              ]
-            }
-          : order
-      )
+      prev.map(order => (order.id === orderId ? result.order : order))
     )
   }
 
-  function updateOrderStatus(orderId, status) {
+  async function updateOrder(orderId, updates) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    const result = await apiRequest(`/api/orders/${orderId}`, {
+      method: 'PATCH',
+      token: authToken,
+      body: {
+        pharmacyId: currentWorkspace.id,
+        ...updates
+      }
+    })
     setOrders(prev =>
-      prev.map(order => (order.id === orderId ? { ...order, status } : order))
+      prev.map(order => (order.id === orderId ? result.order : order))
     )
   }
 
-  function updateOrderArrivalDate(orderId, arrivalDate) {
-    setOrders(prev =>
-      prev.map(order => (order.id === orderId ? { ...order, arrivalDate } : order))
-    )
+  async function updateOrderStatus(orderId, status) {
+    return updateOrder(orderId, { status })
   }
 
-  function updateOrder(orderId, updates) {
-    setOrders(prev =>
-      prev.map(order => (order.id === orderId ? { ...order, ...updates } : order))
-    )
+  async function updateOrderArrivalDate(orderId, arrivalDate) {
+    return updateOrder(orderId, { arrivalDate })
   }
 
   async function refreshPendingInvitations(tokenOverride = null, emailOverride = null) {
@@ -338,6 +339,7 @@ export function AppProviders({ children }) {
     // Clear persisted auth immediately to avoid redirect races.
     window.localStorage.removeItem('pm-user')
     window.localStorage.removeItem('pm-token')
+    window.localStorage.removeItem('pm-orders')
     window.localStorage.removeItem('pm-workspaces')
     window.localStorage.removeItem('pm-memberships')
     window.localStorage.removeItem('pm-active-workspace')
@@ -348,7 +350,9 @@ export function AppProviders({ children }) {
     setMemberships({})
     setActiveWorkspaceByEmail({})
     setInvitations([])
+    setOrders([])
     setIsBootstrappingSession(false)
+    setIsOrdersLoading(false)
   }
 
   function setActiveWorkspace(workspaceId) {
@@ -491,9 +495,19 @@ export function AppProviders({ children }) {
     return workspaces.find(ws => ws.id === activeId) || null
   }, [activeWorkspaceByEmail, user, userWorkspaceIds, workspaces])
 
-  const sortedOrders = [...orders]
-    .filter(order => (currentWorkspace ? order.workspaceId === currentWorkspace.id : false))
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  useEffect(() => {
+    if (!authToken || !currentWorkspace?.id) {
+      setOrders([])
+      return
+    }
+    refreshWorkspaceOrders(authToken, currentWorkspace.id).catch(() => {
+      setOrders([])
+    })
+  }, [authToken, currentWorkspace?.id])
+
+  const sortedOrders = [...orders].sort(
+    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+  )
 
   const pendingInvitations = useMemo(() => {
     if (!user?.email) return []
@@ -542,6 +556,7 @@ export function AppProviders({ children }) {
       pendingWorkspaceInvitations,
       isReady,
       isBootstrappingSession,
+      isOrdersLoading,
       login,
       chooseRole,
       logout,
@@ -567,6 +582,7 @@ export function AppProviders({ children }) {
       theme,
       authToken,
       isBootstrappingSession,
+      isOrdersLoading,
       logout,
       chooseRole,
       user,

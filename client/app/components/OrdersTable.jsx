@@ -30,9 +30,9 @@ function CommentComposer({ orderId, onSubmit, placeholder, cta }) {
         className='w-full rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-xs text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
       />
       <button
-        onClick={() => {
+        onClick={async () => {
           if (!text.trim()) return
-          onSubmit(orderId, text)
+          await onSubmit(orderId, text)
           setText('')
         }}
         className='rounded-md bg-emerald-600 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-500'
@@ -156,7 +156,7 @@ export default function OrdersTable({ showControls = false }) {
             </label>
           </div>
           <button
-            onClick={() => {
+            onClick={async () => {
               if (
                 !form.patientName.trim() ||
                 !form.phone.trim() ||
@@ -164,7 +164,7 @@ export default function OrdersTable({ showControls = false }) {
                 !form.arrivalDate
               )
                 return
-              createOrder(form)
+              await createOrder(form)
               setForm({
                 patientName: '',
                 phone: '',
@@ -213,26 +213,26 @@ export default function OrdersTable({ showControls = false }) {
                     {order.productName}
                   </p>
                   <p className='text-xs text-[var(--muted)]'>
-                    {order.patientName} · {order.phone}
+                    {order.patientName} - {order.phone}
                   </p>
                   <p className='mt-1 text-xs text-[var(--muted)]'>
                     {t.remindersText}
                   </p>
                   <div className='mt-2 flex gap-2'>
                     <button
-                      onClick={() => updateOrderStatus(order.id, 'Arrived')}
+                      onClick={() => void updateOrderStatus(order.id, 'Arrived')}
                       className='rounded-md bg-emerald-600 px-2 py-1 text-xs font-semibold text-white'
                     >
                       {t.reminderActions.arrived}
                     </button>
                     <button
-                      onClick={() => updateOrderStatus(order.id, 'Ordered')}
+                      onClick={() => void updateOrderStatus(order.id, 'Ordered')}
                       className='rounded-md bg-sky-600 px-2 py-1 text-xs font-semibold text-white'
                     >
                       {t.reminderActions.ordered}
                     </button>
                     <button
-                      onClick={() => updateOrderStatus(order.id, 'Not Yet')}
+                      onClick={() => void updateOrderStatus(order.id, 'Not Yet')}
                       className='rounded-md bg-amber-600 px-2 py-1 text-xs font-semibold text-white'
                     >
                       {t.reminderActions.notYet}
@@ -252,17 +252,17 @@ export default function OrdersTable({ showControls = false }) {
           </h2>
         </header>
         <div className='overflow-x-auto'>
-          <table className='w-full min-w-[1000px] text-left text-sm'>
+          <table className='w-full min-w-[820px] table-fixed text-left text-sm'>
             <thead>
               <tr className='border-b border-[var(--border)] text-[var(--muted)]'>
-                <th className='px-5 py-3 font-medium'>{t.columns.id}</th>
-                <th className='px-5 py-3 font-medium'>{t.columns.patient}</th>
-                <th className='px-5 py-3 font-medium'>{t.columns.phone}</th>
-                <th className='px-5 py-3 font-medium'>{t.columns.product}</th>
-                <th className='px-5 py-3 font-medium'>{t.columns.arrivalDate}</th>
-                <th className='px-5 py-3 font-medium'>{t.columns.urgency}</th>
-                <th className='px-5 py-3 font-medium'>{t.columns.status}</th>
-                <th className='px-5 py-3 font-medium'>{t.columns.comments}</th>
+                <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.id}</th>
+                <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.patient}</th>
+                <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.phone}</th>
+                <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.product}</th>
+                <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.arrivalDate}</th>
+                <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.urgency}</th>
+                <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.status}</th>
+                <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.comments}</th>
               </tr>
             </thead>
             <tbody>
@@ -271,9 +271,9 @@ export default function OrdersTable({ showControls = false }) {
                   key={order.id}
                   className='border-b border-[var(--border)]/70 align-top transition hover:bg-[var(--surface-soft)]'
                 >
-                  <td className='px-5 py-3 font-medium text-[var(--foreground)]'>
-                    <div className='flex items-center gap-2'>
-                      <span>{order.id}</span>
+                  <td className='px-3 py-3 font-medium text-[var(--foreground)] sm:px-5'>
+                    <div className='flex min-w-0 flex-wrap items-center gap-2'>
+                      <span className='break-all text-xs sm:text-sm'>{order.id}</span>
                       <Link
                         href={`/orders/${order.id}`}
                         className='rounded border border-[var(--border)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-soft)]'
@@ -282,22 +282,24 @@ export default function OrdersTable({ showControls = false }) {
                       </Link>
                     </div>
                   </td>
-                  <td className='px-5 py-3 text-[var(--foreground)]'>
-                    {order.patientName}
+                  <td className='px-3 py-3 text-[var(--foreground)] sm:px-5'>
+                    <p className='break-words'>{order.patientName}</p>
                   </td>
-                  <td className='px-5 py-3 text-[var(--muted)]'>{order.phone}</td>
-                  <td className='px-5 py-3 text-[var(--muted)]'>
-                    {order.productName}
+                  <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
+                    <p className='break-all'>{order.phone}</p>
                   </td>
-                  <td className='px-5 py-3 text-[var(--muted)]'>
+                  <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
+                    <p className='break-words'>{order.productName}</p>
+                  </td>
+                  <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
                     {order.arrivalDate}
                   </td>
-                  <td className='px-5 py-3'>
-                    <span className={`text-xs font-semibold ${urgencyStyles[order.urgency]}`}>
+                  <td className='px-3 py-3 sm:px-5'>
+                    <span className={`break-words text-xs font-semibold ${urgencyStyles[order.urgency]}`}>
                       {t.urgency[order.urgency] || order.urgency}
                     </span>
                   </td>
-                  <td className='px-5 py-3'>
+                  <td className='px-3 py-3 sm:px-5'>
                     <div className='space-y-1'>
                       <span
                         className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${statusStyles[order.status] || ''}`}
@@ -310,7 +312,7 @@ export default function OrdersTable({ showControls = false }) {
                           <select
                             value={order.status}
                             onChange={e =>
-                              updateOrderStatus(order.id, e.target.value)
+                              void updateOrderStatus(order.id, e.target.value)
                             }
                             className='mt-1 w-full rounded border border-[var(--border)] bg-transparent px-1.5 py-1 text-[11px] text-[var(--foreground)]'
                           >
@@ -322,13 +324,13 @@ export default function OrdersTable({ showControls = false }) {
                       )}
                     </div>
                   </td>
-                  <td className='px-5 py-3 text-xs text-[var(--muted)]'>
+                  <td className='px-3 py-3 text-xs text-[var(--muted)] sm:px-5'>
                     {(order.comments || []).length === 0 ? (
                       <p>{t.noComments}</p>
                     ) : (
                       <div className='space-y-1'>
                         {order.comments.slice(-3).map(comment => (
-                          <p key={comment.id}>
+                          <p key={comment.id} className='break-words'>
                             <span className='font-semibold text-[var(--foreground)]'>
                               {comment.author}:
                             </span>{' '}
@@ -355,3 +357,4 @@ export default function OrdersTable({ showControls = false }) {
     </section>
   )
 }
+

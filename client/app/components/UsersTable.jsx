@@ -91,13 +91,13 @@ export default function UsersTable() {
         </header>
 
         <div className='overflow-x-auto'>
-          <table className='w-full min-w-[600px] text-left text-sm'>
+          <table className='w-full min-w-[560px] table-fixed text-left text-sm'>
             <thead>
               <tr className='border-b border-[var(--border)] text-[var(--muted)]'>
-                <th className='px-5 py-3 font-medium'>{t.columns.name}</th>
-                <th className='px-5 py-3 font-medium'>{t.columns.role}</th>
-                <th className='px-5 py-3 font-medium'>{t.columns.email}</th>
-                <th className='px-5 py-3 font-medium'>{t.columns.status}</th>
+                <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.name}</th>
+                <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.role}</th>
+                <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.email}</th>
+                <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.status}</th>
               </tr>
             </thead>
             <tbody>
@@ -106,14 +106,16 @@ export default function UsersTable() {
                   key={worker.email}
                   className='border-b border-[var(--border)]/70 transition hover:bg-[var(--surface-soft)]'
                 >
-                  <td className='px-5 py-3 text-[var(--foreground)]'>
-                    {worker.name}
+                  <td className='px-3 py-3 text-[var(--foreground)] sm:px-5'>
+                    <p className='break-words'>{worker.name}</p>
                   </td>
-                  <td className='px-5 py-3 text-[var(--muted)]'>
+                  <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
                     {t.role[worker.role] || worker.role}
                   </td>
-                  <td className='px-5 py-3 text-[var(--muted)]'>{worker.email}</td>
-                  <td className='px-5 py-3'>
+                  <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
+                    <p className='break-all'>{worker.email}</p>
+                  </td>
+                  <td className='px-3 py-3 sm:px-5'>
                     <span className='rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'>
                       {t.active}
                     </span>

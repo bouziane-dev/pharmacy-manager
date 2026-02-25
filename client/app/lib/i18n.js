@@ -33,7 +33,8 @@ export const i18n = {
       orders: 'Orders',
       agenda: 'Agenda',
       users: 'Users',
-      subscription: 'Subscription'
+      subscription: 'Subscription',
+      pendingInvitations: 'Invitations'
     },
     auth: {
       name: 'Name',
@@ -77,7 +78,20 @@ export const i18n = {
       emptyTitle: 'No pending invitations',
       emptyText: 'Ask an owner to invite you to a pharmacy.',
       roleLabel: 'Role',
-      accept: 'Accept Invitation'
+      accept: 'Accept Invitation',
+      noWorkspaceTitle: 'No workspace yet',
+      noWorkspaceText:
+        'You cannot access dashboards until an owner invites you to a pharmacy.',
+      funHeader: 'While waiting, quick pharmacy trivia',
+      funFacts: [
+        'Pharmacies are one of the oldest continuously regulated professions.',
+        'A clear stock workflow usually cuts urgent order delays dramatically.',
+        'Short handoff notes between pharmacists reduce follow-up calls.'
+      ],
+      workspaceReadyTitle: 'You are already connected to a workspace',
+      workspaceReadyText:
+        'Use the sidebar to jump to your dashboard, orders, and agenda anytime.',
+      goDashboard: 'Open Dashboard'
     },
     onboarding: {
       label: 'Onboarding',
@@ -217,7 +231,8 @@ export const i18n = {
       orders: 'Commandes',
       agenda: 'Agenda',
       users: 'Utilisateurs',
-      subscription: 'Abonnement'
+      subscription: 'Abonnement',
+      pendingInvitations: 'Invitations'
     },
     auth: {
       name: 'Nom',
@@ -261,7 +276,20 @@ export const i18n = {
       emptyTitle: 'Aucune invitation en attente',
       emptyText: 'Demandez au propriétaire de vous inviter à une pharmacie.',
       roleLabel: 'Rôle',
-      accept: 'Accepter l’invitation'
+      accept: 'Accepter l’invitation',
+      noWorkspaceTitle: 'Aucun espace pour le moment',
+      noWorkspaceText:
+        'Vous ne pouvez pas accéder aux tableaux de bord tant qu’un propriétaire ne vous invite pas.',
+      funHeader: 'En attendant, mini infos pharmacie',
+      funFacts: [
+        'La pharmacie est l’un des métiers les plus anciens et réglementés.',
+        'Un suivi clair du stock réduit fortement les retards urgents.',
+        'De courtes notes de transmission réduisent les appels de suivi.'
+      ],
+      workspaceReadyTitle: 'Vous êtes déjà connecté à un espace',
+      workspaceReadyText:
+        'Utilisez le menu latéral pour accéder à votre tableau de bord, vos commandes et votre agenda.',
+      goDashboard: 'Ouvrir le tableau de bord'
     },
     onboarding: {
       label: 'Intégration',

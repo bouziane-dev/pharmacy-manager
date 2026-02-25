@@ -11,14 +11,15 @@ import { useSession } from '@/app/providers'
 export default function OrderDetailsPage() {
   const { user, isLoading, isBlocked } = useRouteGuard({})
   const { id } = useParams()
-  const { locale, orders, updateOrder, addOrderComment } = useSession()
+  const { locale, orders, isOrdersLoading, updateOrder, addOrderComment } =
+    useSession()
   const t = getCopy(locale)
   const orderText = t.orders
 
   const order = useMemo(() => orders.find(item => item.id === id), [id, orders])
   const [comment, setComment] = useState('')
 
-  if (isLoading || isBlocked || !user) return null
+  if (isLoading || isBlocked || !user || isOrdersLoading) return null
 
   if (!order) {
     return (
@@ -50,7 +51,7 @@ export default function OrderDetailsPage() {
               <input
                 value={order.patientName}
                 onChange={e =>
-                  updateOrder(order.id, { patientName: e.target.value })
+                  void updateOrder(order.id, { patientName: e.target.value })
                 }
                 className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)]'
               />
@@ -59,7 +60,7 @@ export default function OrderDetailsPage() {
               {orderText.fields.phone}
               <input
                 value={order.phone}
-                onChange={e => updateOrder(order.id, { phone: e.target.value })}
+                onChange={e => void updateOrder(order.id, { phone: e.target.value })}
                 className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)]'
               />
             </label>
@@ -68,7 +69,7 @@ export default function OrderDetailsPage() {
               <input
                 value={order.productName}
                 onChange={e =>
-                  updateOrder(order.id, { productName: e.target.value })
+                  void updateOrder(order.id, { productName: e.target.value })
                 }
                 className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)]'
               />
@@ -79,7 +80,7 @@ export default function OrderDetailsPage() {
                 type='date'
                 value={order.arrivalDate}
                 onChange={e =>
-                  updateOrder(order.id, { arrivalDate: e.target.value })
+                  void updateOrder(order.id, { arrivalDate: e.target.value })
                 }
                 className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)]'
               />
@@ -88,7 +89,7 @@ export default function OrderDetailsPage() {
               {orderText.fields.urgency}
               <select
                 value={order.urgency}
-                onChange={e => updateOrder(order.id, { urgency: e.target.value })}
+                onChange={e => void updateOrder(order.id, { urgency: e.target.value })}
                 className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)]'
               >
                 <option value='Urgent'>{orderText.urgency.Urgent}</option>
@@ -99,7 +100,7 @@ export default function OrderDetailsPage() {
               {orderText.columns.status}
               <select
                 value={order.status}
-                onChange={e => updateOrder(order.id, { status: e.target.value })}
+                onChange={e => void updateOrder(order.id, { status: e.target.value })}
                 className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)]'
               >
                 <option value='Not Yet'>{orderText.status['Not Yet']}</option>
@@ -137,9 +138,9 @@ export default function OrderDetailsPage() {
               className='w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)]'
             />
             <button
-              onClick={() => {
+              onClick={async () => {
                 if (!comment.trim()) return
-                addOrderComment(order.id, comment)
+                await addOrderComment(order.id, comment)
                 setComment('')
               }}
               className='rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500'

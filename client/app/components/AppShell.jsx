@@ -1,11 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Sidebar from '@/app/components/Sidebar'
 import Topbar from '@/app/components/Topbar'
 
 export default function AppShell({ title, children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem('pm-sidebar-collapsed')
+    if (saved === 'true') {
+      setSidebarCollapsed(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      'pm-sidebar-collapsed',
+      sidebarCollapsed ? 'true' : 'false'
+    )
+  }, [sidebarCollapsed])
 
   return (
     <div className='min-h-screen bg-[var(--background)]'>
@@ -17,12 +32,15 @@ export default function AppShell({ title, children }) {
       <div className='flex min-h-screen'>
         <Sidebar
           open={sidebarOpen}
+          collapsed={sidebarCollapsed}
           setOpen={setSidebarOpen}
         />
         <div className='flex min-h-screen min-w-0 flex-1 flex-col'>
           <Topbar
             title={title}
+            sidebarCollapsed={sidebarCollapsed}
             setSidebarOpen={setSidebarOpen}
+            setSidebarCollapsed={setSidebarCollapsed}
           />
           <main className='flex-1 p-4 sm:p-6'>{children}</main>
         </div>

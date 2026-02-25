@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Globe, ShieldCheck } from 'lucide-react'
+import { Globe, Moon, ShieldCheck, Sun } from 'lucide-react'
 import { useSession } from '@/app/providers'
 import { getCopy, getLocaleButtonLabel, getNextLocale } from '@/app/lib/i18n'
 
@@ -15,7 +15,7 @@ function decodeBase64Url(input) {
 export default function AuthPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { user, login, locale, setLocale } = useSession()
+  const { user, login, locale, setLocale, theme, setTheme } = useSession()
   const [errorMessage, setErrorMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const hasProcessedCallback = useRef(false)
@@ -32,9 +32,6 @@ export default function AuthPage() {
     }
     if (nextUser.primaryRole === 'owner' && !nextUser.subscriptionActive) {
       return '/subscription'
-    }
-    if (nextUser.primaryRole === 'pharmacist') {
-      return '/invitations/pending'
     }
     return '/dashboard'
   }
@@ -116,13 +113,21 @@ export default function AuthPage() {
           <p className='text-xs uppercase tracking-[0.2em] text-[var(--muted)]'>
             {common.appName}
           </p>
-          <button
-            onClick={() => setLocale(getNextLocale(locale))}
-            className='inline-flex items-center gap-1 rounded-md border border-[var(--border)] px-2 py-1 text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-soft)]'
-          >
-            <Globe size={12} />
-            {getLocaleButtonLabel(locale)}
-          </button>
+          <div className='flex items-center gap-2'>
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className='inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border)] text-[var(--foreground)] transition hover:bg-[var(--surface-soft)]'
+            >
+              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+            </button>
+            <button
+              onClick={() => setLocale(getNextLocale(locale))}
+              className='inline-flex items-center gap-1 rounded-md border border-[var(--border)] px-2 py-1 text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-soft)]'
+            >
+              <Globe size={12} />
+              {getLocaleButtonLabel(locale)}
+            </button>
+          </div>
         </div>
         <h1 className='mt-2 text-2xl font-semibold text-[var(--foreground)]'>
           {t.signIn}

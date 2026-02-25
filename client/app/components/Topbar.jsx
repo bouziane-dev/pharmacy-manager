@@ -1,10 +1,23 @@
 'use client'
 
-import { Globe, LogOut, Menu, Moon, Sun } from 'lucide-react'
+import {
+  Globe,
+  LogOut,
+  Menu,
+  Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Sun
+} from 'lucide-react'
 import { useSession } from '@/app/providers'
 import { getCopy, getLocaleButtonLabel, getNextLocale } from '@/app/lib/i18n'
 
-export default function Topbar({ title, setSidebarOpen }) {
+export default function Topbar({
+  title,
+  sidebarCollapsed,
+  setSidebarOpen,
+  setSidebarCollapsed
+}) {
   const {
     theme,
     setTheme,
@@ -27,15 +40,23 @@ export default function Topbar({ title, setSidebarOpen }) {
 
   return (
     <header className='sticky top-0 z-20 border-b border-[var(--border)] bg-[var(--surface)]/90 backdrop-blur'>
-      <div className='flex h-16 items-center justify-between px-4 sm:px-6'>
-        <div className='flex items-center gap-3'>
+      <div className='flex h-16 items-center justify-between gap-3 px-4 sm:px-6'>
+        <div className='flex min-w-0 items-center gap-3'>
           <button
             className='inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--foreground)] md:hidden'
             onClick={() => setSidebarOpen(prev => !prev)}
           >
             <Menu size={18} />
           </button>
-          <h1 className='text-lg font-semibold text-[var(--foreground)]'>{title}</h1>
+          <button
+            className='hidden h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--foreground)] transition hover:bg-[var(--surface-soft)] md:inline-flex'
+            onClick={() => setSidebarCollapsed(prev => !prev)}
+          >
+            {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          </button>
+          <h1 className='truncate text-lg font-semibold text-[var(--foreground)]'>
+            {title}
+          </h1>
         </div>
 
         <div className='flex items-center gap-2 sm:gap-3'>
