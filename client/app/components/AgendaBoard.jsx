@@ -3,7 +3,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useSession } from '@/app/providers'
-import { getCopy } from '@/app/lib/i18n'
+import { getCopy, getIntlLocale } from '@/app/lib/i18n'
 
 export default function AgendaBoard() {
   const { locale, orders, updateOrderArrivalDate } = useSession()
@@ -17,7 +17,7 @@ export default function AgendaBoard() {
   const mondayBasedOffset = (monthStart.getDay() + 6) % 7
 
   const dayHeaders = useMemo(() => {
-    const formatter = new Intl.DateTimeFormat(locale === 'fr' ? 'fr-FR' : 'en-US', {
+    const formatter = new Intl.DateTimeFormat(getIntlLocale(locale), {
       weekday: 'short'
     })
     const monday = new Date(2026, 0, 5)
@@ -28,7 +28,7 @@ export default function AgendaBoard() {
     })
   }, [locale])
 
-  const monthLabel = new Intl.DateTimeFormat(locale === 'fr' ? 'fr-FR' : 'en-US', {
+  const monthLabel = new Intl.DateTimeFormat(getIntlLocale(locale), {
     month: 'long',
     year: 'numeric'
   }).format(viewDate)

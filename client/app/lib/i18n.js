@@ -1,3 +1,22 @@
+﻿export const localeCycle = ['en', 'fr']
+
+export function getNextLocale(locale) {
+  const currentIndex = localeCycle.indexOf(locale)
+  const safeIndex = currentIndex >= 0 ? currentIndex : 0
+  return localeCycle[(safeIndex + 1) % localeCycle.length]
+}
+
+export function getLocaleButtonLabel(locale) {
+  const next = getNextLocale(locale)
+  const labels = { en: 'EN', fr: 'FR' }
+  return labels[next] || 'EN'
+}
+
+export function getIntlLocale(locale) {
+  if (locale === 'fr') return 'fr-FR'
+  return 'en-US'
+}
+
 export const i18n = {
   en: {
     appName: 'Pharmacy Manager',
@@ -6,7 +25,8 @@ export const i18n = {
       orders: 'Orders',
       agenda: 'Agenda',
       users: 'Users',
-      subscription: 'Subscription'
+      subscription: 'Subscription',
+      pendingInvitations: 'Pending Invitations'
     },
     sidebar: {
       dashboard: 'Dashboard',
@@ -21,8 +41,18 @@ export const i18n = {
       namePlaceholder: 'Your name',
       emailPlaceholder: 'you@pharmacy.local'
     },
+    authPage: {
+      signIn: 'Sign in',
+      helper: 'Use your Google account to access Pharmacy Manager.',
+      cta: 'Continue with Google',
+      loading: 'Signing you in...',
+      failed: 'Google sign-in failed. Please try again.'
+    },
     topbar: {
-      workspace: 'Workspace'
+      workspace: 'Workspace',
+      roleAdmin: 'ADMIN',
+      roleWorker: 'WORKER',
+      confirmSignOut: 'Are you sure you want to sign out?'
     },
     dashboard: {
       stats: [
@@ -42,6 +72,19 @@ export const i18n = {
       confirmDecline: 'Decline invitation?',
       confirmYes: 'Yes',
       confirmNo: 'Cancel'
+    },
+    pendingInvitationsPage: {
+      emptyTitle: 'No pending invitations',
+      emptyText: 'Ask an owner to invite you to a pharmacy.',
+      roleLabel: 'Role',
+      accept: 'Accept Invitation'
+    },
+    onboarding: {
+      label: 'Onboarding',
+      title: 'Choose your role',
+      text: 'Select how you will use this workspace.',
+      owner: 'I am an Owner',
+      pharmacist: 'I am a Pharmacist'
     },
     orders: {
       addTitle: 'Add New Order',
@@ -117,6 +160,10 @@ export const i18n = {
       teamMembers: 'Team Members',
       pendingInvites: 'Pending Invites',
       invitedBy: 'Invited by',
+      inviteRoles: {
+        pharmacist: 'Pharmacist',
+        admin: 'Admin'
+      },
       columns: {
         name: 'Name',
         role: 'Role',
@@ -124,6 +171,10 @@ export const i18n = {
         status: 'Status'
       },
       role: {
+        owner: 'Owner',
+        admin: 'Admin',
+        pharmacist: 'Pharmacist',
+        worker: 'Worker',
         Worker: 'Worker'
       },
       active: 'Active'
@@ -132,11 +183,16 @@ export const i18n = {
       required: 'Subscription Required',
       unlock: 'Activate a plan to unlock admin features',
       signedInAs: 'Signed in as',
-      mockBilling: 'This is a mock billing flow for UI testing.',
+      mockBilling: 'This is an MVP placeholder flow for billing.',
       upTo5Workers: 'Up to 5 workers',
       upTo15Workers: 'Up to 15 workers',
       features: ['Orders dashboard', 'Agenda drag and drop', 'Team management'],
-      choose: 'Choose'
+      choose: 'Choose',
+      active: 'Subscription Active',
+      pharmacyTitle: 'Create your pharmacy',
+      pharmacyText: 'Set a pharmacy dashboard name to complete owner onboarding.',
+      pharmacyPlaceholder: 'My Pharmacy',
+      createPharmacy: 'Create Pharmacy'
     },
     subscriptionPreview: {
       mode: 'Preview Mode',
@@ -147,13 +203,14 @@ export const i18n = {
     }
   },
   fr: {
-    appName: 'Pharmacy Manager',
+    appName: 'Gestion Pharmacie',
     pages: {
       dashboard: 'Tableau de bord',
       orders: 'Commandes',
       agenda: 'Agenda',
       users: 'Utilisateurs',
-      subscription: 'Abonnement'
+      subscription: 'Abonnement',
+      pendingInvitations: 'Invitations en attente'
     },
     sidebar: {
       dashboard: 'Tableau de bord',
@@ -164,141 +221,179 @@ export const i18n = {
     },
     auth: {
       name: 'Nom',
-      email: 'Email',
+      email: 'E-mail',
       namePlaceholder: 'Votre nom',
-      emailPlaceholder: 'vous@pharmacy.local'
+      emailPlaceholder: 'vous@pharmacie.local'
+    },
+    authPage: {
+      signIn: 'Connexion',
+      helper: 'Utilisez votre compte Google pour accéder à Pharmacy Manager.',
+      cta: 'Continuer avec Google',
+      loading: 'Connexion en cours...',
+      failed: 'Échec de la connexion Google. Veuillez réessayer.'
     },
     topbar: {
-      workspace: 'Espace'
+      workspace: 'Espace',
+      roleAdmin: 'ADMIN',
+      roleWorker: 'PHARMACIEN',
+      confirmSignOut: 'Voulez-vous vraiment vous déconnecter ?'
     },
     dashboard: {
       stats: [
-        { id: 'total', label: 'Total commandes', delta: 'Temps reel' },
-        { id: 'due', label: 'Prevues aujourd hui', delta: 'A verifier' },
-        { id: 'arrived', label: 'Arrivees', delta: 'Completees' },
-        { id: 'urgent', label: 'Urgentes', delta: 'A traiter en priorite' }
+        { id: 'total', label: 'Total des commandes', delta: 'En direct' },
+        { id: 'due', label: 'À traiter aujourd’hui', delta: 'À vérifier' },
+        { id: 'arrived', label: 'Arrivées', delta: 'Finalisées' },
+        { id: 'urgent', label: 'Urgentes', delta: 'Priorité élevée' }
       ]
     },
     invitations: {
-      title: 'Invitations espace de travail',
+      title: 'Invitations de l’espace',
       from: 'De',
       accept: 'Accepter',
       decline: 'Refuser',
       confirmTitle: 'Veuillez confirmer',
-      confirmAccept: 'Accepter invitation ?',
-      confirmDecline: 'Refuser invitation ?',
+      confirmAccept: 'Accepter l’invitation ?',
+      confirmDecline: 'Refuser l’invitation ?',
       confirmYes: 'Oui',
       confirmNo: 'Annuler'
+    },
+    pendingInvitationsPage: {
+      emptyTitle: 'Aucune invitation en attente',
+      emptyText: 'Demandez au propriétaire de vous inviter à une pharmacie.',
+      roleLabel: 'Rôle',
+      accept: 'Accepter l’invitation'
+    },
+    onboarding: {
+      label: 'Intégration',
+      title: 'Choisissez votre rôle',
+      text: 'Sélectionnez la manière dont vous utiliserez cet espace.',
+      owner: 'Je suis propriétaire',
+      pharmacist: 'Je suis pharmacien'
     },
     orders: {
       addTitle: 'Ajouter une commande',
       addDescription:
-        'Saisissez le patient, le produit et la date d arrivee. Les nouvelles commandes apparaissent en premier.',
+        'Saisissez le patient, le produit et la date de livraison. Les nouvelles commandes apparaissent en premier.',
       fields: {
         patientName: 'Nom du patient',
-        phone: 'Telephone',
-        productName: 'Nom du medicament / produit',
+        phone: 'Téléphone',
+        productName: 'Nom du médicament / produit',
         comment: 'Commentaire',
-        arrivalDate: 'Date arrivee approximative',
+        arrivalDate: 'Date d’arrivée estimée',
         urgency: 'Urgence'
       },
       placeholders: {
         patientName: 'Nom complet du patient',
         phone: '0550 00 00 00',
-        productName: 'Medicament ou produit',
+        productName: 'Médicament ou produit',
         comment: 'Note initiale de commande'
       },
       urgency: {
         Urgent: 'Urgente',
         Normal: 'Normale'
       },
-      addButton: 'Ajouter commande',
-      searchLabel: 'Rechercher une commande',
+      addButton: 'Ajouter',
+      searchLabel: 'Rechercher des commandes',
       searchPlaceholder:
-        'Rechercher par medicament/produit, nom du patient ou telephone',
-      remindersTitle: 'Rappels date d arrivee',
+        'Rechercher par médicament/produit, patient ou téléphone',
+      remindersTitle: 'Rappels de date d’arrivée',
       remindersEmpty: 'Aucun rappel pour le moment.',
       remindersText:
-        'Cette commande a atteint sa date prevue. Mettez a jour son statut.',
+        'Cette commande a atteint sa date prévue. Mettez à jour son statut.',
       reminderActions: {
-        arrived: 'Arrivee',
-        ordered: 'Commandee',
+        arrived: 'Arrivée',
+        ordered: 'Commandée',
         notYet: 'Pas encore'
       },
       tableTitle: 'Liste des commandes',
       columns: {
-        id: 'ID Commande',
+        id: 'ID commande',
         patient: 'Patient',
-        phone: 'Telephone',
-        product: 'Medicament/Produit',
-        arrivalDate: 'Arrivee approx.',
+        phone: 'Téléphone',
+        product: 'Médicament/Produit',
+        arrivalDate: 'Arrivée estimée',
         urgency: 'Urgence',
         status: 'Statut',
         comments: 'Commentaires'
       },
       openDetails: 'Ouvrir',
-      statusLabel: 'Changer statut',
+      statusLabel: 'Définir le statut',
       status: {
         'Not Yet': 'Pas encore',
-        Ordered: 'Commandee',
-        Arrived: 'Arrivee'
+        Ordered: 'Commandée',
+        Arrived: 'Arrivée'
       },
       commentPlaceholder: 'Ajouter un commentaire',
       addComment: 'Publier',
       noComments: 'Aucun commentaire.',
-      detailsTitle: 'Details commande',
+      detailsTitle: 'Détails de la commande',
       backToOrders: 'Retour aux commandes',
-      saveChanges: 'Enregistrer modifications',
+      saveChanges: 'Enregistrer',
       notFound: 'Commande introuvable.'
     },
     agenda: {
       monthHint:
-        'Vue mensuelle. Glissez une carte commande vers un autre jour pour modifier la date arrivee.',
-      today: 'Aujourd hui',
+        'Vue mensuelle. Glissez une commande vers un autre jour pour modifier la date d’arrivée.',
+      today: 'Aujourd’hui',
       noOrders: 'Aucune commande'
     },
     users: {
-      inviteWorker: 'Inviter un worker',
-      invitePlaceholder: 'worker@pharmacy.local',
-      sendInvite: 'Envoyer invitation',
-      teamMembers: 'Membres de l equipe',
+      inviteWorker: 'Inviter un membre',
+      invitePlaceholder: 'pharmacien@pharmacie.local',
+      sendInvite: 'Envoyer',
+      teamMembers: 'Membres de l’équipe',
       pendingInvites: 'Invitations en attente',
-      invitedBy: 'Invite par',
+      invitedBy: 'Invité par',
+      inviteRoles: {
+        pharmacist: 'Pharmacien',
+        admin: 'Administrateur'
+      },
       columns: {
         name: 'Nom',
-        role: 'Role',
-        email: 'Email',
+        role: 'Rôle',
+        email: 'E-mail',
         status: 'Statut'
       },
       role: {
-        Worker: 'Worker'
+        owner: 'Propriétaire',
+        admin: 'Administrateur',
+        pharmacist: 'Pharmacien',
+        worker: 'Pharmacien',
+        Worker: 'Pharmacien'
       },
       active: 'Actif'
     },
     subscription: {
       required: 'Abonnement requis',
-      unlock: 'Activez un plan pour debloquer les fonctions admin',
-      signedInAs: 'Connecte en tant que',
-      mockBilling: 'Ceci est un flux de paiement mock pour tester l interface.',
-      upTo5Workers: 'Jusqu a 5 workers',
-      upTo15Workers: 'Jusqu a 15 workers',
+      unlock: 'Activez un plan pour débloquer les fonctionnalités administrateur',
+      signedInAs: 'Connecté en tant que',
+      mockBilling: 'Ceci est un flux MVP temporaire pour la facturation.',
+      upTo5Workers: 'Jusqu’à 5 membres',
+      upTo15Workers: 'Jusqu’à 15 membres',
       features: [
         'Tableau des commandes',
-        'Agenda avec glisser deposer',
-        'Gestion de l equipe'
+        'Agenda avec glisser-déposer',
+        'Gestion de l’équipe'
       ],
-      choose: 'Choisir'
+      choose: 'Choisir',
+      active: 'Abonnement actif',
+      pharmacyTitle: 'Créez votre pharmacie',
+      pharmacyText:
+        'Définissez le nom du tableau de bord de votre pharmacie pour terminer l’intégration propriétaire.',
+      pharmacyPlaceholder: 'Ma Pharmacie',
+      createPharmacy: 'Créer la pharmacie'
     },
     subscriptionPreview: {
-      mode: 'Mode apercu',
+      mode: 'Mode aperçu',
       title: 'La page abonnement est accessible',
-      text: 'Vous visualisez l apercu UI. Pour activer un plan, connectez vous comme admin sans abonnement.',
-      goToLogin: 'Aller a la connexion',
-      openDashboard: 'Ouvrir tableau de bord'
+      text: 'Vous visualisez l’aperçu de l’interface. Pour activer un plan, connectez-vous comme administrateur sans abonnement.',
+      goToLogin: 'Aller à la connexion',
+      openDashboard: 'Ouvrir le tableau de bord'
     }
-  }
+  },
 }
 
 export function getCopy(locale) {
   return i18n[locale] || i18n.en
 }
+

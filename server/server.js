@@ -1,57 +1,53 @@
-//! Uncomment the lines with this comment tag "//" and leave the rest as they are
-
 const mongoose = require("mongoose");
 const express = require("express");
+const cors = require("cors");
+require("dotenv").config();
+const passport = require("./config/passport");
+const authRoutes = require("./routes/authRoutes");
+const onboardingRoutes = require("./routes/onboardingRoutes");
+const pharmacyRoutes = require("./routes/pharmacyRoutes");
+const invitationRoutes = require("./routes/invitationRoutes");
+const sessionRoutes = require("./routes/sessionRoutes");
 
 const app = express();
 
-// require("dotenv").config();
+app.use(cors());
+app.use(express.json());
+app.use(passport.initialize());
 
-//* Configuring CORS
-// const allowedOrigin = "http://localhost:3000"; //? Allowed origin (frontend URL)
-// const allowedMethods = ["POST"]; //? Allowed methods
-
-// app.use((req, res, next) => {
-//   res.header("Access-Control-Allow-Origin", allowedOrigin);
-//   res.header("Access-Control-Allow-Methods", allowedMethods.join(", ")); //? Join methods into a comma-separated string if > 1 method
-//   res.header("Access-Control-Allow-Headers", "Content-Type"); //? Allow Content-Type
-//   next();
-// });
-
-//* Calling routes
-//const exampleRoutes = require("./routes/example.js");
-
-//* Middleware
-// app.use(express.json()); //? This allows us to access the req data from the req handler
-
-//* Using routes
-//app.use("/api/examples", exampleRoutes);
-
-//* Print the request type and path
-// app.use((req) => {
-//   console.log(req.path, req.method);
-//   next();
-// });
-
-// mongoose
-//   .connect(process.env.MONGO_URI)
-//   .then(() => {
-//     app.listen(process.env.PORT, () => {
-//       console.log("listening on port 5000");
-//     });
-//   })
-//   .catch((error) => {
-//     console.log(error);
-//   });
-
-const port = 3000;
+app.use("/auth", authRoutes);
+app.use("/api/onboarding", onboardingRoutes);
+app.use("/api/pharmacy", pharmacyRoutes);
+app.use("/api/invitations", invitationRoutes);
+app.use("/api/session", sessionRoutes);
 
 app.get("/", (req, res) => {
-  res.send("Hello World!");
+  res.send("Pharmacy Manager API");
 });
 
-app.listen(port, () => {
-  console.log(`Example app listening at http://localhost:${port}`);
-});
+const requiredServerEnv = ["MONGO_URI", "PORT", "JWT_SECRET"];
+const missingServerEnv = requiredServerEnv.filter((name) => !process.env[name]);
+const placeholderServerEnv = requiredServerEnv.filter((name) =>
+  String(process.env[name]).startsWith("replace-with-")
+);
 
-//module.exports = mongoose; //? Export the mongoose connection for use in other files
+if (missingServerEnv.length > 0 || placeholderServerEnv.length > 0) {
+  throw new Error(
+    `Invalid server environment variable(s): ${[
+      ...missingServerEnv,
+      ...placeholderServerEnv,
+    ].join(", ")}`
+  );
+}
+
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => {
+    app.listen(process.env.PORT, () => {
+      console.log(`Server listening on port ${process.env.PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error("MongoDB connection failed:", error.message);
+    process.exit(1);
+  });

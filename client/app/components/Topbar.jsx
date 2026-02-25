@@ -1,12 +1,10 @@
 'use client'
 
 import { Globe, LogOut, Menu, Moon, Sun } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 import { useSession } from '@/app/providers'
-import { getCopy } from '@/app/lib/i18n'
+import { getCopy, getLocaleButtonLabel, getNextLocale } from '@/app/lib/i18n'
 
 export default function Topbar({ title, setSidebarOpen }) {
-  const router = useRouter()
   const {
     theme,
     setTheme,
@@ -19,11 +17,12 @@ export default function Topbar({ title, setSidebarOpen }) {
     setActiveWorkspace
   } = useSession()
   const t = getCopy(locale)
-  const roleLabel = user?.role === 'admin' ? 'ADMIN' : 'WORKER'
+  const roleLabel = user?.role === 'admin' ? t.topbar.roleAdmin : t.topbar.roleWorker
 
   function handleLogout() {
+    const confirmed = window.confirm(t.topbar.confirmSignOut)
+    if (!confirmed) return
     logout()
-    router.replace('/auth')
   }
 
   return (
@@ -70,11 +69,11 @@ export default function Topbar({ title, setSidebarOpen }) {
           </button>
 
           <button
-            onClick={() => setLocale(locale === 'fr' ? 'en' : 'fr')}
+            onClick={() => setLocale(getNextLocale(locale))}
             className='inline-flex h-9 items-center justify-center gap-1 rounded-lg border border-[var(--border)] px-2 text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-soft)]'
           >
             <Globe size={14} />
-            {locale === 'fr' ? 'FR' : 'EN'}
+            {getLocaleButtonLabel(locale)}
           </button>
 
           <button

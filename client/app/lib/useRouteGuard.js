@@ -6,20 +6,24 @@ import { useSession } from '@/app/providers'
 
 export function getHomePathForUser(user) {
   if (!user) return '/auth'
-  if (user.role === 'admin' && !user.subscriptionActive) return '/subscription'
+  if (!user.onboardingCompleted) return '/onboarding/role'
+  if (user.primaryRole === 'owner' && !user.subscriptionActive) return '/subscription'
+  if (user.primaryRole === 'pharmacist') return '/invitations/pending'
   return '/dashboard'
 }
 
 export function useRouteGuard({
   requireAuth = true,
   requireAdmin = false,
-  requireSubscription = true
+  requireSubscription = true,
+  requireMembership = true
 }) {
-  const { user, isReady } = useSession()
+  const { user, isReady, isBootstrappingSession, currentWorkspace } = useSession()
   const router = useRouter()
 
   useEffect(() => {
     if (!isReady) return
+    if (isBootstrappingSession) return
     if (!requireAuth) return
 
     if (!user) {
@@ -32,24 +36,51 @@ export function useRouteGuard({
       return
     }
 
+    if (!user.onboardingCompleted) {
+      router.replace('/onboarding/role')
+      return
+    }
+
     if (
       requireSubscription &&
-      user.role === 'admin' &&
+      user.primaryRole === 'owner' &&
       !user.subscriptionActive
     ) {
       router.replace('/subscription')
+      return
     }
-  }, [isReady, requireAdmin, requireAuth, requireSubscription, router, user])
+
+    if (requireMembership && !currentWorkspace) {
+      if (user.primaryRole === 'pharmacist') {
+        router.replace('/invitations/pending')
+      } else {
+        router.replace('/subscription')
+      }
+    }
+  }, [
+    currentWorkspace,
+    isBootstrappingSession,
+    isReady,
+    requireAdmin,
+    requireAuth,
+    requireMembership,
+    requireSubscription,
+    router,
+    user
+  ])
 
   const blockedBySubscription =
     !!user &&
     requireSubscription &&
-    user.role === 'admin' &&
+    user.primaryRole === 'owner' &&
     !user.subscriptionActive
 
   return {
     user,
-    isLoading: !isReady || (requireAuth && !user),
+    isLoading:
+      !isReady ||
+      isBootstrappingSession ||
+      (requireAuth && (!user || (requireMembership && !currentWorkspace))),
     isBlocked: blockedBySubscription
   }
 }

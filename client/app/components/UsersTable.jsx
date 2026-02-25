@@ -6,6 +6,9 @@ import { getCopy } from '@/app/lib/i18n'
 
 export default function UsersTable() {
   const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState('pharmacist')
+  const [isLoading, setIsLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
   const {
     locale,
     workspaceMembers,
@@ -14,12 +17,30 @@ export default function UsersTable() {
   } = useSession()
   const t = getCopy(locale).users
 
+  async function handleInvite() {
+    try {
+      setIsLoading(true)
+      setErrorMessage('')
+      await inviteToCurrentWorkspace(inviteEmail, inviteRole)
+      setInviteEmail('')
+    } catch (error) {
+      setErrorMessage(error.message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <section className='space-y-4'>
       <article className='panel p-5'>
         <h2 className='text-lg font-semibold text-[var(--foreground)]'>
           {t.inviteWorker}
         </h2>
+        {errorMessage && (
+          <p className='mt-3 rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm text-red-600'>
+            {errorMessage}
+          </p>
+        )}
         <div className='mt-3 flex flex-col gap-3 sm:flex-row'>
           <input
             value={inviteEmail}
@@ -27,12 +48,18 @@ export default function UsersTable() {
             placeholder={t.invitePlaceholder}
             className='w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/50 transition focus:ring'
           />
+          <select
+            value={inviteRole}
+            onChange={e => setInviteRole(e.target.value)}
+            className='rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none'
+          >
+            <option value='pharmacist'>{t.inviteRoles.pharmacist}</option>
+            <option value='admin'>{t.inviteRoles.admin}</option>
+          </select>
           <button
-            onClick={() => {
-              inviteToCurrentWorkspace(inviteEmail)
-              setInviteEmail('')
-            }}
-            className='rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500'
+            onClick={handleInvite}
+            disabled={isLoading || !inviteEmail.trim()}
+            className='rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50'
           >
             {t.sendInvite}
           </button>
@@ -49,7 +76,7 @@ export default function UsersTable() {
           <div className='mt-2 space-y-2 text-sm text-[var(--muted)]'>
             {pendingWorkspaceInvitations.map(item => (
               <p key={item.id}>
-                {item.toEmail} · {t.invitedBy} {item.fromName}
+                {item.toEmail} | {t.invitedBy} {item.fromName}
               </p>
             ))}
           </div>

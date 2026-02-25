@@ -1,37 +1,43 @@
-'use client'
+﻿'use client'
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { mockOrders } from '@/app/lib/mock-data'
 
 const SessionContext = createContext(null)
-const defaultWorkspaceId = 'ws-alex-primary'
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
+
+async function apiRequest(path, { method = 'GET', token, body } = {}) {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    method,
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(body ? { 'Content-Type': 'application/json' } : {})
+    },
+    ...(body ? { body: JSON.stringify(body) } : {})
+  })
+
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw new Error(data.error || 'Request failed')
+  }
+  return data
+}
 
 export function AppProviders({ children }) {
   const [theme, setTheme] = useState('light')
   const [user, setUser] = useState(null)
+  const [authToken, setAuthToken] = useState(null)
   const [locale, setLocale] = useState('en')
   const [orders, setOrders] = useState(
-    mockOrders.map(order => ({ ...order, workspaceId: defaultWorkspaceId }))
+    mockOrders.map(order => ({ ...order, workspaceId: null }))
   )
-  const [workspaces, setWorkspaces] = useState([
-    {
-      id: defaultWorkspaceId,
-      name: "Alex's Pharmacy",
-      ownerEmail: 'alex@pharmacy.local'
-    }
-  ])
-  const [memberships, setMemberships] = useState({
-    'alex@pharmacy.local': [defaultWorkspaceId]
-  })
-  const [activeWorkspaceByEmail, setActiveWorkspaceByEmail] = useState({
-    'alex@pharmacy.local': defaultWorkspaceId
-  })
+  const [workspaces, setWorkspaces] = useState([])
+  const [memberships, setMemberships] = useState({})
+  const [activeWorkspaceByEmail, setActiveWorkspaceByEmail] = useState({})
   const [invitations, setInvitations] = useState([])
-  const [profiles, setProfiles] = useState({
-    'alex@pharmacy.local': { name: 'Alex Manager', role: 'admin' },
-    'sam@pharmacy.local': { name: 'Sam Worker', role: 'worker' }
-  })
+  const [profiles, setProfiles] = useState({})
   const [isReady, setIsReady] = useState(false)
+  const [isBootstrappingSession, setIsBootstrappingSession] = useState(false)
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem('pm-theme')
@@ -43,16 +49,17 @@ export function AppProviders({ children }) {
     if (savedUser) {
       setUser(JSON.parse(savedUser))
     }
+    const savedToken = window.localStorage.getItem('pm-token')
+    if (savedToken) {
+      setAuthToken(savedToken)
+    }
     const savedLocale = window.localStorage.getItem('pm-locale')
     if (savedLocale === 'fr' || savedLocale === 'en') {
       setLocale(savedLocale)
     }
     const savedOrders = window.localStorage.getItem('pm-orders')
     if (savedOrders) {
-      const parsed = JSON.parse(savedOrders).map(order => ({
-        ...order,
-        workspaceId: order.workspaceId || defaultWorkspaceId
-      }))
+      const parsed = JSON.parse(savedOrders).map(order => ({ ...order }))
       setOrders(parsed)
     }
     const savedWorkspaces = window.localStorage.getItem('pm-workspaces')
@@ -92,7 +99,17 @@ export function AppProviders({ children }) {
   }, [user])
 
   useEffect(() => {
+    if (authToken) {
+      window.localStorage.setItem('pm-token', authToken)
+    } else {
+      window.localStorage.removeItem('pm-token')
+    }
+  }, [authToken])
+
+  useEffect(() => {
     window.localStorage.setItem('pm-locale', locale)
+    document.documentElement.lang = locale
+    document.documentElement.dir = 'ltr'
   }, [locale])
 
   useEffect(() => {
@@ -121,6 +138,76 @@ export function AppProviders({ children }) {
   useEffect(() => {
     window.localStorage.setItem('pm-profiles', JSON.stringify(profiles))
   }, [profiles])
+
+  function mapBackendUserToClient(nextUser) {
+    return {
+      id: nextUser.id,
+      name: nextUser.displayName || nextUser.email,
+      email: nextUser.email,
+      picture: nextUser.picture || '',
+      onboardingCompleted: nextUser.onboardingCompleted,
+      primaryRole: nextUser.primaryRole,
+      subscriptionActive: !!nextUser.subscriptionActive,
+      role: nextUser.primaryRole === 'owner' ? 'admin' : 'worker'
+    }
+  }
+
+  function hydrateMembershipState(sessionUser, workspacesFromApi, membershipsFromApi) {
+    const email = sessionUser.email.toLowerCase()
+    const workspaceItems = (workspacesFromApi || []).map(item => ({
+      id: String(item.id),
+      name: item.name,
+      ownerEmail: String(item.ownerUserId) === String(sessionUser.id) ? email : ''
+    }))
+    const memberWorkspaceIds = (membershipsFromApi || []).map(item =>
+      String(item.pharmacyId)
+    )
+
+    setWorkspaces(workspaceItems)
+    setMemberships(prev => ({
+      ...prev,
+      [email]: memberWorkspaceIds
+    }))
+    setActiveWorkspaceByEmail(prev => ({
+      ...prev,
+      [email]: prev[email] || memberWorkspaceIds[0] || null
+    }))
+  }
+
+  async function bootstrapSession(tokenOverride = null) {
+    const sessionToken = tokenOverride || authToken
+    if (!sessionToken) return
+
+    try {
+      setIsBootstrappingSession(true)
+      const result = await apiRequest('/api/session/bootstrap', {
+        token: sessionToken
+      })
+
+      if (result?.user) {
+        const mappedUser = mapBackendUserToClient(result.user)
+        setUser(mappedUser)
+        setProfiles(prev => ({
+          ...prev,
+          [mappedUser.email]: {
+            name: mappedUser.name,
+            role: mappedUser.role
+          }
+        }))
+        hydrateMembershipState(result.user, result.workspaces, result.memberships)
+        await refreshPendingInvitations(sessionToken, mappedUser.email)
+      }
+    } catch (_error) {
+      logout()
+    } finally {
+      setIsBootstrappingSession(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!authToken) return
+    bootstrapSession(authToken)
+  }, [authToken])
 
   function createOrder({
     patientName,
@@ -201,57 +288,67 @@ export function AppProviders({ children }) {
     )
   }
 
-  function ensureWorkspaceForUser(nextUser) {
-    if (nextUser.role !== 'admin') return
-    let targetWorkspaceId = null
-    setWorkspaces(prev => {
-      const owned = prev.find(ws => ws.ownerEmail === nextUser.email)
-      if (owned) {
-        targetWorkspaceId = owned.id
-        return prev
-      }
-      const id = `ws-${Date.now()}`
-      targetWorkspaceId = id
-      return [
-        ...prev,
-        {
-          id,
-          name: `${nextUser.name}'s Workspace`,
-          ownerEmail: nextUser.email
-        }
-      ]
-    })
-    if (!targetWorkspaceId) return
-    setMemberships(prev => ({
-      ...prev,
-      [nextUser.email]: [...new Set([...(prev[nextUser.email] || []), targetWorkspaceId])]
-    }))
-    setActiveWorkspaceByEmail(prev => ({
-      ...prev,
-      [nextUser.email]: prev[nextUser.email] || targetWorkspaceId
-    }))
+  async function refreshPendingInvitations(tokenOverride = null, emailOverride = null) {
+    const sessionToken = tokenOverride || authToken
+    const targetEmail = (emailOverride || user?.email || '').toLowerCase()
+    if (!sessionToken || !targetEmail) return
+
+    try {
+      const result = await apiRequest('/api/invitations/pending', {
+        token: sessionToken
+      })
+      const mapped = (result.invitations || []).map(item => ({
+        id: item._id,
+        workspaceId: item.pharmacyId?._id || item.pharmacyId,
+        workspaceName: item.pharmacyId?.name || 'Pharmacy',
+        toEmail: targetEmail,
+        fromName: 'Owner',
+        status: item.status,
+        role: item.role,
+        createdAt: item.createdAt
+      }))
+      setInvitations(mapped)
+    } catch (_error) {
+      setInvitations([])
+    }
   }
 
-  function login(nextUser) {
+  function login(nextUser, token = null) {
     const normalized = {
       ...nextUser,
-      email: nextUser.email.trim().toLowerCase()
+      email: nextUser.email.trim().toLowerCase(),
+      role:
+        nextUser.primaryRole === 'owner'
+          ? 'admin'
+          : nextUser.primaryRole === 'pharmacist'
+            ? 'worker'
+            : nextUser.role || 'worker'
     }
     setUser(normalized)
+    if (token) {
+      setAuthToken(token)
+    }
     setProfiles(prev => ({
       ...prev,
       [normalized.email]: { name: normalized.name, role: normalized.role }
     }))
+  }
 
-    if (normalized.role === 'admin') {
-      ensureWorkspaceForUser(normalized)
-    } else {
-      setActiveWorkspaceByEmail(prev => ({
-        ...prev,
-        [normalized.email]:
-          prev[normalized.email] || (memberships[normalized.email] || [])[0] || null
-      }))
-    }
+  function logout() {
+    // Clear persisted auth immediately to avoid redirect races.
+    window.localStorage.removeItem('pm-user')
+    window.localStorage.removeItem('pm-token')
+    window.localStorage.removeItem('pm-workspaces')
+    window.localStorage.removeItem('pm-memberships')
+    window.localStorage.removeItem('pm-active-workspace')
+    window.localStorage.removeItem('pm-invitations')
+    setUser(null)
+    setAuthToken(null)
+    setWorkspaces([])
+    setMemberships({})
+    setActiveWorkspaceByEmail({})
+    setInvitations([])
+    setIsBootstrappingSession(false)
   }
 
   function setActiveWorkspace(workspaceId) {
@@ -262,61 +359,117 @@ export function AppProviders({ children }) {
     }))
   }
 
-  function inviteToCurrentWorkspace(email) {
-    if (!user || user.role !== 'admin' || !currentWorkspace) return
-    const targetEmail = email.trim().toLowerCase()
-    if (!targetEmail) return
-
-    const alreadyPending = invitations.some(
-      item =>
-        item.toEmail === targetEmail &&
-        item.workspaceId === currentWorkspace.id &&
-        item.status === 'pending'
-    )
-    const alreadyMember = (memberships[targetEmail] || []).includes(
-      currentWorkspace.id
-    )
-    if (alreadyPending || alreadyMember) return
-
-    const invitation = {
-      id: `inv-${Date.now()}`,
-      workspaceId: currentWorkspace.id,
-      workspaceName: currentWorkspace.name,
-      toEmail: targetEmail,
-      fromEmail: user.email,
-      fromName: user.name,
-      status: 'pending',
-      createdAt: new Date().toISOString()
+  async function inviteToCurrentWorkspace(email, role = 'pharmacist') {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
     }
-
-    setInvitations(prev => [invitation, ...prev])
-    setProfiles(prev => ({
-      ...prev,
-      [targetEmail]: prev[targetEmail] || { name: targetEmail, role: 'worker' }
-    }))
+    await apiRequest('/api/invitations/invite', {
+      method: 'POST',
+      token: authToken,
+      body: {
+        pharmacyId: currentWorkspace.id,
+        email,
+        role
+      }
+    })
   }
 
-  function respondToInvitation(invitationId, decision) {
-    if (!user?.email) return
+  async function respondToInvitation(invitationId, decision) {
+    if (!authToken || !user?.email) return
     const invitation = invitations.find(item => item.id === invitationId)
-    if (!invitation || invitation.toEmail !== user.email) return
-
-    setInvitations(prev =>
-      prev.map(item =>
-        item.id === invitationId ? { ...item, status: decision } : item
-      )
-    )
-
-    if (decision === 'accepted') {
-      setMemberships(prev => ({
-        ...prev,
-        [user.email]: [...new Set([...(prev[user.email] || []), invitation.workspaceId])]
-      }))
-      setActiveWorkspaceByEmail(prev => ({
-        ...prev,
-        [user.email]: prev[user.email] || invitation.workspaceId
-      }))
+    if (decision !== 'accepted') {
+      setInvitations(prev => prev.filter(item => item.id !== invitationId))
+      return
     }
+
+    const result = await apiRequest('/api/invitations/accept', {
+      method: 'POST',
+      token: authToken,
+      body: { invitationId }
+    })
+
+    const newPharmacyId = result?.membership?.pharmacyId
+    setMemberships(prev => ({
+      ...prev,
+      [user.email]: [...new Set([...(prev[user.email] || []), newPharmacyId])]
+    }))
+    if (invitation?.workspaceId && invitation?.workspaceName) {
+      setWorkspaces(prev => {
+        if (prev.some(workspace => workspace.id === invitation.workspaceId)) {
+          return prev
+        }
+        return [
+          ...prev,
+          {
+            id: invitation.workspaceId,
+            name: invitation.workspaceName,
+            ownerEmail: ''
+          }
+        ]
+      })
+    }
+    setActiveWorkspaceByEmail(prev => ({
+      ...prev,
+      [user.email]: prev[user.email] || newPharmacyId
+    }))
+    await refreshPendingInvitations(authToken)
+  }
+
+  async function chooseRole(role) {
+    if (!authToken) throw new Error('Missing auth token')
+    const result = await apiRequest('/api/onboarding/choose-role', {
+      method: 'POST',
+      token: authToken,
+      body: { role }
+    })
+    setUser(prev =>
+      prev
+        ? {
+            ...prev,
+            primaryRole: result.user.primaryRole,
+            onboardingCompleted: result.user.onboardingCompleted,
+            role: result.user.primaryRole === 'owner' ? 'admin' : 'worker'
+          }
+        : prev
+    )
+    return result
+  }
+
+  async function activateSubscription() {
+    if (!authToken) throw new Error('Missing auth token')
+    const result = await apiRequest('/api/onboarding/activate-subscription', {
+      method: 'POST',
+      token: authToken
+    })
+    setUser(prev =>
+      prev ? { ...prev, subscriptionActive: result.subscriptionActive } : prev
+    )
+    return result
+  }
+
+  async function createPharmacy(name) {
+    if (!authToken) throw new Error('Missing auth token')
+    const result = await apiRequest('/api/pharmacy/create', {
+      method: 'POST',
+      token: authToken,
+      body: { name }
+    })
+
+    const workspace = {
+      id: result.pharmacy._id,
+      name: result.pharmacy.name,
+      ownerEmail: user?.email || ''
+    }
+    setWorkspaces(prev => [...prev, workspace])
+    setMemberships(prev => ({
+      ...prev,
+      [user.email]: [...new Set([...(prev[user.email] || []), workspace.id])]
+    }))
+    setActiveWorkspaceByEmail(prev => ({
+      ...prev,
+      [user.email]: workspace.id
+    }))
+    return result
   }
 
   const userWorkspaceIds = useMemo(() => {
@@ -378,6 +531,7 @@ export function AppProviders({ children }) {
       theme,
       setTheme,
       user,
+      authToken,
       locale,
       setLocale,
       orders: sortedOrders,
@@ -387,8 +541,10 @@ export function AppProviders({ children }) {
       pendingInvitations,
       pendingWorkspaceInvitations,
       isReady,
+      isBootstrappingSession,
       login,
-      logout: () => setUser(null),
+      chooseRole,
+      logout,
       createOrder,
       addOrderComment,
       updateOrderStatus,
@@ -397,8 +553,9 @@ export function AppProviders({ children }) {
       setActiveWorkspace,
       inviteToCurrentWorkspace,
       respondToInvitation,
-      activateSubscription: () =>
-        setUser(prev => (prev ? { ...prev, subscriptionActive: true } : prev))
+      refreshPendingInvitations,
+      activateSubscription,
+      createPharmacy
     }),
     [
       currentWorkspace,
@@ -408,9 +565,14 @@ export function AppProviders({ children }) {
       pendingWorkspaceInvitations,
       sortedOrders,
       theme,
+      authToken,
+      isBootstrappingSession,
+      logout,
+      chooseRole,
       user,
       userWorkspaces,
-      workspaceMembers
+      workspaceMembers,
+      createPharmacy
     ]
   )
 
@@ -426,3 +588,4 @@ export function useSession() {
   }
   return ctx
 }
+

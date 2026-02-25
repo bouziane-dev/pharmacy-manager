@@ -9,13 +9,15 @@ import { getCopy } from '@/app/lib/i18n'
 
 export default function SubscriptionRoutePage() {
   const router = useRouter()
-  const { user, locale, isReady } = useSession()
+  const { user, locale, isReady, currentWorkspace } = useSession()
   const t = getCopy(locale)
 
   if (!isReady) return null
 
   const canManageSubscription =
-    !!user && user.role === 'admin' && !user.subscriptionActive
+    !!user &&
+    user.primaryRole === 'owner' &&
+    (!user.subscriptionActive || !currentWorkspace)
 
   if (!canManageSubscription) {
     return (

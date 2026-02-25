@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { useState } from 'react'
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { useSession } from '@/app/providers'
 import { getHomePathForUser } from '@/app/lib/useRouteGuard'
+import { getLocaleButtonLabel, getNextLocale } from '@/app/lib/i18n'
 
 const content = {
   en: {
@@ -26,7 +27,6 @@ const content = {
     primary: 'Open Workspace',
     signin: 'Sign In',
     preview: 'Plans',
-    lang: 'FR',
     theme: 'Night mode',
     summary: [
       { label: 'Order flow', value: 'Live status' },
@@ -56,17 +56,14 @@ const content = {
     workflowColumns: [
       {
         title: 'Intake',
-        tone: 'emerald',
         items: ['Capture patient request', 'Attach notes and urgency', 'Assign target date']
       },
       {
         title: 'Supplier Follow-up',
-        tone: 'amber',
         items: ['Track delayed items', 'Update expected arrival', 'Share status with team']
       },
       {
         title: 'Ready & Pickup',
-        tone: 'sky',
         items: ['Confirm stock arrived', 'Notify pharmacist', 'Close order at pickup']
       }
     ],
@@ -108,61 +105,57 @@ const content = {
     ]
   },
   fr: {
-    badge: 'Phlow | Pharmacy + Flow',
+    badge: 'Phlow | Pharmacie + Flux',
     title: 'Pilotez votre pharmacie avec Phlow',
     subtitle:
-      'Suivez les commandes, planifiez les arrivages et coordonnez votre equipe rapidement.',
-    primary: 'Ouvrir l espace',
+      'Suivez les commandes, planifiez les arrivages et coordonnez votre équipe en quelques minutes.',
+    primary: 'Ouvrir l’espace',
     signin: 'Se connecter',
-    preview: 'Abonnement',
-    lang: 'EN',
+    preview: 'Abonnements',
     theme: 'Mode nuit',
     summary: [
       { label: 'Flux commandes', value: 'Statut en direct' },
-      { label: 'Roles equipe', value: 'Admin + pharmacien' },
-      { label: 'Mise en place', value: 'Pret localement' }
+      { label: 'Rôles équipe', value: 'Admin + pharmacien' },
+      { label: 'Mise en place', value: 'Prêt localement' }
     ],
-    sectionsTitle: 'Fonctions principales',
+    sectionsTitle: 'Fonctionnalités clés',
     sections: [
       {
-        title: 'Timeline commandes',
+        title: 'Chronologie des commandes',
         text: 'Passez de la demande au retrait avec des statuts clairs.'
       },
       {
-        title: 'Acces equipe',
-        text: 'Invitez les pharmaciens avec un acces simple pour toute l equipe.'
+        title: 'Accès équipe',
+        text: 'Invitez les pharmaciens et gardez un contrôle simple des accès.'
       },
       {
         title: 'Planification agenda',
-        text: 'Organisez les arrivages par date sans friction.'
+        text: 'Organisez les arrivages par date pour réduire les retards.'
       }
     ],
-    localTitle: 'Pense pour les equipes locales',
+    localTitle: 'Pensé pour les équipes locales',
     localText:
-      'Workflow bilingue rapide et architecture modulaire prete pour votre backend.',
+      'Flux bilingue rapide et architecture modulaire prête pour l’intégration backend.',
     workflowTitle: 'Comment le travail avance dans Phlow',
     workflowSubtitle:
-      'Un flux type board aligne l equipe de la demande jusqu au retrait.',
+      'Un flux type tableau aligne l’équipe de la demande jusqu’au retrait.',
     workflowColumns: [
       {
-        title: 'Reception',
-        tone: 'emerald',
-        items: ['Saisir la demande patient', 'Ajouter notes et urgence', 'Definir une date cible']
+        title: 'Réception',
+        items: ['Saisir la demande patient', 'Ajouter notes et urgence', 'Définir une date cible']
       },
       {
         title: 'Suivi fournisseur',
-        tone: 'amber',
-        items: ['Suivre les retards', 'Mettre a jour la date d arrivee', 'Partager le statut equipe']
+        items: ['Suivre les retards', 'Mettre à jour la date d’arrivée', 'Partager le statut équipe']
       },
       {
-        title: 'Pret & Retrait',
-        tone: 'sky',
-        items: ['Confirmer la reception stock', 'Notifier le pharmacien', 'Cloturer a la remise']
+        title: 'Prêt & Retrait',
+        items: ['Confirmer la réception stock', 'Notifier le pharmacien', 'Clôturer à la remise']
       }
     ],
     footer: {
       brand: 'Phlow',
-      right: 'Tous droits reserves.'
+      right: 'Tous droits réservés.'
     },
     cards: [
       {
@@ -173,19 +166,19 @@ const content = {
       },
       {
         title: 'Agenda',
-        desc: 'Planifiez par date rapidement.',
+        desc: 'Planifiez rapidement par date.',
         href: '/agenda',
         icon: CalendarClock
       },
       {
         title: 'Commandes',
-        desc: 'Creation et suivi des statuts.',
+        desc: 'Création et suivi des statuts.',
         href: '/orders',
         icon: ClipboardList
       },
       {
         title: 'Utilisateurs',
-        desc: 'Gestion equipe et invitations.',
+        desc: 'Gestion de l’équipe et des invitations.',
         href: '/users',
         icon: Users2
       },
@@ -196,7 +189,7 @@ const content = {
         icon: CreditCard
       }
     ]
-  }
+  },
 }
 
 export default function Home() {
@@ -249,11 +242,11 @@ export default function Home() {
               {t.theme}
             </button>
             <button
-              onClick={() => setLocale(locale === 'fr' ? 'en' : 'fr')}
+              onClick={() => setLocale(getNextLocale(locale))}
               className='fun-card inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)]/90 px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] backdrop-blur transition hover:bg-[var(--surface-soft)]'
             >
               <Globe size={14} />
-              {t.lang}
+              {getLocaleButtonLabel(locale)}
             </button>
           </div>
         </header>
@@ -415,3 +408,5 @@ export default function Home() {
     </main>
   )
 }
+
+
