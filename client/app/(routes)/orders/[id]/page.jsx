@@ -4,9 +4,10 @@ import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import AppShell from '@/app/components/AppShell'
-import { getCopy } from '@/app/lib/i18n'
+import { formatShortDate, getCopy } from '@/app/lib/i18n'
 import { useRouteGuard } from '@/app/lib/useRouteGuard'
 import { useSession } from '@/app/providers'
+const digitsOnly = value => value.replace(/\D/g, '')
 
 export default function OrderDetailsPage() {
   const { user, isLoading, isBlocked } = useRouteGuard({})
@@ -60,7 +61,11 @@ export default function OrderDetailsPage() {
               {orderText.fields.phone}
               <input
                 value={order.phone}
-                onChange={e => void updateOrder(order.id, { phone: e.target.value })}
+                onChange={e =>
+                  void updateOrder(order.id, { phone: digitsOnly(e.target.value) })
+                }
+                inputMode='numeric'
+                pattern='[0-9]*'
                 className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)]'
               />
             </label>
@@ -84,6 +89,9 @@ export default function OrderDetailsPage() {
                 }
                 className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)]'
               />
+              <p className='mt-1 text-xs text-[var(--muted)]'>
+                {formatShortDate(order.arrivalDate, locale)}
+              </p>
             </label>
             <label className='text-sm text-[var(--muted)]'>
               {orderText.fields.urgency}

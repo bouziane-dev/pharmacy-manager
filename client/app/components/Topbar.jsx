@@ -25,6 +25,7 @@ export default function Topbar({
     setLocale,
     user,
     logout,
+    showConfirmToast,
     currentWorkspace,
     userWorkspaces,
     setActiveWorkspace
@@ -33,9 +34,15 @@ export default function Topbar({
   const roleLabel = user?.role === 'admin' ? t.topbar.roleAdmin : t.topbar.roleWorker
 
   function handleLogout() {
-    const confirmed = window.confirm(t.topbar.confirmSignOut)
-    if (!confirmed) return
-    logout()
+    showConfirmToast({
+      title: t.topbar.confirmSignOutTitle,
+      message: t.topbar.confirmSignOut,
+      cancelLabel: t.topbar.confirmNo,
+      confirmLabel: t.topbar.confirmYes,
+      onConfirm: () => {
+        logout()
+      }
+    })
   }
 
   return (

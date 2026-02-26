@@ -12,6 +12,13 @@ router.post(
   invitationController.createInvitation
 );
 router.get("/pending", requireAuth, invitationController.getPendingInvitations);
+router.get(
+  "/workspace",
+  requireAuth,
+  requireMembership(["owner", "admin"]),
+  invitationController.getWorkspacePendingInvitations
+);
 router.post("/accept", requireAuth, invitationController.acceptInvitation);
+router.post("/decline", requireAuth, invitationController.declineInvitation);
 
 module.exports = router;

@@ -17,6 +17,19 @@ export function getIntlLocale(locale) {
   return 'en-US'
 }
 
+export function formatShortDate(dateValue, locale) {
+  if (!dateValue) return ''
+  const safeValue = String(dateValue).trim()
+  const date = new Date(`${safeValue}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return safeValue
+
+  return new Intl.DateTimeFormat(getIntlLocale(locale), {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit'
+  }).format(date)
+}
+
 export const i18n = {
   en: {
     appName: 'Pharmacy Manager',
@@ -53,7 +66,10 @@ export const i18n = {
       workspace: 'Workspace',
       roleAdmin: 'ADMIN',
       roleWorker: 'WORKER',
-      confirmSignOut: 'Are you sure you want to sign out?'
+      confirmSignOutTitle: 'Sign out',
+      confirmSignOut: 'Are you sure you want to sign out?',
+      confirmYes: 'Sign out',
+      confirmNo: 'Cancel'
     },
     dashboard: {
       stats: [
@@ -117,6 +133,13 @@ export const i18n = {
         phone: '0550 00 00 00',
         productName: 'Medication or product',
         comment: 'Initial order note'
+      },
+      validation: {
+        patientNameRequired: 'Patient name is required.',
+        phoneRequired: 'Phone is required.',
+        productNameRequired: 'Medication / product name is required.',
+        arrivalDateRequired: 'Approximate arrival date is required.',
+        urgencyRequired: 'Urgency is required.'
       },
       urgency: {
         Urgent: 'Urgent',
@@ -251,7 +274,10 @@ export const i18n = {
       workspace: 'Espace',
       roleAdmin: 'ADMIN',
       roleWorker: 'PHARMACIEN',
-      confirmSignOut: 'Voulez-vous vraiment vous déconnecter ?'
+      confirmSignOutTitle: 'Deconnexion',
+      confirmSignOut: 'Voulez-vous vraiment vous déconnecter ?',
+      confirmYes: 'Se deconnecter',
+      confirmNo: 'Annuler'
     },
     dashboard: {
       stats: [
@@ -315,6 +341,13 @@ export const i18n = {
         phone: '0550 00 00 00',
         productName: 'Médicament ou produit',
         comment: 'Note initiale de commande'
+      },
+      validation: {
+        patientNameRequired: 'Le nom du patient est requis.',
+        phoneRequired: 'Le telephone est requis.',
+        productNameRequired: 'Le nom du medicament / produit est requis.',
+        arrivalDateRequired: "La date d'arrivee estimee est requise.",
+        urgencyRequired: "L'urgence est requise."
       },
       urgency: {
         Urgent: 'Urgente',

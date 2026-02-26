@@ -1,9 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useSession } from '@/app/providers'
-import { getCopy } from '@/app/lib/i18n'
+import { formatShortDate, getCopy } from '@/app/lib/i18n'
 
 const statusStyles = {
   'Not Yet':
@@ -17,6 +17,14 @@ const urgencyStyles = {
   Urgent: 'text-rose-600 dark:text-rose-400',
   Normal: 'text-[var(--muted)]'
 }
+const digitsOnly = value => value.replace(/\D/g, '')
+const requiredFieldOrder = [
+  'patientName',
+  'phone',
+  'productName',
+  'arrivalDate',
+  'urgency'
+]
 
 function CommentComposer({ orderId, onSubmit, placeholder, cta }) {
   const [text, setText] = useState('')
@@ -54,6 +62,7 @@ export default function OrdersTable({ showControls = false }) {
   const t = getCopy(locale).orders
 
   const [search, setSearch] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
   const [form, setForm] = useState({
     patientName: '',
     phone: '',
@@ -62,6 +71,39 @@ export default function OrdersTable({ showControls = false }) {
     arrivalDate: '',
     urgency: 'Normal'
   })
+  const patientNameRef = useRef(null)
+  const phoneRef = useRef(null)
+  const productNameRef = useRef(null)
+  const arrivalDateRef = useRef(null)
+  const urgencyRef = useRef(null)
+
+  const fieldRefMap = {
+    patientName: patientNameRef,
+    phone: phoneRef,
+    productName: productNameRef,
+    arrivalDate: arrivalDateRef,
+    urgency: urgencyRef
+  }
+
+  function validateRequiredFields() {
+    const errors = {}
+    if (!form.patientName.trim()) {
+      errors.patientName = t.validation.patientNameRequired
+    }
+    if (!form.phone.trim()) {
+      errors.phone = t.validation.phoneRequired
+    }
+    if (!form.productName.trim()) {
+      errors.productName = t.validation.productNameRequired
+    }
+    if (!form.arrivalDate) {
+      errors.arrivalDate = t.validation.arrivalDateRequired
+    }
+    if (!form.urgency) {
+      errors.urgency = t.validation.urgencyRequired
+    }
+    return errors
+  }
 
   const filteredOrders = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -91,44 +133,88 @@ export default function OrdersTable({ showControls = false }) {
             <label className='text-sm text-[var(--muted)]'>
               {t.fields.patientName}
               <input
+                ref={patientNameRef}
                 value={form.patientName}
-                onChange={e =>
-                  setForm(prev => ({ ...prev, patientName: e.target.value }))
-                }
+                onChange={e => {
+                  const nextValue = e.target.value
+                  setForm(prev => ({ ...prev, patientName: nextValue }))
+                  if (nextValue.trim()) {
+                    setFieldErrors(prev => ({ ...prev, patientName: '' }))
+                  }
+                }}
                 placeholder={t.placeholders.patientName}
+                required
+                aria-invalid={!!fieldErrors.patientName}
                 className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
               />
+              {fieldErrors.patientName && (
+                <p className='mt-1 text-xs text-red-600'>{fieldErrors.patientName}</p>
+              )}
             </label>
             <label className='text-sm text-[var(--muted)]'>
               {t.fields.phone}
               <input
+                ref={phoneRef}
                 value={form.phone}
-                onChange={e => setForm(prev => ({ ...prev, phone: e.target.value }))}
+                onChange={e => {
+                  const nextValue = digitsOnly(e.target.value)
+                  setForm(prev => ({ ...prev, phone: nextValue }))
+                  if (nextValue.trim()) {
+                    setFieldErrors(prev => ({ ...prev, phone: '' }))
+                  }
+                }}
                 placeholder={t.placeholders.phone}
+                inputMode='numeric'
+                pattern='[0-9]*'
+                required
+                aria-invalid={!!fieldErrors.phone}
                 className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
               />
+              {fieldErrors.phone && (
+                <p className='mt-1 text-xs text-red-600'>{fieldErrors.phone}</p>
+              )}
             </label>
             <label className='text-sm text-[var(--muted)]'>
               {t.fields.productName}
               <input
+                ref={productNameRef}
                 value={form.productName}
-                onChange={e =>
-                  setForm(prev => ({ ...prev, productName: e.target.value }))
-                }
+                onChange={e => {
+                  const nextValue = e.target.value
+                  setForm(prev => ({ ...prev, productName: nextValue }))
+                  if (nextValue.trim()) {
+                    setFieldErrors(prev => ({ ...prev, productName: '' }))
+                  }
+                }}
                 placeholder={t.placeholders.productName}
+                required
+                aria-invalid={!!fieldErrors.productName}
                 className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
               />
+              {fieldErrors.productName && (
+                <p className='mt-1 text-xs text-red-600'>{fieldErrors.productName}</p>
+              )}
             </label>
             <label className='text-sm text-[var(--muted)]'>
               {t.fields.arrivalDate}
               <input
+                ref={arrivalDateRef}
                 type='date'
                 value={form.arrivalDate}
-                onChange={e =>
-                  setForm(prev => ({ ...prev, arrivalDate: e.target.value }))
-                }
+                onChange={e => {
+                  const nextValue = e.target.value
+                  setForm(prev => ({ ...prev, arrivalDate: nextValue }))
+                  if (nextValue) {
+                    setFieldErrors(prev => ({ ...prev, arrivalDate: '' }))
+                  }
+                }}
+                required
+                aria-invalid={!!fieldErrors.arrivalDate}
                 className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
               />
+              {fieldErrors.arrivalDate && (
+                <p className='mt-1 text-xs text-red-600'>{fieldErrors.arrivalDate}</p>
+              )}
             </label>
             <label className='text-sm text-[var(--muted)] md:col-span-2'>
               {t.fields.comment}
@@ -144,27 +230,41 @@ export default function OrdersTable({ showControls = false }) {
             <label className='text-sm text-[var(--muted)]'>
               {t.fields.urgency}
               <select
+                ref={urgencyRef}
                 value={form.urgency}
-                onChange={e =>
-                  setForm(prev => ({ ...prev, urgency: e.target.value }))
-                }
+                onChange={e => {
+                  const nextValue = e.target.value
+                  setForm(prev => ({ ...prev, urgency: nextValue }))
+                  if (nextValue) {
+                    setFieldErrors(prev => ({ ...prev, urgency: '' }))
+                  }
+                }}
+                required
+                aria-invalid={!!fieldErrors.urgency}
                 className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
               >
                 <option value='Urgent'>{t.urgency.Urgent}</option>
                 <option value='Normal'>{t.urgency.Normal}</option>
               </select>
+              {fieldErrors.urgency && (
+                <p className='mt-1 text-xs text-red-600'>{fieldErrors.urgency}</p>
+              )}
             </label>
           </div>
           <button
             onClick={async () => {
-              if (
-                !form.patientName.trim() ||
-                !form.phone.trim() ||
-                !form.productName.trim() ||
-                !form.arrivalDate
-              )
+              const errors = validateRequiredFields()
+              setFieldErrors(errors)
+              if (Object.keys(errors).length > 0) {
+                const firstMissingField = requiredFieldOrder.find(field => errors[field])
+                const targetRef = firstMissingField
+                  ? fieldRefMap[firstMissingField]
+                  : null
+                targetRef?.current?.focus()
                 return
+              }
               await createOrder(form)
+              setFieldErrors({})
               setForm({
                 patientName: '',
                 phone: '',
@@ -216,7 +316,7 @@ export default function OrdersTable({ showControls = false }) {
                     {order.patientName} - {order.phone}
                   </p>
                   <p className='mt-1 text-xs text-[var(--muted)]'>
-                    {t.remindersText}
+                    {t.remindersText} ({formatShortDate(order.arrivalDate, locale)})
                   </p>
                   <div className='mt-2 flex gap-2'>
                     <button
@@ -292,7 +392,7 @@ export default function OrdersTable({ showControls = false }) {
                     <p className='break-words'>{order.productName}</p>
                   </td>
                   <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
-                    {order.arrivalDate}
+                    {formatShortDate(order.arrivalDate, locale)}
                   </td>
                   <td className='px-3 py-3 sm:px-5'>
                     <span className={`break-words text-xs font-semibold ${urgencyStyles[order.urgency]}`}>

@@ -39,6 +39,7 @@ const orderSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      match: [/^\d+$/, "Phone must contain digits only"],
     },
     productName: {
       type: String,

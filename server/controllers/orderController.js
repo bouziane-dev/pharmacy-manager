@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Order = require("../models/Order");
+const phonePattern = /^\d+$/;
 
 function toClientOrder(orderDoc) {
   return {
@@ -39,12 +40,16 @@ async function createOrder(req, res) {
   try {
     const { patientName, phone, productName, arrivalDate, urgency, comment } =
       req.body;
+    const normalizedPhone = String(phone || "").trim();
 
     if (!patientName || !String(patientName).trim()) {
       return res.status(400).json({ error: "Patient name is required" });
     }
-    if (!phone || !String(phone).trim()) {
+    if (!normalizedPhone) {
       return res.status(400).json({ error: "Phone is required" });
+    }
+    if (!phonePattern.test(normalizedPhone)) {
+      return res.status(400).json({ error: "Phone must contain digits only" });
     }
     if (!productName || !String(productName).trim()) {
       return res.status(400).json({ error: "Product name is required" });
@@ -52,7 +57,10 @@ async function createOrder(req, res) {
     if (!arrivalDate || !String(arrivalDate).trim()) {
       return res.status(400).json({ error: "Arrival date is required" });
     }
-    if (urgency && !["Urgent", "Normal"].includes(urgency)) {
+    if (!urgency) {
+      return res.status(400).json({ error: "Urgency is required" });
+    }
+    if (!["Urgent", "Normal"].includes(urgency)) {
       return res.status(400).json({ error: "Invalid urgency value" });
     }
 
@@ -68,10 +76,10 @@ async function createOrder(req, res) {
     const order = await Order.create({
       pharmacyId: req.pharmacyId,
       patientName: String(patientName).trim(),
-      phone: String(phone).trim(),
+      phone: normalizedPhone,
       productName: String(productName).trim(),
       arrivalDate: String(arrivalDate).trim(),
-      urgency: urgency || "Normal",
+      urgency,
       status: "Not Yet",
       comments,
     });
@@ -113,12 +121,24 @@ async function updateOrder(req, res) {
     for (const field of allowedFields) {
       if (req.body[field] === undefined) continue;
 
-      if (["patientName", "phone", "productName", "arrivalDate"].includes(field)) {
+      if (["patientName", "productName", "arrivalDate"].includes(field)) {
         const value = String(req.body[field]).trim();
         if (!value) {
           return res.status(400).json({ error: `${field} cannot be empty` });
         }
         order[field] = value;
+        continue;
+      }
+
+      if (field === "phone") {
+        const value = String(req.body.phone).trim();
+        if (!value) {
+          return res.status(400).json({ error: "phone cannot be empty" });
+        }
+        if (!phonePattern.test(value)) {
+          return res.status(400).json({ error: "Phone must contain digits only" });
+        }
+        order.phone = value;
         continue;
       }
 
