@@ -1,20 +1,29 @@
-const mongoose = require("mongoose");
 const Invitation = require("../models/Invitation");
 const Membership = require("../models/Membership");
+const {
+  cleanEmail,
+  cleanString,
+  isValidEmail,
+  isValidObjectId,
+  normalizeRole,
+} = require("../utils/input");
 
 async function createInvitation(req, res) {
   try {
     const { pharmacyId, email, role } = req.body;
+    const normalizedPharmacyId = cleanString(pharmacyId);
+    const normalizedEmail = cleanEmail(email);
+    const normalizedRole = normalizeRole(role);
 
-    if (!pharmacyId || !mongoose.Types.ObjectId.isValid(pharmacyId)) {
+    if (!normalizedPharmacyId || !isValidObjectId(normalizedPharmacyId)) {
       return res.status(400).json({ error: "Valid pharmacyId is required" });
     }
 
-    if (!email || !String(email).trim()) {
+    if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
       return res.status(400).json({ error: "Invitee email is required" });
     }
 
-    if (!["pharmacist", "admin"].includes(role)) {
+    if (!["pharmacist", "admin"].includes(normalizedRole)) {
       return res
         .status(400)
         .json({ error: "Invalid invitation role. Use pharmacist or admin" });
@@ -26,10 +35,8 @@ async function createInvitation(req, res) {
         .json({ error: "Only pharmacy owners can send invitations" });
     }
 
-    const normalizedEmail = String(email).trim().toLowerCase();
-
     const existingPending = await Invitation.findOne({
-      pharmacyId,
+      pharmacyId: normalizedPharmacyId,
       email: normalizedEmail,
       status: "pending",
     });
@@ -39,9 +46,9 @@ async function createInvitation(req, res) {
     }
 
     const invitation = await Invitation.create({
-      pharmacyId,
+      pharmacyId: normalizedPharmacyId,
       email: normalizedEmail,
-      role,
+      role: normalizedRole,
       invitedByUserId: req.user._id,
       status: "pending",
     });
@@ -89,13 +96,14 @@ async function getWorkspacePendingInvitations(req, res) {
 async function acceptInvitation(req, res) {
   try {
     const { invitationId } = req.body;
+    const normalizedInvitationId = cleanString(invitationId);
 
-    if (!invitationId || !mongoose.Types.ObjectId.isValid(invitationId)) {
+    if (!normalizedInvitationId || !isValidObjectId(normalizedInvitationId)) {
       return res.status(400).json({ error: "Valid invitationId is required" });
     }
 
     const invitation = await Invitation.findOne({
-      _id: invitationId,
+      _id: normalizedInvitationId,
       email: req.user.email.toLowerCase(),
       status: "pending",
     });
@@ -137,13 +145,14 @@ async function acceptInvitation(req, res) {
 async function declineInvitation(req, res) {
   try {
     const { invitationId } = req.body;
+    const normalizedInvitationId = cleanString(invitationId);
 
-    if (!invitationId || !mongoose.Types.ObjectId.isValid(invitationId)) {
+    if (!normalizedInvitationId || !isValidObjectId(normalizedInvitationId)) {
       return res.status(400).json({ error: "Valid invitationId is required" });
     }
 
     const invitation = await Invitation.findOne({
-      _id: invitationId,
+      _id: normalizedInvitationId,
       email: req.user.email.toLowerCase(),
       status: "pending",
     });

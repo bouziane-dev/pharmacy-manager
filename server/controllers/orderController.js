@@ -1,6 +1,12 @@
-const mongoose = require("mongoose");
 const Order = require("../models/Order");
+const {
+  cleanPhoneDigits,
+  cleanSingleLine,
+  cleanString,
+  isValidObjectId,
+} = require("../utils/input");
 const phonePattern = /^\d+$/;
+const arrivalDatePattern = /^\d{4}-\d{2}-\d{2}$/;
 
 function toClientOrder(orderDoc) {
   return {
@@ -40,9 +46,13 @@ async function createOrder(req, res) {
   try {
     const { patientName, phone, productName, arrivalDate, urgency, comment } =
       req.body;
-    const normalizedPhone = String(phone || "").trim();
+    const normalizedPatientName = cleanSingleLine(patientName);
+    const normalizedPhone = cleanPhoneDigits(phone);
+    const normalizedProductName = cleanSingleLine(productName);
+    const normalizedArrivalDate = cleanString(arrivalDate);
+    const normalizedUrgency = cleanSingleLine(urgency);
 
-    if (!patientName || !String(patientName).trim()) {
+    if (!normalizedPatientName) {
       return res.status(400).json({ error: "Patient name is required" });
     }
     if (!normalizedPhone) {
@@ -51,16 +61,19 @@ async function createOrder(req, res) {
     if (!phonePattern.test(normalizedPhone)) {
       return res.status(400).json({ error: "Phone must contain digits only" });
     }
-    if (!productName || !String(productName).trim()) {
+    if (!normalizedProductName) {
       return res.status(400).json({ error: "Product name is required" });
     }
-    if (!arrivalDate || !String(arrivalDate).trim()) {
+    if (!normalizedArrivalDate) {
       return res.status(400).json({ error: "Arrival date is required" });
     }
-    if (!urgency) {
+    if (!arrivalDatePattern.test(normalizedArrivalDate)) {
+      return res.status(400).json({ error: "Arrival date must be YYYY-MM-DD" });
+    }
+    if (!normalizedUrgency) {
       return res.status(400).json({ error: "Urgency is required" });
     }
-    if (!["Urgent", "Normal"].includes(urgency)) {
+    if (!["Urgent", "Normal"].includes(normalizedUrgency)) {
       return res.status(400).json({ error: "Invalid urgency value" });
     }
 
@@ -75,11 +88,11 @@ async function createOrder(req, res) {
 
     const order = await Order.create({
       pharmacyId: req.pharmacyId,
-      patientName: String(patientName).trim(),
+      patientName: normalizedPatientName,
       phone: normalizedPhone,
-      productName: String(productName).trim(),
-      arrivalDate: String(arrivalDate).trim(),
-      urgency,
+      productName: normalizedProductName,
+      arrivalDate: normalizedArrivalDate,
+      urgency: normalizedUrgency,
       status: "Not Yet",
       comments,
     });
@@ -95,8 +108,8 @@ async function createOrder(req, res) {
 
 async function updateOrder(req, res) {
   try {
-    const { orderId } = req.params;
-    if (!orderId || !mongoose.Types.ObjectId.isValid(orderId)) {
+    const orderId = cleanString(req.params.orderId);
+    if (!orderId || !isValidObjectId(orderId)) {
       return res.status(400).json({ error: "Valid orderId is required" });
     }
 
@@ -121,8 +134,8 @@ async function updateOrder(req, res) {
     for (const field of allowedFields) {
       if (req.body[field] === undefined) continue;
 
-      if (["patientName", "productName", "arrivalDate"].includes(field)) {
-        const value = String(req.body[field]).trim();
+      if (["patientName", "productName"].includes(field)) {
+        const value = cleanSingleLine(req.body[field]);
         if (!value) {
           return res.status(400).json({ error: `${field} cannot be empty` });
         }
@@ -131,7 +144,7 @@ async function updateOrder(req, res) {
       }
 
       if (field === "phone") {
-        const value = String(req.body.phone).trim();
+        const value = cleanPhoneDigits(req.body.phone);
         if (!value) {
           return res.status(400).json({ error: "phone cannot be empty" });
         }
@@ -142,19 +155,33 @@ async function updateOrder(req, res) {
         continue;
       }
 
+      if (field === "arrivalDate") {
+        const value = cleanString(req.body.arrivalDate);
+        if (!value) {
+          return res.status(400).json({ error: "arrivalDate cannot be empty" });
+        }
+        if (!arrivalDatePattern.test(value)) {
+          return res.status(400).json({ error: "Arrival date must be YYYY-MM-DD" });
+        }
+        order.arrivalDate = value;
+        continue;
+      }
+
       if (field === "urgency") {
-        if (!["Urgent", "Normal"].includes(req.body.urgency)) {
+        const normalizedUrgency = cleanSingleLine(req.body.urgency);
+        if (!["Urgent", "Normal"].includes(normalizedUrgency)) {
           return res.status(400).json({ error: "Invalid urgency value" });
         }
-        order.urgency = req.body.urgency;
+        order.urgency = normalizedUrgency;
         continue;
       }
 
       if (field === "status") {
-        if (!["Not Yet", "Ordered", "Arrived"].includes(req.body.status)) {
+        const normalizedStatus = cleanSingleLine(req.body.status);
+        if (!["Not Yet", "Ordered", "Arrived"].includes(normalizedStatus)) {
           return res.status(400).json({ error: "Invalid status value" });
         }
-        order.status = req.body.status;
+        order.status = normalizedStatus;
       }
     }
 
@@ -171,14 +198,15 @@ async function updateOrder(req, res) {
 
 async function addOrderComment(req, res) {
   try {
-    const { orderId } = req.params;
+    const orderId = cleanString(req.params.orderId);
     const { text } = req.body;
+    const normalizedText = cleanString(text);
 
-    if (!orderId || !mongoose.Types.ObjectId.isValid(orderId)) {
+    if (!orderId || !isValidObjectId(orderId)) {
       return res.status(400).json({ error: "Valid orderId is required" });
     }
 
-    if (!text || !String(text).trim()) {
+    if (!normalizedText) {
       return res.status(400).json({ error: "Comment text is required" });
     }
 
@@ -194,7 +222,7 @@ async function addOrderComment(req, res) {
     order.comments.push({
       authorUserId: req.user._id,
       authorName: req.user.displayName || req.user.email,
-      text: String(text).trim(),
+      text: normalizedText,
     });
 
     await order.save();

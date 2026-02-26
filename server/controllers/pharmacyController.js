@@ -1,12 +1,14 @@
 const Pharmacy = require("../models/Pharmacy");
 const Membership = require("../models/Membership");
 const User = require("../models/User");
+const { cleanSingleLine } = require("../utils/input");
 
 async function createPharmacy(req, res) {
   try {
     const { name } = req.body;
+    const normalizedName = cleanSingleLine(name);
 
-    if (!name || !String(name).trim()) {
+    if (!normalizedName) {
       return res.status(400).json({ error: "Pharmacy name is required" });
     }
 
@@ -28,7 +30,7 @@ async function createPharmacy(req, res) {
     }
 
     const pharmacy = await Pharmacy.create({
-      name: String(name).trim(),
+      name: normalizedName,
       ownerUserId: user._id,
       subscriptionStatus: "active",
     });

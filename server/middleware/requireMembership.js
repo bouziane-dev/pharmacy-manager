@@ -1,19 +1,20 @@
-const mongoose = require("mongoose");
 const Membership = require("../models/Membership");
+const { cleanString, isValidObjectId } = require("../utils/input");
 
 function requireMembership(allowedRoles = []) {
   return async function membershipGuard(req, res, next) {
     try {
       const pharmacyId =
         req.params.pharmacyId || req.body.pharmacyId || req.query.pharmacyId;
+      const normalizedPharmacyId = cleanString(pharmacyId);
 
-      if (!pharmacyId || !mongoose.Types.ObjectId.isValid(pharmacyId)) {
+      if (!normalizedPharmacyId || !isValidObjectId(normalizedPharmacyId)) {
         return res.status(400).json({ error: "Valid pharmacyId is required" });
       }
 
       const membership = await Membership.findOne({
         userId: req.user._id,
-        pharmacyId,
+        pharmacyId: normalizedPharmacyId,
       });
 
       if (!membership) {
@@ -27,7 +28,7 @@ function requireMembership(allowedRoles = []) {
       }
 
       req.membership = membership;
-      req.pharmacyId = pharmacyId;
+      req.pharmacyId = normalizedPharmacyId;
       next();
     } catch (error) {
       return res.status(500).json({ error: error.message });

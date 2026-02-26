@@ -3,6 +3,9 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 const passport = require("./config/passport");
+const sanitizeRequest = require("./middleware/sanitizeRequest");
+const securityHeaders = require("./middleware/securityHeaders");
+const simpleRateLimit = require("./middleware/simpleRateLimit");
 const authRoutes = require("./routes/authRoutes");
 const onboardingRoutes = require("./routes/onboardingRoutes");
 const pharmacyRoutes = require("./routes/pharmacyRoutes");
@@ -12,8 +15,32 @@ const orderRoutes = require("./routes/orderRoutes");
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
+const corsOrigins = [process.env.FRONTEND_ORIGIN, process.env.FRONTEND_AUTH_SUCCESS_URL]
+  .filter(Boolean)
+  .map((item) => {
+    try {
+      return new URL(item).origin;
+    } catch (_error) {
+      return null;
+    }
+  })
+  .filter(Boolean);
+
+app.use(
+  cors(
+    corsOrigins.length > 0
+      ? {
+          origin: corsOrigins,
+          methods: ["GET", "POST", "PATCH", "OPTIONS"],
+          credentials: false,
+        }
+      : {}
+  )
+);
+app.use(securityHeaders);
+app.use(simpleRateLimit({ windowMs: 60_000, max: 300 }));
+app.use(express.json({ limit: "20kb" }));
+app.use(sanitizeRequest);
 app.use(passport.initialize());
 
 app.use("/auth", authRoutes);
