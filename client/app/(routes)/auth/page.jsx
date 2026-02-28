@@ -1,6 +1,7 @@
 'use client'
+export const dynamic = 'force-dynamic' // Ensure this page is not pre-rendered at build time (because of useSearchParams)
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Globe, Moon, ShieldCheck, Sun } from 'lucide-react'
 import { useSession } from '@/app/providers'
@@ -13,6 +14,14 @@ function decodeBase64Url(input) {
 }
 
 export default function AuthPage() {
+  return (
+    <Suspense fallback={<AuthLoading />}>
+      <AuthContent />
+    </Suspense>
+  )
+}
+
+function AuthContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, login, locale, setLocale, theme, setTheme } = useSession()
@@ -91,14 +100,7 @@ export default function AuthPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className='flex min-h-screen items-center justify-center bg-[var(--background)] px-4 py-8'>
-        <div className='panel w-full max-w-sm p-6 text-center'>
-          <div className='mx-auto h-10 w-10 animate-spin rounded-full border-4 border-[var(--border)] border-t-emerald-500' />
-          <p className='mt-4 text-sm font-medium text-[var(--foreground)]'>{t.loading}</p>
-        </div>
-      </div>
-    )
+    return <AuthLoading />
   }
 
   return (
@@ -132,9 +134,7 @@ export default function AuthPage() {
         <h1 className='mt-2 text-2xl font-semibold text-[var(--foreground)]'>
           {t.signIn}
         </h1>
-        <p className='mt-1 text-sm text-[var(--muted)]'>
-          {t.helper}
-        </p>
+        <p className='mt-1 text-sm text-[var(--muted)]'>{t.helper}</p>
         {errorMessage && (
           <p className='mt-3 rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm text-red-600'>
             {errorMessage}
@@ -151,6 +151,22 @@ export default function AuthPage() {
           </button>
         </div>
       </section>
+    </div>
+  )
+}
+
+function AuthLoading() {
+  const { locale } = useSession()
+  const t = getCopy(locale).authPage
+
+  return (
+    <div className='flex min-h-screen items-center justify-center bg-[var(--background)] px-4 py-8'>
+      <div className='panel w-full max-w-sm p-6 text-center'>
+        <div className='mx-auto h-10 w-10 animate-spin rounded-full border-4 border-[var(--border)] border-t-emerald-500' />
+        <p className='mt-4 text-sm font-medium text-[var(--foreground)]'>
+          {t.loading}
+        </p>
+      </div>
     </div>
   )
 }
