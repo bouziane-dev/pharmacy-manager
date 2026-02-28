@@ -23,7 +23,8 @@ const content = {
   en: {
     badge: 'Phlow | Pharmacy + Flow',
     title: 'Run your pharmacy with Phlow',
-    subtitle: 'Track orders, plan arrivals, and coordinate your team in minutes.',
+    subtitle:
+      'Track orders, plan arrivals, and coordinate your team in minutes.',
     primary: 'Open Workspace',
     signin: 'Sign In',
     preview: 'Plans',
@@ -49,22 +50,35 @@ const content = {
       }
     ],
     localTitle: 'Built for local teams',
-    localText: 'Fast bilingual workflow with a modular setup for backend integration.',
+    localText:
+      'Fast bilingual workflow with a modular setup for backend integration.',
     workflowTitle: 'How work moves in Phlow',
     workflowSubtitle:
       'A board-style flow keeps everyone aligned from intake to pickup.',
     workflowColumns: [
       {
         title: 'Intake',
-        items: ['Capture patient request', 'Attach notes and urgency', 'Assign target date']
+        items: [
+          'Capture patient request',
+          'Attach notes and urgency',
+          'Assign target date'
+        ]
       },
       {
         title: 'Supplier Follow-up',
-        items: ['Track delayed items', 'Update expected arrival', 'Share status with team']
+        items: [
+          'Track delayed items',
+          'Update expected arrival',
+          'Share status with team'
+        ]
       },
       {
         title: 'Ready & Pickup',
-        items: ['Confirm stock arrived', 'Notify pharmacist', 'Close order at pickup']
+        items: [
+          'Confirm stock arrived',
+          'Notify pharmacist',
+          'Close order at pickup'
+        ]
       }
     ],
     footer: {
@@ -105,7 +119,7 @@ const content = {
     ]
   },
   fr: {
-    badge: 'Phlow | Pharmacie + Flux',
+    badge: 'Phlow | Pharmacie + Flow',
     title: 'Pilotez votre pharmacie avec Phlow',
     subtitle:
       'Suivez les commandes, planifiez les arrivages et coordonnez votre équipe en quelques minutes.',
@@ -142,15 +156,27 @@ const content = {
     workflowColumns: [
       {
         title: 'Réception',
-        items: ['Saisir la demande patient', 'Ajouter notes et urgence', 'Définir une date cible']
+        items: [
+          'Saisir la demande patient',
+          'Ajouter notes et urgence',
+          'Définir une date cible'
+        ]
       },
       {
         title: 'Suivi fournisseur',
-        items: ['Suivre les retards', 'Mettre à jour la date d’arrivée', 'Partager le statut équipe']
+        items: [
+          'Suivre les retards',
+          'Mettre à jour la date d’arrivée',
+          'Partager le statut équipe'
+        ]
       },
       {
         title: 'Prêt & Retrait',
-        items: ['Confirmer la réception stock', 'Notifier le pharmacien', 'Clôturer à la remise']
+        items: [
+          'Confirmer la réception stock',
+          'Notifier le pharmacien',
+          'Clôturer à la remise'
+        ]
       }
     ],
     footer: {
@@ -189,7 +215,7 @@ const content = {
         icon: CreditCard
       }
     ]
-  },
+  }
 }
 
 export default function Home() {
@@ -236,14 +262,14 @@ export default function Home() {
           <div className='flex items-center gap-2'>
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className='fun-card inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)]/90 px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] backdrop-blur transition hover:bg-[var(--surface-soft)]'
+              className='fun-card bg-[var(--surface)]/90 inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] backdrop-blur transition hover:bg-[var(--surface-soft)]'
             >
               {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
               {t.theme}
             </button>
             <button
               onClick={() => setLocale(getNextLocale(locale))}
-              className='fun-card inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)]/90 px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] backdrop-blur transition hover:bg-[var(--surface-soft)]'
+              className='fun-card bg-[var(--surface)]/90 inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] backdrop-blur transition hover:bg-[var(--surface-soft)]'
             >
               <Globe size={14} />
               {getLocaleButtonLabel(locale)}
@@ -283,14 +309,16 @@ export default function Home() {
             </div>
 
             <div className='mt-5 flex flex-wrap gap-2'>
-              {[Activity, CalendarClock, ClipboardList, Users2].map((Icon, index) => (
-                <span
-                  key={index}
-                  className='inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-500/45 bg-white/80 text-emerald-700 dark:bg-emerald-950/45 dark:text-emerald-300'
-                >
-                  <Icon size={16} />
-                </span>
-              ))}
+              {[Activity, CalendarClock, ClipboardList, Users2].map(
+                (Icon, index) => (
+                  <span
+                    key={index}
+                    className='inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-500/45 bg-white/80 text-emerald-700 dark:bg-emerald-950/45 dark:text-emerald-300'
+                  >
+                    <Icon size={16} />
+                  </span>
+                )
+              )}
             </div>
 
             <div className='mt-7 flex flex-wrap gap-3'>
@@ -312,7 +340,7 @@ export default function Home() {
           </article>
 
           <Link href='/auth' className='block'>
-            <aside className='panel fun-card cursor-pointer rounded-3xl bg-[var(--surface)]/95 p-5 sm:p-6'>
+            <aside className='panel fun-card bg-[var(--surface)]/95 cursor-pointer rounded-3xl p-5 sm:p-6'>
               <h2 className='text-lg font-semibold'>{t.sectionsTitle}</h2>
               <div className='mt-4 space-y-4'>
                 {t.sections.map(item => (
@@ -396,9 +424,11 @@ export default function Home() {
           })}
         </section>
 
-        <footer className='mt-12 border-t border-[var(--border)]/80 py-6'>
+        <footer className='border-[var(--border)]/80 mt-12 border-t py-6'>
           <div className='flex flex-col items-center justify-center gap-2 text-center text-sm text-[var(--muted)]'>
-            <p className='font-semibold text-[var(--foreground)]'>{t.footer.brand}</p>
+            <p className='font-semibold text-[var(--foreground)]'>
+              {t.footer.brand}
+            </p>
             <p>
               {new Date().getFullYear()} {t.footer.brand}. {t.footer.right}
             </p>
@@ -408,5 +438,3 @@ export default function Home() {
     </main>
   )
 }
-
-
