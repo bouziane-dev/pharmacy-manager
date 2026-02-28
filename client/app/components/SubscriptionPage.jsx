@@ -14,8 +14,13 @@ export default function SubscriptionPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const t = getCopy(locale).subscription
   const plans = [
-    { id: 'starter', name: 'Starter', price: '$29/mo', users: t.upTo5Workers },
-    { id: 'growth', name: 'Growth', price: '$59/mo', users: t.upTo15Workers }
+    {
+      id: 'starter',
+      name: 'Starter',
+      price: '0dzd/year',
+      users: t.upTo5Workers
+    },
+    { id: 'growth', name: 'Growth', price: '0dzd/year', users: t.upTo15Workers }
   ]
 
   async function handleChoosePlan() {
@@ -65,10 +70,7 @@ export default function SubscriptionPage() {
 
       <div className='grid gap-4 md:grid-cols-2'>
         {plans.map(plan => (
-          <article
-            key={plan.id}
-            className='panel p-5'
-          >
+          <article key={plan.id} className='panel p-5'>
             <h3 className='text-xl font-semibold text-[var(--foreground)]'>
               {plan.name}
             </h3>
@@ -89,9 +91,7 @@ export default function SubscriptionPage() {
               disabled={isLoading || user?.subscriptionActive}
               className='mt-6 w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500'
             >
-              {user?.subscriptionActive
-                ? t.active
-                : `${t.choose} ${plan.name}`}
+              {user?.subscriptionActive ? t.active : `${t.choose} ${plan.name}`}
             </button>
           </article>
         ))}
@@ -102,9 +102,7 @@ export default function SubscriptionPage() {
           <h3 className='text-lg font-semibold text-[var(--foreground)]'>
             {t.pharmacyTitle}
           </h3>
-          <p className='mt-2 text-sm text-[var(--muted)]'>
-            {t.pharmacyText}
-          </p>
+          <p className='mt-2 text-sm text-[var(--muted)]'>{t.pharmacyText}</p>
           <div className='mt-3 flex flex-col gap-3 sm:flex-row'>
             <input
               value={pharmacyName}
