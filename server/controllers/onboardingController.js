@@ -18,6 +18,9 @@ async function chooseRole(req, res) {
     }
 
     user.primaryRole = normalizedRole;
+    if (normalizedRole === "owner") {
+      user.role = "owner";
+    }
     user.onboardingCompleted = true;
     await user.save();
 
@@ -57,6 +60,7 @@ module.exports = {
           .json({ error: "Only owners can activate subscriptions" });
       }
 
+      user.role = user.role || "owner";
       user.subscriptionActive = true;
       await user.save();
 

@@ -4,8 +4,18 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from '@/app/providers'
 
+export function isSuperAdminUser(user) {
+  return (
+    !!user &&
+    (user.role === 'superadmin' ||
+      user.accountRole === 'superadmin' ||
+      user.primaryRole === 'superadmin')
+  )
+}
+
 export function getHomePathForUser(user) {
   if (!user) return '/auth'
+  if (isSuperAdminUser(user)) return '/superadmin'
   if (!user.onboardingCompleted) return '/onboarding/role'
   if (user.primaryRole === 'owner' && !user.subscriptionActive) return '/subscription'
   return '/dashboard'
@@ -14,6 +24,7 @@ export function getHomePathForUser(user) {
 export function useRouteGuard({
   requireAuth = true,
   requireAdmin = false,
+  requireSuperAdmin = false,
   requireSubscription = true,
   requireMembership = true
 }) {
@@ -27,6 +38,20 @@ export function useRouteGuard({
 
     if (!user) {
       router.replace('/auth')
+      return
+    }
+
+    const isSuperAdmin = isSuperAdminUser(user)
+
+    if (requireSuperAdmin && !isSuperAdmin) {
+      router.replace(getHomePathForUser(user))
+      return
+    }
+
+    if (isSuperAdmin) {
+      if (!requireSuperAdmin) {
+        router.replace('/superadmin')
+      }
       return
     }
 
@@ -62,6 +87,7 @@ export function useRouteGuard({
     isReady,
     requireAdmin,
     requireAuth,
+    requireSuperAdmin,
     requireMembership,
     requireSubscription,
     router,
@@ -70,16 +96,17 @@ export function useRouteGuard({
 
   const blockedBySubscription =
     !!user &&
+    !isSuperAdminUser(user) &&
     requireSubscription &&
     user.primaryRole === 'owner' &&
     !user.subscriptionActive
 
+  const missingWorkspace =
+    !!user && !isSuperAdminUser(user) && requireMembership && !currentWorkspace
+
   return {
     user,
-    isLoading:
-      !isReady ||
-      isBootstrappingSession ||
-      (requireAuth && (!user || (requireMembership && !currentWorkspace))),
+    isLoading: !isReady || isBootstrappingSession || (requireAuth && (!user || missingWorkspace)),
     isBlocked: blockedBySubscription
   }
 }

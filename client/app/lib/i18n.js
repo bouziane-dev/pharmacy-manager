@@ -37,6 +37,8 @@ export const i18n = {
       dashboard: 'Dashboard',
       orders: 'Orders',
       agenda: 'Agenda',
+      activity: 'Activity Logs',
+      superadmin: 'Super Admin',
       users: 'Users',
       subscription: 'Subscription',
       pendingInvitations: 'Pending Invitations'
@@ -45,6 +47,11 @@ export const i18n = {
       dashboard: 'Dashboard',
       orders: 'Orders',
       agenda: 'Agenda',
+      activity: 'Activity',
+      superadminDashboard: 'Superadmin',
+      superadminPharmacies: 'Pharmacies',
+      superadminUsers: 'Users',
+      superadminActivity: 'Activity Logs',
       users: 'Users',
       subscription: 'Subscription',
       pendingInvitations: 'Invitations'
@@ -64,6 +71,7 @@ export const i18n = {
     },
     topbar: {
       workspace: 'Workspace',
+      roleSuperadmin: 'SUPERADMIN',
       roleAdmin: 'ADMIN',
       roleWorker: 'WORKER',
       confirmSignOutTitle: 'Sign out',
@@ -75,8 +83,7 @@ export const i18n = {
       stats: [
         { id: 'total', label: 'Total Orders', delta: 'Live' },
         { id: 'due', label: 'Due Today', delta: 'Need review' },
-        { id: 'arrived', label: 'Arrived', delta: 'Completed' },
-        { id: 'urgent', label: 'Urgent', delta: 'Prioritize first' }
+        { id: 'arrived', label: 'Arrived', delta: 'Completed' }
       ]
     },
     invitations: {
@@ -123,27 +130,24 @@ export const i18n = {
       fields: {
         patientName: 'Patient Name',
         phone: 'Phone',
-        productName: 'Medication / Product Name',
+        products: 'Products',
         comment: 'Comment',
         arrivalDate: 'Approximate Arrival Date',
-        urgency: 'Urgency'
+        versement: 'Versement'
       },
       placeholders: {
         patientName: 'Patient full name',
         phone: '0550 00 00 00',
-        productName: 'Medication or product',
-        comment: 'Initial order note'
+        products: 'Example: Amoxicillin 500mg, Vitamin C',
+        comment: 'Initial order note',
+        versement: '0.00'
       },
       validation: {
         patientNameRequired: 'Patient name is required.',
         phoneRequired: 'Phone is required.',
-        productNameRequired: 'Medication / product name is required.',
+        productsRequired: 'At least one product is required.',
         arrivalDateRequired: 'Approximate arrival date is required.',
-        urgencyRequired: 'Urgency is required.'
-      },
-      urgency: {
-        Urgent: 'Urgent',
-        Normal: 'Normal'
+        versementInvalid: 'Versement must be a non-negative number.'
       },
       addButton: 'Add Order',
       searchLabel: 'Search Orders',
@@ -154,27 +158,30 @@ export const i18n = {
       remindersText:
         'This order reached its planned date. Update the current status.',
       reminderActions: {
-        arrived: 'Arrived',
+        finished: 'Finished',
         ordered: 'Ordered',
-        notYet: 'Not Yet'
+        pending: 'Pending'
       },
-      tableTitle: 'Orders List',
+      tableTitle: 'Active Orders',
+      finishedTableTitle: 'Finished Orders',
+      finishedEmpty: 'No finished orders yet.',
+      showFinished: 'Show Finished Orders',
+      hideFinished: 'Hide Finished Orders',
       columns: {
         id: 'Order ID',
         patient: 'Patient',
         phone: 'Phone',
-        product: 'Medication/Product',
+        products: 'Products',
         arrivalDate: 'Approx. Arrival',
-        urgency: 'Urgency',
+        versement: 'Versement',
         status: 'Status',
         comments: 'Comments'
       },
-      openDetails: 'Open',
       statusLabel: 'Set status',
       status: {
-        'Not Yet': 'Not Yet',
-        Ordered: 'Ordered',
-        Arrived: 'Arrived'
+        pending: 'Pending',
+        ordered: 'Ordered',
+        finished: 'Finished'
       },
       commentPlaceholder: 'Add a comment',
       addComment: 'Post',
@@ -226,6 +233,7 @@ export const i18n = {
       features: ['Orders dashboard', 'Agenda drag and drop', 'Team management'],
       choose: 'Choose',
       active: 'Subscription Active',
+      nextStepLabel: 'Step 2',
       pharmacyTitle: 'Create your pharmacy',
       pharmacyText: 'Set a pharmacy dashboard name to complete owner onboarding.',
       pharmacyPlaceholder: 'My Pharmacy',
@@ -245,6 +253,8 @@ export const i18n = {
       dashboard: 'Tableau de bord',
       orders: 'Commandes',
       agenda: 'Agenda',
+      activity: "Journal d'activite",
+      superadmin: 'Super Admin',
       users: 'Utilisateurs',
       subscription: 'Abonnement',
       pendingInvitations: 'Invitations en attente'
@@ -253,6 +263,11 @@ export const i18n = {
       dashboard: 'Tableau de bord',
       orders: 'Commandes',
       agenda: 'Agenda',
+      activity: 'Activite',
+      superadminDashboard: 'Superadmin',
+      superadminPharmacies: 'Pharmacies',
+      superadminUsers: 'Utilisateurs',
+      superadminActivity: 'Journal',
       users: 'Utilisateurs',
       subscription: 'Abonnement',
       pendingInvitations: 'Invitations'
@@ -272,6 +287,7 @@ export const i18n = {
     },
     topbar: {
       workspace: 'Espace',
+      roleSuperadmin: 'SUPERADMIN',
       roleAdmin: 'ADMIN',
       roleWorker: 'PHARMACIEN',
       confirmSignOutTitle: 'Deconnexion',
@@ -283,8 +299,7 @@ export const i18n = {
       stats: [
         { id: 'total', label: 'Total des commandes', delta: 'En direct' },
         { id: 'due', label: 'À traiter aujourd’hui', delta: 'À vérifier' },
-        { id: 'arrived', label: 'Arrivées', delta: 'Finalisées' },
-        { id: 'urgent', label: 'Urgentes', delta: 'Priorité élevée' }
+        { id: 'arrived', label: 'Arrivées', delta: 'Finalisées' }
       ]
     },
     invitations: {
@@ -331,27 +346,24 @@ export const i18n = {
       fields: {
         patientName: 'Nom du patient',
         phone: 'Téléphone',
-        productName: 'Nom du médicament / produit',
+        products: 'Produits',
         comment: 'Commentaire',
         arrivalDate: 'Date d’arrivée estimée',
-        urgency: 'Urgence'
+        versement: 'Versement'
       },
       placeholders: {
         patientName: 'Nom complet du patient',
         phone: '0550 00 00 00',
-        productName: 'Médicament ou produit',
-        comment: 'Note initiale de commande'
+        products: 'Exemple : Amoxicilline 500mg, Vitamine C',
+        comment: 'Note initiale de commande',
+        versement: '0.00'
       },
       validation: {
         patientNameRequired: 'Le nom du patient est requis.',
         phoneRequired: 'Le telephone est requis.',
-        productNameRequired: 'Le nom du medicament / produit est requis.',
+        productsRequired: 'Au moins un produit est requis.',
         arrivalDateRequired: "La date d'arrivee estimee est requise.",
-        urgencyRequired: "L'urgence est requise."
-      },
-      urgency: {
-        Urgent: 'Urgente',
-        Normal: 'Normale'
+        versementInvalid: 'Le versement doit etre un nombre positif ou zero.'
       },
       addButton: 'Ajouter',
       searchLabel: 'Rechercher des commandes',
@@ -362,27 +374,30 @@ export const i18n = {
       remindersText:
         'Cette commande a atteint sa date prévue. Mettez à jour son statut.',
       reminderActions: {
-        arrived: 'Arrivée',
+        finished: 'Terminée',
         ordered: 'Commandée',
-        notYet: 'Pas encore'
+        pending: 'En attente'
       },
-      tableTitle: 'Liste des commandes',
+      tableTitle: 'Commandes actives',
+      finishedTableTitle: 'Commandes terminées',
+      finishedEmpty: 'Aucune commande terminée pour le moment.',
+      showFinished: 'Afficher les commandes terminées',
+      hideFinished: 'Masquer les commandes terminées',
       columns: {
         id: 'ID commande',
         patient: 'Patient',
         phone: 'Téléphone',
-        product: 'Médicament/Produit',
+        products: 'Produits',
         arrivalDate: 'Arrivée estimée',
-        urgency: 'Urgence',
+        versement: 'Versement',
         status: 'Statut',
         comments: 'Commentaires'
       },
-      openDetails: 'Ouvrir',
       statusLabel: 'Définir le statut',
       status: {
-        'Not Yet': 'Pas encore',
-        Ordered: 'Commandée',
-        Arrived: 'Arrivée'
+        pending: 'En attente',
+        ordered: 'Commandée',
+        finished: 'Terminée'
       },
       commentPlaceholder: 'Ajouter un commentaire',
       addComment: 'Publier',
@@ -438,6 +453,7 @@ export const i18n = {
       ],
       choose: 'Choisir',
       active: 'Abonnement actif',
+      nextStepLabel: 'Etape 2',
       pharmacyTitle: 'Créez votre pharmacie',
       pharmacyText:
         'Définissez le nom du tableau de bord de votre pharmacie pour terminer l’intégration propriétaire.',

@@ -16,8 +16,7 @@ export default function DashboardPage() {
   const statsValues = {
     total: orders.length,
     due: orders.filter(order => order.arrivalDate <= today).length,
-    arrived: orders.filter(order => order.status === 'Arrived').length,
-    urgent: orders.filter(order => order.urgency === 'Urgent').length
+    arrived: orders.filter(order => order.status === 'finished').length
   }
   const stats = t.dashboard.stats.map(item => ({
     ...item,

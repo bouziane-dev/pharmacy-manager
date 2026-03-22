@@ -30,6 +30,13 @@ const orderSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: false,
+      default: null,
+      index: true,
+    },
     patientName: {
       type: String,
       required: true,
@@ -41,26 +48,33 @@ const orderSchema = new mongoose.Schema(
       trim: true,
       match: [/^\d+$/, "Phone must contain digits only"],
     },
+    products: [
+      {
+        type: String,
+        required: true,
+        trim: true,
+      },
+    ],
+    // Legacy single-product field kept for old records.
     productName: {
       type: String,
-      required: true,
       trim: true,
+    },
+    versement: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
     arrivalDate: {
       type: String,
       required: true,
       trim: true,
     },
-    urgency: {
-      type: String,
-      enum: ["Urgent", "Normal"],
-      default: "Normal",
-      required: true,
-    },
     status: {
       type: String,
-      enum: ["Not Yet", "Ordered", "Arrived"],
-      default: "Not Yet",
+      // Keep legacy values for compatibility with old records.
+      enum: ["pending", "ordered", "done", "finished", "Not Yet", "Ordered", "Arrived"],
+      default: "pending",
       required: true,
     },
     comments: [orderCommentSchema],

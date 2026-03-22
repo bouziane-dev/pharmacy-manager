@@ -1,22 +1,27 @@
 const express = require("express");
 const requireAuth = require("../middleware/requireAuth");
-const requireMembership = require("../middleware/requireMembership");
+const resolvePharmacyFromSubdomain = require("../middleware/resolvePharmacyFromSubdomain");
+const requirePharmacyAccess = require("../middleware/requirePharmacyAccess");
 const orderController = require("../controllers/orderController");
 
 const router = express.Router();
 
-router.get("/", requireAuth, requireMembership(), orderController.listOrders);
-router.post("/", requireAuth, requireMembership(), orderController.createOrder);
+router.use(resolvePharmacyFromSubdomain);
+router.use(requireAuth);
+router.use(requirePharmacyAccess(["owner", "staff"]));
+
+router.get("/", orderController.listOrders);
+router.post("/", orderController.createOrder);
 router.patch(
   "/:orderId",
-  requireAuth,
-  requireMembership(),
   orderController.updateOrder
+);
+router.delete(
+  "/:orderId",
+  orderController.deleteOrder
 );
 router.post(
   "/:orderId/comments",
-  requireAuth,
-  requireMembership(),
   orderController.addOrderComment
 );
 

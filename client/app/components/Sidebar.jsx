@@ -3,9 +3,12 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
+  Activity,
+  Building2,
   CalendarDays,
   ClipboardList,
   CreditCard,
+  FileClock,
   Inbox,
   LayoutDashboard,
   Users
@@ -13,7 +16,7 @@ import {
 import { useSession } from '@/app/providers'
 import { getCopy } from '@/app/lib/i18n'
 
-const navItems = [
+const tenantNavItems = [
   { key: 'dashboard', href: '/dashboard', icon: LayoutDashboard, adminOnly: false },
   { key: 'orders', href: '/orders', icon: ClipboardList, adminOnly: false },
   { key: 'agenda', href: '/agenda', icon: CalendarDays, adminOnly: false },
@@ -24,22 +27,54 @@ const navItems = [
     adminOnly: false,
     pharmacistOnly: true
   },
+  { key: 'activity', href: '/admin/activity', icon: Activity, adminOnly: true },
   { key: 'users', href: '/users', icon: Users, adminOnly: true },
   { key: 'subscription', href: '/subscription', icon: CreditCard, adminOnly: true }
+]
+
+const superAdminNavItems = [
+  { key: 'superadminDashboard', href: '/superadmin', icon: LayoutDashboard },
+  {
+    key: 'superadminPharmacies',
+    href: '/superadmin/pharmacies',
+    icon: Building2,
+    matchPrefix: '/superadmin/pharmacies'
+  },
+  {
+    key: 'superadminUsers',
+    href: '/superadmin/users',
+    icon: Users,
+    matchPrefix: '/superadmin/users'
+  },
+  {
+    key: 'superadminActivity',
+    href: '/superadmin/activity',
+    icon: FileClock,
+    matchPrefix: '/superadmin/activity'
+  }
 ]
 
 export default function Sidebar({ open, collapsed, setOpen }) {
   const pathname = usePathname()
   const { user, locale, currentWorkspace } = useSession()
   const t = getCopy(locale)
+  const isSuperAdmin =
+    user?.role === 'superadmin' ||
+    user?.accountRole === 'superadmin' ||
+    user?.primaryRole === 'superadmin'
+
+  const navItems = isSuperAdmin ? superAdminNavItems : tenantNavItems
 
   const visibleItems = navItems
-    .filter(
-      item =>
+    .filter(item => {
+      if (isSuperAdmin) return true
+      return (
         (!item.adminOnly || user?.role === 'admin') &&
         (!item.pharmacistOnly || user?.role === 'worker')
-    )
+      )
+    })
     .filter(item => {
+      if (isSuperAdmin) return true
       // Pharmacists without any workspace can only access invitations.
       if (user?.role === 'worker' && !currentWorkspace) {
         return item.href === '/invitations/pending'
@@ -64,7 +99,9 @@ export default function Sidebar({ open, collapsed, setOpen }) {
 
         <nav className='mt-6 space-y-1'>
           {visibleItems.map(item => {
-            const isActive = pathname === item.href
+            const isActive = item.matchPrefix
+              ? pathname === item.href || pathname.startsWith(`${item.matchPrefix}/`)
+              : pathname === item.href
             const Icon = item.icon
             return (
               <Link

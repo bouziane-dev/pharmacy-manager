@@ -4,6 +4,8 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useSession } from '@/app/providers'
 import { getCopy, getIntlLocale } from '@/app/lib/i18n'
+const productsToText = products =>
+  Array.isArray(products) ? products.join(', ') : ''
 
 export default function AgendaBoard() {
   const { locale, orders, updateOrderArrivalDate } = useSession()
@@ -136,7 +138,7 @@ export default function AgendaBoard() {
                         className='cursor-grab rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-2 active:cursor-grabbing'
                       >
                         <p className='mt-1 line-clamp-2 break-words text-xs font-semibold text-[var(--foreground)]'>
-                          {order.productName}
+                          {productsToText(order.products)}
                         </p>
                         <p className='line-clamp-2 break-words text-[11px] text-[var(--muted)]'>
                           {order.patientName}

@@ -64,6 +64,9 @@ async function createInvitation(req, res) {
 
 async function getPendingInvitations(req, res) {
   try {
+    if (!req.user.email) {
+      return res.status(200).json({ invitations: [] });
+    }
     const invitations = await Invitation.find({
       email: req.user.email.toLowerCase(),
       status: "pending",
@@ -95,6 +98,9 @@ async function getWorkspacePendingInvitations(req, res) {
 
 async function acceptInvitation(req, res) {
   try {
+    if (!req.user.email) {
+      return res.status(403).json({ error: "This account cannot accept invitations" });
+    }
     const { invitationId } = req.body;
     const normalizedInvitationId = cleanString(invitationId);
 
@@ -144,6 +150,9 @@ async function acceptInvitation(req, res) {
 
 async function declineInvitation(req, res) {
   try {
+    if (!req.user.email) {
+      return res.status(403).json({ error: "This account cannot decline invitations" });
+    }
     const { invitationId } = req.body;
     const normalizedInvitationId = cleanString(invitationId);
 

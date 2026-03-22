@@ -44,9 +44,19 @@ passport.use(
           user = await User.create({
             googleId: profile.id,
             email,
+            name: profile.displayName || email,
             displayName: profile.displayName || "Google User",
             picture: profile?.photos?.[0]?.value || "",
+            role: "owner",
+            isActive: true,
           });
+        } else {
+          user.name = user.name || user.displayName || profile.displayName || email;
+          user.displayName = profile.displayName || user.displayName || user.name;
+          user.picture = profile?.photos?.[0]?.value || user.picture || "";
+          user.role = user.role || "owner";
+          user.isActive = user.isActive !== false;
+          await user.save();
         }
 
         return done(null, user);

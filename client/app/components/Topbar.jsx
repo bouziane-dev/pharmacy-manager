@@ -31,7 +31,16 @@ export default function Topbar({
     setActiveWorkspace
   } = useSession()
   const t = getCopy(locale)
-  const roleLabel = user?.role === 'admin' ? t.topbar.roleAdmin : t.topbar.roleWorker
+  const isSuperAdmin =
+    user?.role === 'superadmin' ||
+    user?.accountRole === 'superadmin' ||
+    user?.primaryRole === 'superadmin'
+  const roleLabel =
+    isSuperAdmin
+      ? t.topbar.roleSuperadmin
+      : user?.role === 'admin'
+        ? t.topbar.roleAdmin
+        : t.topbar.roleWorker
 
   function handleLogout() {
     showConfirmToast({

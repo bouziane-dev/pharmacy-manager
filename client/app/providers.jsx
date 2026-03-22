@@ -4,6 +4,24 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 
 const SessionContext = createContext(null)
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
+const reservedSubdomains = new Set(['www', 'api', 'localhost'])
+
+function extractSubdomainFromHost(hostValue) {
+  const host = String(hostValue || '')
+    .trim()
+    .toLowerCase()
+    .split(':')[0]
+  if (!host) return null
+
+  const parts = host.split('.').filter(Boolean)
+  if (parts.length >= 3) {
+    return reservedSubdomains.has(parts[0]) ? null : parts[0]
+  }
+  if (parts.length === 2 && parts[1] === 'localhost') {
+    return reservedSubdomains.has(parts[0]) ? null : parts[0]
+  }
+  return null
+}
 const toastCopy = {
   en: {
     invitationSent: 'Invitation sent successfully.',
@@ -30,9 +48,15 @@ const toastCopy = {
 }
 
 async function apiRequest(path, { method = 'GET', token, body } = {}) {
+  const tenantSubdomain =
+    typeof window !== 'undefined'
+      ? extractSubdomainFromHost(window.location.host)
+      : null
+
   const response = await fetch(`${apiBaseUrl}${path}`, {
     method,
     headers: {
+      ...(tenantSubdomain ? { 'X-Tenant-Subdomain': tenantSubdomain } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(body ? { 'Content-Type': 'application/json' } : {})
     },
@@ -59,6 +83,8 @@ export function AppProviders({ children }) {
   const [workspaceInvitations, setWorkspaceInvitations] = useState([])
   const [profiles, setProfiles] = useState({})
   const [toasts, setToasts] = useState([])
+  const [isToastFocusActive, setIsToastFocusActive] = useState(false)
+  const toastFocusTimerRef = useRef(null)
   const [confirmToast, setConfirmToast] = useState(null)
   const confirmActionRef = useRef(null)
   const [isReady, setIsReady] = useState(false)
@@ -169,14 +195,34 @@ export function AppProviders({ children }) {
     window.localStorage.setItem('pm-profiles', JSON.stringify(profiles))
   }, [profiles])
 
+  useEffect(() => {
+    return () => {
+      if (toastFocusTimerRef.current) {
+        window.clearTimeout(toastFocusTimerRef.current)
+      }
+    }
+  }, [])
+
   function dismissToast(toastId) {
     setToasts(prev => prev.filter(item => item.id !== toastId))
+  }
+
+  function activateToastFocus(durationMs = 2000) {
+    if (toastFocusTimerRef.current) {
+      window.clearTimeout(toastFocusTimerRef.current)
+    }
+    setIsToastFocusActive(true)
+    toastFocusTimerRef.current = window.setTimeout(() => {
+      setIsToastFocusActive(false)
+      toastFocusTimerRef.current = null
+    }, durationMs)
   }
 
   function showToast(message, type = 'success') {
     if (!message) return
     const toastId = `${Date.now()}-${Math.random().toString(16).slice(2)}`
     setToasts(prev => [...prev, { id: toastId, message, type }].slice(-4))
+    activateToastFocus(2000)
     window.setTimeout(() => dismissToast(toastId), 3500)
   }
 
@@ -208,24 +254,58 @@ export function AppProviders({ children }) {
   }
 
   function mapBackendUserToClient(nextUser) {
+    const userId = String(nextUser.id || '')
+    const resolvedEmail = String(
+      nextUser.email || `staff-${userId || 'user'}@local.staff`
+    ).toLowerCase()
+    const backendRole =
+      nextUser.role ||
+      (nextUser.primaryRole === 'superadmin'
+        ? 'superadmin'
+        : nextUser.primaryRole === 'owner'
+          ? 'owner'
+          : 'staff')
+    const effectivePrimaryRole =
+      nextUser.primaryRole ||
+      (backendRole === 'superadmin'
+        ? 'superadmin'
+        : backendRole === 'owner'
+          ? 'owner'
+          : 'pharmacist')
+
     return {
-      id: nextUser.id,
-      name: nextUser.displayName || nextUser.email,
-      email: nextUser.email,
+      id: userId,
+      name:
+        nextUser.name ||
+        nextUser.displayName ||
+        nextUser.email ||
+        `Staff ${userId.slice(0, 6)}`,
+      email: resolvedEmail,
       picture: nextUser.picture || '',
       onboardingCompleted: nextUser.onboardingCompleted,
-      primaryRole: nextUser.primaryRole,
+      primaryRole: effectivePrimaryRole,
       subscriptionActive: !!nextUser.subscriptionActive,
-      role: nextUser.primaryRole === 'owner' ? 'admin' : 'worker'
+      accountRole: backendRole,
+      staffRole: nextUser.staffRole || 'staff',
+      pharmacyId: nextUser.pharmacyId ? String(nextUser.pharmacyId) : null,
+      role:
+        backendRole === 'superadmin' || effectivePrimaryRole === 'superadmin'
+          ? 'superadmin'
+          : backendRole === 'owner' || effectivePrimaryRole === 'owner'
+            ? 'admin'
+            : 'worker'
     }
   }
 
   function hydrateMembershipState(sessionUser, workspacesFromApi, membershipsFromApi) {
-    const email = sessionUser.email.toLowerCase()
+    const resolvedEmail = String(
+      sessionUser.email || `staff-${sessionUser.id || 'user'}@local.staff`
+    ).toLowerCase()
     const workspaceItems = (workspacesFromApi || []).map(item => ({
       id: String(item.id),
       name: item.name,
-      ownerEmail: String(item.ownerUserId) === String(sessionUser.id) ? email : ''
+      subdomain: item.subdomain || '',
+      ownerEmail: String(item.ownerUserId) === String(sessionUser.id) ? resolvedEmail : ''
     }))
     const memberWorkspaceIds = (membershipsFromApi || []).map(item =>
       String(item.pharmacyId)
@@ -234,11 +314,11 @@ export function AppProviders({ children }) {
     setWorkspaces(workspaceItems)
     setMemberships(prev => ({
       ...prev,
-      [email]: memberWorkspaceIds
+      [resolvedEmail]: memberWorkspaceIds
     }))
     setActiveWorkspaceByEmail(prev => ({
       ...prev,
-      [email]: prev[email] || memberWorkspaceIds[0] || null
+      [resolvedEmail]: prev[resolvedEmail] || memberWorkspaceIds[0] || null
     }))
   }
 
@@ -262,8 +342,16 @@ export function AppProviders({ children }) {
             role: mappedUser.role
           }
         }))
-        hydrateMembershipState(result.user, result.workspaces, result.memberships)
-        await refreshPendingInvitations(sessionToken, mappedUser.email)
+        if (mappedUser.role === 'superadmin') {
+          setWorkspaces([])
+          setMemberships({})
+          setActiveWorkspaceByEmail({})
+          setInvitations([])
+          setWorkspaceInvitations([])
+        } else {
+          hydrateMembershipState(result.user, result.workspaces, result.memberships)
+          await refreshPendingInvitations(sessionToken, mappedUser.email)
+        }
       }
     } catch (_error) {
       logout()
@@ -300,10 +388,10 @@ export function AppProviders({ children }) {
   async function createOrder({
     patientName,
     phone,
-    productName,
+    products,
     comment,
     arrivalDate,
-    urgency
+    versement
   }) {
     if (!authToken || !currentWorkspace) {
       throw new Error('Active workspace is required')
@@ -316,9 +404,9 @@ export function AppProviders({ children }) {
           pharmacyId: currentWorkspace.id,
           patientName,
           phone,
-          productName,
+          products,
           arrivalDate,
-          urgency,
+          versement,
           comment
         }
       })
@@ -452,13 +540,18 @@ export function AppProviders({ children }) {
   }
 
   function login(nextUser, token = null) {
+    const fallbackEmail = String(
+      nextUser.email || `staff-${nextUser.id || 'user'}@local.staff`
+    ).trim()
     const normalized = {
       ...nextUser,
-      email: nextUser.email.trim().toLowerCase(),
+      email: fallbackEmail.toLowerCase(),
       role:
-        nextUser.primaryRole === 'owner'
+        nextUser.accountRole === 'superadmin' || nextUser.primaryRole === 'superadmin'
+          ? 'superadmin'
+          : nextUser.accountRole === 'owner' || nextUser.primaryRole === 'owner'
           ? 'admin'
-          : nextUser.primaryRole === 'pharmacist'
+          : nextUser.accountRole === 'staff' || nextUser.primaryRole === 'pharmacist'
             ? 'worker'
             : nextUser.role || 'worker'
     }
@@ -622,18 +715,19 @@ export function AppProviders({ children }) {
     }
   }
 
-  async function createPharmacy(name) {
+  async function createPharmacy(name, subdomain) {
     if (!authToken) throw new Error('Missing auth token')
     try {
       const result = await apiRequest('/api/pharmacy/create', {
         method: 'POST',
         token: authToken,
-        body: { name }
+        body: { name, subdomain }
       })
 
       const workspace = {
         id: result.pharmacy._id,
         name: result.pharmacy.name,
+        subdomain: result.pharmacy.subdomain || '',
         ownerEmail: user?.email || ''
       }
       setWorkspaces(prev => [...prev, workspace])
@@ -653,8 +747,192 @@ export function AppProviders({ children }) {
     }
   }
 
+  async function fetchStaffLoginUsers() {
+    const subdomain = extractSubdomainFromHost(window.location.host)
+    if (!subdomain) {
+      return []
+    }
+
+    try {
+      const result = await apiRequest('/auth/staff')
+      return result.users || []
+    } catch (_error) {
+      return []
+    }
+  }
+
+  async function loginWithPin(userId, pin) {
+    try {
+      const result = await apiRequest('/auth/pin-login', {
+        method: 'POST',
+        body: { userId, pin }
+      })
+      const mappedUser = mapBackendUserToClient(result.user)
+      login(mappedUser, result.token)
+      await bootstrapSession(result.token)
+      showToast('Session switched successfully.')
+      return result
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
+  }
+
+  async function listStaffMembers() {
+    if (!authToken) throw new Error('Missing auth token')
+    const result = await apiRequest('/api/staff', {
+      token: authToken
+    })
+    return result.staff || []
+  }
+
+  async function addStaffMember({ name, role, pin }) {
+    if (!authToken) throw new Error('Missing auth token')
+    const result = await apiRequest('/api/staff', {
+      method: 'POST',
+      token: authToken,
+      body: { name, role, pin }
+    })
+    showToast('Staff member created successfully.')
+    return result
+  }
+
+  async function resetStaffMemberPin(staffId, pin = '') {
+    if (!authToken) throw new Error('Missing auth token')
+    const result = await apiRequest(`/api/staff/${staffId}/reset-pin`, {
+      method: 'PATCH',
+      token: authToken,
+      body: pin ? { pin } : {}
+    })
+    showToast('PIN reset successfully.')
+    return result
+  }
+
+  async function disableStaffMember(staffId) {
+    if (!authToken) throw new Error('Missing auth token')
+    const result = await apiRequest(`/api/staff/${staffId}/disable`, {
+      method: 'PATCH',
+      token: authToken
+    })
+    showToast('Staff member disabled.')
+    return result
+  }
+
+  async function fetchActivityLogs({
+    page = 1,
+    limit = 20,
+    userId = '',
+    action = '',
+    from = '',
+    to = ''
+  } = {}) {
+    if (!authToken) throw new Error('Missing auth token')
+    const params = new URLSearchParams()
+    params.set('page', String(page))
+    params.set('limit', String(limit))
+    if (userId) params.set('userId', String(userId))
+    if (action) params.set('action', String(action))
+    if (from) params.set('from', String(from))
+    if (to) params.set('to', String(to))
+
+    const result = await apiRequest(`/api/activity-logs?${params.toString()}`, {
+      token: authToken
+    })
+    return {
+      logs: result.logs || [],
+      pagination: result.pagination || {
+        page: 1,
+        limit,
+        total: 0,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false
+      }
+    }
+  }
+
+  async function fetchSuperAdminStats() {
+    if (!authToken) throw new Error('Missing auth token')
+    return apiRequest('/api/superadmin/stats', { token: authToken })
+  }
+
+  async function fetchSuperAdminPharmacies({
+    page = 1,
+    limit = 20,
+    search = '',
+    sort = 'desc'
+  } = {}) {
+    if (!authToken) throw new Error('Missing auth token')
+    const params = new URLSearchParams()
+    params.set('page', String(page))
+    params.set('limit', String(limit))
+    params.set('sort', sort === 'asc' ? 'asc' : 'desc')
+    if (search) params.set('search', String(search))
+
+    return apiRequest(`/api/superadmin/pharmacies?${params.toString()}`, {
+      token: authToken
+    })
+  }
+
+  async function updateSuperAdminPharmacyStatus(pharmacyId, isActive) {
+    if (!authToken) throw new Error('Missing auth token')
+    if (!pharmacyId) throw new Error('pharmacyId is required')
+    const result = await apiRequest(`/api/superadmin/pharmacies/${pharmacyId}/status`, {
+      method: 'PATCH',
+      token: authToken,
+      body: { isActive: Boolean(isActive) }
+    })
+    showToast('Pharmacy status updated.')
+    return result
+  }
+
+  async function fetchSuperAdminUsers({
+    page = 1,
+    limit = 20,
+    role = '',
+    pharmacyId = '',
+    search = ''
+  } = {}) {
+    if (!authToken) throw new Error('Missing auth token')
+    const params = new URLSearchParams()
+    params.set('page', String(page))
+    params.set('limit', String(limit))
+    if (role) params.set('role', String(role))
+    if (pharmacyId) params.set('pharmacyId', String(pharmacyId))
+    if (search) params.set('search', String(search))
+
+    return apiRequest(`/api/superadmin/users?${params.toString()}`, {
+      token: authToken
+    })
+  }
+
+  async function fetchSuperAdminActivityLogs({
+    page = 1,
+    limit = 20,
+    pharmacyId = '',
+    userId = '',
+    action = '',
+    from = '',
+    to = ''
+  } = {}) {
+    if (!authToken) throw new Error('Missing auth token')
+    const params = new URLSearchParams()
+    params.set('page', String(page))
+    params.set('limit', String(limit))
+    if (pharmacyId) params.set('pharmacyId', String(pharmacyId))
+    if (userId) params.set('userId', String(userId))
+    if (action) params.set('action', String(action))
+    if (from) params.set('from', String(from))
+    if (to) params.set('to', String(to))
+
+    return apiRequest(`/api/superadmin/activity-logs?${params.toString()}`, {
+      token: authToken
+    })
+  }
+
   const userWorkspaceIds = useMemo(() => {
     if (!user?.email) return []
+    if (user.role === 'superadmin' || user.accountRole === 'superadmin') return []
     const owned = workspaces
       .filter(ws => ws.ownerEmail === user.email)
       .map(ws => ws.id)
@@ -754,7 +1032,19 @@ export function AppProviders({ children }) {
       showToast,
       showConfirmToast,
       activateSubscription,
-      createPharmacy
+      createPharmacy,
+      fetchStaffLoginUsers,
+      loginWithPin,
+      listStaffMembers,
+      addStaffMember,
+      resetStaffMemberPin,
+      disableStaffMember,
+      fetchActivityLogs,
+      fetchSuperAdminStats,
+      fetchSuperAdminPharmacies,
+      updateSuperAdminPharmacyStatus,
+      fetchSuperAdminUsers,
+      fetchSuperAdminActivityLogs
     }),
     [
       currentWorkspace,
@@ -773,6 +1063,18 @@ export function AppProviders({ children }) {
       userWorkspaces,
       workspaceMembers,
       createPharmacy,
+      fetchStaffLoginUsers,
+      listStaffMembers,
+      addStaffMember,
+      resetStaffMemberPin,
+      disableStaffMember,
+      fetchActivityLogs,
+      fetchSuperAdminStats,
+      fetchSuperAdminPharmacies,
+      updateSuperAdminPharmacyStatus,
+      fetchSuperAdminUsers,
+      fetchSuperAdminActivityLogs,
+      loginWithPin,
       workspaceInvitations
     ]
   )
@@ -781,20 +1083,24 @@ export function AppProviders({ children }) {
     <SessionContext.Provider value={value}>
       {children}
       {confirmToast && (
-        <div className='fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 px-4'>
-          <article className='w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-2xl'>
+        <div className='fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm'>
+          <article className='w-full max-w-xl overflow-hidden rounded-3xl border border-emerald-300/35 bg-[linear-gradient(145deg,rgba(255,255,255,0.96),rgba(236,253,245,0.94),rgba(209,250,229,0.9))] p-0 shadow-[0_28px_70px_rgba(2,132,199,0.2)] dark:border-emerald-400/30 dark:bg-[linear-gradient(145deg,rgba(2,6,23,0.96),rgba(6,78,59,0.35),rgba(2,44,34,0.92))]'>
+            <div className='h-1.5 w-full bg-[linear-gradient(90deg,rgba(16,185,129,0.95),rgba(14,165,233,0.92))]' />
+            <div className='p-6 sm:p-7'>
             {confirmToast.title && (
-              <h3 className='text-base font-semibold text-[var(--foreground)]'>
+              <h3 className='text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100'>
                 {confirmToast.title}
               </h3>
             )}
             {confirmToast.message && (
-              <p className='mt-2 text-sm text-[var(--muted)]'>{confirmToast.message}</p>
+              <p className='mt-3 max-w-prose text-sm leading-6 text-slate-700 dark:text-slate-300'>
+                {confirmToast.message}
+              </p>
             )}
-            <div className='mt-4 flex justify-end gap-2'>
+            <div className='mt-6 flex flex-wrap justify-end gap-2'>
               <button
                 onClick={closeConfirmToast}
-                className='rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-soft)]'
+                className='rounded-xl border border-slate-300/80 bg-white/75 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-600/70 dark:bg-slate-900/50 dark:text-slate-200 dark:hover:bg-slate-800'
               >
                 {confirmToast.cancelLabel}
               </button>
@@ -806,41 +1112,45 @@ export function AppProviders({ children }) {
                     confirmAction()
                   }
                 }}
-                className='rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-500'
+                className='rounded-xl bg-[linear-gradient(90deg,#059669,#0284c7)] px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(2,132,199,0.35)] transition hover:brightness-110'
               >
                 {confirmToast.confirmLabel}
               </button>
             </div>
+            </div>
           </article>
         </div>
+      )}
+      {isToastFocusActive && toasts.length > 0 && (
+        <div className='pointer-events-none fixed inset-0 z-[58] bg-slate-950/35 backdrop-blur-sm transition-opacity duration-200' />
       )}
       <div className='pointer-events-none fixed inset-0 z-[60] flex items-center justify-center px-4'>
         <div className='flex w-full max-w-md flex-col gap-3'>
         {toasts.map(toast => (
           <article
             key={toast.id}
-            className={`pointer-events-auto overflow-hidden rounded-2xl border shadow-2xl backdrop-blur ${
+            className={`pointer-events-auto overflow-hidden rounded-3xl border shadow-[0_22px_55px_rgba(2,6,23,0.28)] backdrop-blur ${
               toast.type === 'error'
-                ? 'border-red-400/50 bg-[linear-gradient(145deg,rgba(127,29,29,0.95),rgba(69,10,10,0.92))] text-red-50'
-                : 'border-emerald-300/60 bg-[linear-gradient(145deg,rgba(5,150,105,0.94),rgba(6,95,70,0.92))] text-emerald-50'
+                ? 'border-rose-400/45 bg-[linear-gradient(145deg,rgba(254,242,242,0.96),rgba(254,226,226,0.95),rgba(255,241,242,0.92))] text-rose-900 dark:border-rose-400/35 dark:bg-[linear-gradient(145deg,rgba(127,29,29,0.92),rgba(136,19,55,0.9))] dark:text-rose-50'
+                : 'border-emerald-400/45 bg-[linear-gradient(145deg,rgba(236,253,245,0.97),rgba(209,250,229,0.94),rgba(224,242,254,0.92))] text-emerald-900 dark:border-emerald-300/35 dark:bg-[linear-gradient(145deg,rgba(6,78,59,0.9),rgba(3,105,161,0.85))] dark:text-emerald-50'
             }`}
           >
-            <div className='flex items-start justify-between gap-3 px-4 py-3'>
+            <div className='flex items-start justify-between gap-3 px-5 py-4'>
               <div className='flex items-start gap-3'>
                 <span
-                  className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
+                  className={`mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
                     toast.type === 'error'
-                      ? 'bg-red-100 text-red-700'
-                      : 'bg-emerald-100 text-emerald-700'
+                      ? 'bg-rose-100 text-rose-700 dark:bg-rose-200 dark:text-rose-900'
+                      : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-200 dark:text-emerald-900'
                   }`}
                 >
                   {toast.type === 'error' ? '!' : '✓'}
                 </span>
-                <p className='text-sm font-semibold leading-5'>{toast.message}</p>
+                <p className='text-base font-semibold leading-6'>{toast.message}</p>
               </div>
               <button
                 onClick={() => dismissToast(toast.id)}
-                className='rounded px-1 text-xs font-semibold text-white/90 transition hover:text-white'
+                className='rounded px-1 text-sm font-semibold text-current/80 transition hover:text-current'
               >
                 ✕
               </button>

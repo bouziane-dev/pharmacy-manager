@@ -1,17 +1,19 @@
 ﻿'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Activity,
   ArrowRight,
+  Bell,
   CalendarClock,
   ClipboardList,
   CreditCard,
   Globe,
   Moon,
   Pill,
-  ShieldCheck,
+  Search,
   Sun,
   Users2
 } from 'lucide-react'
@@ -23,8 +25,7 @@ const content = {
   en: {
     badge: 'Phlow | Pharmacy + Flow',
     title: 'Run your pharmacy with Phlow',
-    subtitle:
-      'Track orders, plan arrivals, and coordinate your team in minutes.',
+    subtitle: 'Track orders, tasks, reminders and agenda in one workspace.',
     primary: 'Open Workspace',
     signin: 'Sign In',
     preview: 'Plans',
@@ -34,52 +35,61 @@ const content = {
       { label: 'Team roles', value: 'Admin + pharmacist' },
       { label: 'Setup', value: 'Local ready' }
     ],
-    sectionsTitle: 'Core capabilities',
+    visualTitle: 'Live platform preview',
+    visualSearch: 'Search order, patient or product',
+    visualStats: [
+      { label: 'Orders today', value: '24' },
+      { label: 'Due reminders', value: '7' },
+      { label: 'Done', value: '15' }
+    ],
+    visualTimeline: [
+      { status: 'Pending', count: '9' },
+      { status: 'Ordered', count: '6' },
+      { status: 'Finished', count: '15' }
+    ],
+    sectionsTitle: 'Functionalities',
+    sectionsSubtitle: 'Built for daily pharmacy execution.',
     sections: [
       {
-        title: 'Order timeline',
-        text: 'Move requests from intake to pickup with clear statuses.'
+        title: 'Suivi des commandes',
+        text: 'See status updates in real time from pending to finished.',
+        icon: ClipboardList
       },
       {
-        title: 'Team access',
-        text: 'Invite pharmacists and keep team access simple.'
+        title: 'Gerer les taches',
+        text: 'Keep daily tasks organized for the full team.',
+        icon: Activity
       },
       {
-        title: 'Agenda planning',
-        text: 'Schedule arrivals by date to reduce missed handoffs.'
+        title: 'Agenda',
+        text: 'Plan and adjust arrival dates quickly.',
+        icon: CalendarClock
+      },
+      {
+        title: 'Rappel des commandes',
+        text: 'Get reminders for due and delayed orders.',
+        icon: Bell
+      },
+      {
+        title: 'Rechercher une commande',
+        text: 'Find orders by patient, phone or product instantly.',
+        icon: Search
+      },
+      {
+        title: 'Tout en un seul espace',
+        text: 'Dashboard, orders, agenda and users in one place.',
+        icon: Users2
       }
     ],
-    localTitle: 'Built for local teams',
-    localText:
-      'Fast bilingual workflow with a modular setup for backend integration.',
-    workflowTitle: 'How work moves in Phlow',
-    workflowSubtitle:
-      'A board-style flow keeps everyone aligned from intake to pickup.',
-    workflowColumns: [
-      {
-        title: 'Intake',
-        items: [
-          'Capture patient request',
-          'Attach notes and urgency',
-          'Assign target date'
-        ]
-      },
-      {
-        title: 'Supplier Follow-up',
-        items: [
-          'Track delayed items',
-          'Update expected arrival',
-          'Share status with team'
-        ]
-      },
-      {
-        title: 'Ready & Pickup',
-        items: [
-          'Confirm stock arrived',
-          'Notify pharmacist',
-          'Close order at pickup'
-        ]
-      }
+    howToUseTitle: 'How to use the platform',
+    howToUseSubtitle: 'Owner setup and staff access flow.',
+    howToUseSteps: [
+      'Owner signs in with Google.',
+      'Owner chooses a plan and creates the pharmacy dashboard.',
+      'Owner sets a unique subdomain (example: alshifa.saas.com).',
+      'Owner creates staff members and PIN codes.',
+      'Owner shares the pharmacy link with staff.',
+      'Staff open the link, select profile, and log in with PIN.'
     ],
     footer: {
       brand: 'Phlow',
@@ -122,7 +132,7 @@ const content = {
     badge: 'Phlow | Pharmacie + Flow',
     title: 'Pilotez votre pharmacie avec Phlow',
     subtitle:
-      'Suivez les commandes, planifiez les arrivages et coordonnez votre équipe en quelques minutes.',
+      'Suivi des commandes, gestion des taches, agenda et rappels dans un seul espace.',
     primary: 'Ouvrir l’espace',
     signin: 'Se connecter',
     preview: 'Abonnements',
@@ -132,52 +142,61 @@ const content = {
       { label: 'Rôles équipe', value: 'Admin + pharmacien' },
       { label: 'Mise en place', value: 'Prêt localement' }
     ],
-    sectionsTitle: 'Fonctionnalités clés',
+    visualTitle: 'Aperçu visuel de la plateforme',
+    visualSearch: 'Rechercher commande, patient ou produit',
+    visualStats: [
+      { label: 'Commandes du jour', value: '24' },
+      { label: 'Rappels à traiter', value: '7' },
+      { label: 'Terminées', value: '15' }
+    ],
+    visualTimeline: [
+      { status: 'En attente', count: '9' },
+      { status: 'Commandée', count: '6' },
+      { status: 'Terminée', count: '15' }
+    ],
+    sectionsTitle: 'Fonctionnalités',
+    sectionsSubtitle: 'Pensé pour l’exécution quotidienne en pharmacie.',
     sections: [
       {
         title: 'Chronologie des commandes',
-        text: 'Passez de la demande au retrait avec des statuts clairs.'
+        text: 'Suivez les statuts en temps réel de la saisie à la finalisation.',
+        icon: ClipboardList
       },
       {
-        title: 'Accès équipe',
-        text: 'Invitez les pharmaciens et gardez un contrôle simple des accès.'
+        title: 'Gerer les taches',
+        text: 'Organisez les taches quotidiennes de toute l’équipe.',
+        icon: Activity
       },
       {
-        title: 'Planification agenda',
-        text: 'Organisez les arrivages par date pour réduire les retards.'
+        title: 'Agenda',
+        text: 'Planifiez et ajustez rapidement les dates d’arrivée.',
+        icon: CalendarClock
+      },
+      {
+        title: 'Rappel des commandes',
+        text: 'Recevez des rappels pour les commandes dues et retardées.',
+        icon: Bell
+      },
+      {
+        title: 'Rechercher une commande',
+        text: 'Retrouvez une commande par patient, téléphone ou produit.',
+        icon: Search
+      },
+      {
+        title: 'Tout en un seul espace',
+        text: 'Dashboard, commandes, agenda et utilisateurs réunis.',
+        icon: Users2
       }
     ],
-    localTitle: 'Pensé pour les équipes locales',
-    localText:
-      'Flux bilingue rapide et architecture modulaire prête pour l’intégration backend.',
-    workflowTitle: 'Comment le travail avance dans Phlow',
-    workflowSubtitle:
-      'Un flux type tableau aligne l’équipe de la demande jusqu’au retrait.',
-    workflowColumns: [
-      {
-        title: 'Réception',
-        items: [
-          'Saisir la demande patient',
-          'Ajouter notes et urgence',
-          'Définir une date cible'
-        ]
-      },
-      {
-        title: 'Suivi fournisseur',
-        items: [
-          'Suivre les retards',
-          'Mettre à jour la date d’arrivée',
-          'Partager le statut équipe'
-        ]
-      },
-      {
-        title: 'Prêt & Retrait',
-        items: [
-          'Confirmer la réception stock',
-          'Notifier le pharmacien',
-          'Clôturer à la remise'
-        ]
-      }
+    howToUseTitle: 'Comment utiliser la plateforme',
+    howToUseSubtitle: 'Flux de mise en place propriétaire + staff.',
+    howToUseSteps: [
+      'Le propriétaire se connecte avec Google.',
+      'Le propriétaire choisit un plan et crée le dashboard pharmacie.',
+      'Le propriétaire définit un sous-domaine unique (ex: alshifa.saas.com).',
+      'Le propriétaire crée les membres staff et leurs PIN.',
+      'Le propriétaire envoie le lien de la pharmacie à l’équipe.',
+      'Le staff ouvre le lien, choisit son profil et se connecte avec PIN.'
     ],
     footer: {
       brand: 'Phlow',
@@ -219,13 +238,49 @@ const content = {
 }
 
 export default function Home() {
-  const { user, locale, setLocale, theme, setTheme } = useSession()
+  const router = useRouter()
+  const { user, isReady, isBootstrappingSession, locale, setLocale, theme, setTheme } =
+    useSession()
   const t = content[locale] || content.en
   const titleParts = t.title.split('Phlow')
   const [starOffset, setStarOffset] = useState({ x: 0, y: 0 })
+  const [themeFallback, setThemeFallback] = useState('light')
+  const isDarkTheme = (theme || themeFallback) === 'dark'
+
+  useEffect(() => {
+    const savedTheme =
+      typeof window !== 'undefined' ? window.localStorage.getItem('pm-theme') : null
+    if (savedTheme === 'dark' || savedTheme === 'light') {
+      setThemeFallback(savedTheme)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (theme === 'dark' || theme === 'light') {
+      setThemeFallback(theme)
+    }
+  }, [theme])
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDarkTheme)
+    document.body.classList.toggle('dark', isDarkTheme)
+    document.documentElement.style.colorScheme = isDarkTheme ? 'dark' : 'light'
+    document.documentElement.setAttribute('data-theme', isDarkTheme ? 'dark' : 'light')
+  }, [isDarkTheme])
+
+  useEffect(() => {
+    if (!isReady || isBootstrappingSession) return
+    if (user) {
+      router.replace(getHomePathForUser(user))
+    }
+  }, [isBootstrappingSession, isReady, router, user])
+
+  if (isReady && !isBootstrappingSession && user) {
+    return null
+  }
 
   function handleMouseMove(event) {
-    if (theme !== 'dark') return
+    if (!isDarkTheme) return
     const { innerWidth, innerHeight } = window
     const x = ((event.clientX / innerWidth) * 2 - 1) * 12
     const y = ((event.clientY / innerHeight) * 2 - 1) * 10
@@ -236,17 +291,46 @@ export default function Home() {
     setStarOffset({ x: 0, y: 0 })
   }
 
+  function handleThemeToggle() {
+    const nextTheme = isDarkTheme ? 'light' : 'dark'
+    setThemeFallback(nextTheme)
+    setTheme(nextTheme)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('pm-theme', nextTheme)
+    }
+    document.documentElement.classList.toggle('dark', nextTheme === 'dark')
+    document.body.classList.toggle('dark', nextTheme === 'dark')
+    document.documentElement.style.colorScheme = nextTheme === 'dark' ? 'dark' : 'light'
+    document.documentElement.setAttribute('data-theme', nextTheme)
+  }
+
   return (
     <main
-      className='relative isolate min-h-screen overflow-hidden bg-[var(--background)] text-[var(--foreground)]'
+      className={`relative isolate min-h-screen overflow-hidden ${
+        isDarkTheme ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
+      }`}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
       <div className='pointer-events-none fixed inset-0 z-0 overflow-hidden'>
-        <div className='absolute inset-0 z-0 bg-[linear-gradient(160deg,#f2f9f4_0%,#eef7ff_48%,#eefcf5_100%)] dark:bg-[linear-gradient(160deg,#020617_0%,#031b1a_45%,#041b26_100%)]' />
-        <div className='absolute inset-0 z-10 bg-[radial-gradient(circle_at_12%_14%,rgba(16,185,129,0.08),transparent_45%),radial-gradient(circle_at_86%_12%,rgba(34,197,94,0.06),transparent_42%),radial-gradient(circle_at_45%_75%,rgba(168,85,247,0.24),transparent_40%)] dark:bg-[radial-gradient(circle_at_14%_16%,rgba(110,231,183,0.05),transparent_50%),radial-gradient(circle_at_82%_14%,rgba(34,197,94,0.04),transparent_48%)]' />
         <div
-          className='stars-layer absolute inset-0 z-20 hidden transition-transform duration-300 ease-out dark:block'
+          className={`absolute inset-0 z-0 ${
+            isDarkTheme
+              ? 'bg-[linear-gradient(160deg,#020617_0%,#031b1a_45%,#041b26_100%)]'
+              : 'bg-[linear-gradient(160deg,#f2f9f4_0%,#eef7ff_48%,#eefcf5_100%)]'
+          }`}
+        />
+        <div
+          className={`absolute inset-0 z-10 ${
+            isDarkTheme
+              ? 'bg-[radial-gradient(circle_at_14%_16%,rgba(110,231,183,0.05),transparent_50%),radial-gradient(circle_at_82%_14%,rgba(34,197,94,0.04),transparent_48%)]'
+              : 'bg-[radial-gradient(circle_at_12%_14%,rgba(16,185,129,0.08),transparent_45%),radial-gradient(circle_at_86%_12%,rgba(34,197,94,0.06),transparent_42%),radial-gradient(circle_at_45%_75%,rgba(168,85,247,0.24),transparent_40%)]'
+          }`}
+        />
+        <div
+          className={`stars-layer absolute inset-0 z-20 transition-transform duration-300 ease-out ${
+            isDarkTheme ? 'block' : 'hidden'
+          }`}
           style={{
             transform: `translate3d(${starOffset.x}px, ${starOffset.y}px, 0)`
           }}
@@ -261,10 +345,10 @@ export default function Home() {
           </p>
           <div className='flex items-center gap-2'>
             <button
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              onClick={handleThemeToggle}
               className='fun-card bg-[var(--surface)]/90 inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] backdrop-blur transition hover:bg-[var(--surface-soft)]'
             >
-              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+              {isDarkTheme ? <Sun size={14} /> : <Moon size={14} />}
               {t.theme}
             </button>
             <button
@@ -277,7 +361,7 @@ export default function Home() {
           </div>
         </header>
 
-        <section className='mt-10 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]'>
+        <section className='mt-10 grid gap-5 lg:grid-cols-[1.05fr_0.95fr]'>
           <article className='fun-card rounded-3xl border border-emerald-300/55 bg-[linear-gradient(145deg,rgba(16,185,129,0.22),rgba(34,197,94,0.17),rgba(255,255,255,0.84))] p-6 shadow-[0_18px_42px_rgba(5,150,105,0.15)] backdrop-blur-sm dark:bg-[linear-gradient(145deg,rgba(16,185,129,0.19),rgba(34,197,94,0.16),rgba(2,6,23,0.9))] sm:p-8'>
             <h1 className='text-4xl font-semibold leading-tight text-slate-900 dark:text-slate-100 sm:text-5xl'>
               {titleParts.length > 1 ? (
@@ -294,34 +378,7 @@ export default function Home() {
               {t.subtitle}
             </p>
 
-            <div className='mt-5 grid gap-3 sm:grid-cols-3'>
-              {t.summary.map(item => (
-                <div
-                  key={item.label}
-                  className='rounded-xl border border-emerald-400/45 bg-emerald-50/85 px-3 py-3 dark:bg-emerald-950/35'
-                >
-                  <p className='text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]'>
-                    {item.label}
-                  </p>
-                  <p className='mt-1 text-sm font-semibold'>{item.value}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className='mt-5 flex flex-wrap gap-2'>
-              {[Activity, CalendarClock, ClipboardList, Users2].map(
-                (Icon, index) => (
-                  <span
-                    key={index}
-                    className='inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-500/45 bg-white/80 text-emerald-700 dark:bg-emerald-950/45 dark:text-emerald-300'
-                  >
-                    <Icon size={16} />
-                  </span>
-                )
-              )}
-            </div>
-
-            <div className='mt-7 flex flex-wrap gap-3'>
+            <div className='mt-6 flex flex-wrap gap-3'>
               <Link
                 href={user ? getHomePathForUser(user) : '/auth'}
                 className='fun-card inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400'
@@ -339,69 +396,93 @@ export default function Home() {
             </div>
           </article>
 
-          <Link href='/auth' className='block'>
-            <aside className='panel fun-card bg-[var(--surface)]/95 cursor-pointer rounded-3xl p-5 sm:p-6'>
-              <h2 className='text-lg font-semibold'>{t.sectionsTitle}</h2>
-              <div className='mt-4 space-y-4'>
-                {t.sections.map(item => (
-                  <article
-                    key={item.title}
-                    className='rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] p-4'
-                  >
+          <aside className='rounded-3xl border border-cyan-400/45 bg-[linear-gradient(155deg,rgba(34,211,238,0.2),rgba(16,185,129,0.14),rgba(255,255,255,0.86))] p-5 shadow-[0_18px_44px_rgba(14,165,233,0.2)] backdrop-blur-sm dark:bg-[linear-gradient(155deg,rgba(8,47,73,0.92),rgba(6,95,70,0.7),rgba(2,6,23,0.92))] sm:p-6'>
+            <h3 className='text-lg font-semibold text-slate-900 dark:text-slate-100'>
+              {t.visualTitle}
+            </h3>
+
+            <div className='mt-4 rounded-xl border border-cyan-300/50 bg-white/80 px-3 py-2 text-sm text-slate-600 dark:border-cyan-400/35 dark:bg-slate-900/50 dark:text-slate-300'>
+              <span className='inline-flex items-center gap-2'>
+                <Search size={14} />
+                {t.visualSearch}
+              </span>
+            </div>
+
+            <div className='mt-4 grid grid-cols-3 gap-2'>
+              {t.visualStats.map(item => (
+                <div
+                  key={item.label}
+                  className='rounded-xl border border-cyan-300/55 bg-cyan-50/85 px-3 py-3 dark:border-cyan-400/35 dark:bg-cyan-950/35'
+                >
+                  <p className='text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]'>
+                    {item.label}
+                  </p>
+                  <p className='mt-1 text-base font-semibold'>{item.value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className='mt-4 space-y-2'>
+              {t.visualTimeline.map((item, index) => (
+                <div
+                  key={item.status}
+                  className='flex items-center justify-between rounded-lg border border-cyan-300/45 bg-white/80 px-3 py-2 text-sm dark:border-cyan-400/30 dark:bg-slate-900/45'
+                >
+                  <span className='inline-flex items-center gap-2'>
+                    <span
+                      className={`inline-block h-2.5 w-2.5 rounded-full ${
+                        index === 0
+                          ? 'bg-amber-500'
+                          : index === 1
+                            ? 'bg-cyan-500'
+                            : 'bg-emerald-500'
+                      }`}
+                    />
+                    {item.status}
+                  </span>
+                  <span className='font-semibold'>{item.count}</span>
+                </div>
+              ))}
+            </div>
+          </aside>
+        </section>
+
+        <section className='mt-8 grid gap-5 lg:grid-cols-2'>
+          <article className='panel rounded-3xl p-6 sm:p-7'>
+            <h2 className='text-xl font-semibold'>{t.sectionsTitle}</h2>
+            <p className='mt-2 text-sm text-[var(--muted)]'>{t.sectionsSubtitle}</p>
+            <div className='mt-4 grid gap-3 sm:grid-cols-2'>
+              {t.sections.map(item => (
+                <article
+                  key={item.title}
+                  className='rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] p-4'
+                >
+                  <div className='flex items-center gap-2'>
+                    <item.icon size={16} className='text-emerald-600 dark:text-emerald-400' />
                     <p className='text-sm font-semibold text-[var(--foreground)]'>
                       {item.title}
                     </p>
-                    <p className='mt-2 text-sm leading-6 text-[var(--muted)]'>
-                      {item.text}
-                    </p>
-                  </article>
-                ))}
-              </div>
-            </aside>
-          </Link>
-        </section>
-
-        <section className='panel mt-8 rounded-3xl p-6 sm:p-8'>
-          <div className='flex items-start gap-3'>
-            <ShieldCheck className='mt-1 text-emerald-500' size={18} />
-            <div>
-              <h2 className='text-xl font-semibold'>{t.localTitle}</h2>
-              <p className='mt-2 max-w-4xl text-sm leading-6 text-[var(--muted)]'>
-                {t.localText}
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <section className='mt-8 rounded-3xl border border-violet-500/70 bg-[linear-gradient(150deg,rgba(124,58,237,0.24),rgba(91,33,182,0.22))] p-6 shadow-[0_14px_32px_rgba(109,40,217,0.26)] dark:border-violet-400/40 dark:bg-[linear-gradient(150deg,rgba(49,20,102,0.88),rgba(38,13,89,0.92))] sm:p-8'>
-          <div className='max-w-2xl'>
-            <h2 className='text-xl font-semibold'>{t.workflowTitle}</h2>
-            <p className='mt-2 text-sm leading-6 text-[var(--muted)]'>
-              {t.workflowSubtitle}
-            </p>
-          </div>
-          <div className='mt-5 grid gap-4 md:grid-cols-3'>
-            {t.workflowColumns.map(column => {
-              return (
-                <article
-                  key={column.title}
-                  className='rounded-2xl border border-violet-400/70 bg-violet-100/90 p-4 dark:border-violet-400/35 dark:bg-violet-950/35'
-                >
-                  <p className='text-sm font-semibold'>{column.title}</p>
-                  <div className='mt-3 space-y-2'>
-                    {column.items.map(item => (
-                      <p
-                        key={item}
-                        className='rounded-lg border border-violet-300/70 bg-violet-50/95 px-3 py-2 text-sm text-violet-900 dark:border-violet-400/35 dark:bg-violet-950/45 dark:text-violet-100'
-                      >
-                        {item}
-                      </p>
-                    ))}
                   </div>
+                  <p className='mt-2 text-sm text-[var(--muted)]'>{item.text}</p>
                 </article>
-              )
-            })}
-          </div>
+              ))}
+            </div>
+          </article>
+
+          <article className='rounded-3xl border border-violet-500/70 bg-[linear-gradient(150deg,rgba(124,58,237,0.24),rgba(91,33,182,0.22))] p-6 shadow-[0_14px_32px_rgba(109,40,217,0.26)] dark:border-violet-400/40 dark:bg-[linear-gradient(150deg,rgba(49,20,102,0.88),rgba(38,13,89,0.92))] sm:p-7'>
+            <h2 className='text-xl font-semibold'>{t.howToUseTitle}</h2>
+            <p className='mt-2 text-sm text-[var(--muted)]'>{t.howToUseSubtitle}</p>
+            <div className='mt-4 space-y-2'>
+              {t.howToUseSteps.map((step, index) => (
+                <p
+                  key={step}
+                  className='rounded-lg border border-violet-300/70 bg-violet-50/95 px-3 py-2 text-sm text-violet-900 dark:border-violet-400/35 dark:bg-violet-950/45 dark:text-violet-100'
+                >
+                  {index + 1}. {step}
+                </p>
+              ))}
+            </div>
+          </article>
         </section>
 
         <section className='mt-14 grid gap-4 sm:grid-cols-2 xl:grid-cols-4'>

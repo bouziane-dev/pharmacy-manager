@@ -1,88 +1,58 @@
 'use client'
 
-import Link from 'next/link'
 import { useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useSession } from '@/app/providers'
 import { formatShortDate, getCopy } from '@/app/lib/i18n'
 
 const statusStyles = {
-  'Not Yet':
+  pending:
     'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300',
-  Ordered: 'bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300',
-  Arrived:
-    'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
+  ordered: 'bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300',
+  finished: 'bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300'
 }
 
-const urgencyStyles = {
-  Urgent: 'text-rose-600 dark:text-rose-400',
-  Normal: 'text-[var(--muted)]'
-}
 const digitsOnly = value => value.replace(/\D/g, '')
-const requiredFieldOrder = [
-  'patientName',
-  'phone',
-  'productName',
-  'arrivalDate',
-  'urgency'
-]
+const requiredFieldOrder = ['patientName', 'phone', 'productsInput', 'arrivalDate']
 
-function CommentComposer({ orderId, onSubmit, placeholder, cta }) {
-  const [text, setText] = useState('')
+function parseProductsInput(rawValue) {
+  return String(rawValue || '')
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean)
+}
 
-  return (
-    <div className='mt-2 flex gap-2'>
-      <input
-        value={text}
-        onChange={e => setText(e.target.value)}
-        placeholder={placeholder}
-        className='w-full rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-xs text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
-      />
-      <button
-        onClick={async () => {
-          if (!text.trim()) return
-          await onSubmit(orderId, text)
-          setText('')
-        }}
-        className='rounded-md bg-emerald-600 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-500'
-      >
-        {cta}
-      </button>
-    </div>
-  )
+function productsToText(products) {
+  if (!Array.isArray(products)) return ''
+  return products.join(', ')
 }
 
 export default function OrdersTable({ showControls = false }) {
-  const {
-    locale,
-    orders,
-    createOrder,
-    addOrderComment,
-    updateOrderStatus
-  } = useSession()
+  const router = useRouter()
+  const { locale, orders, createOrder, updateOrderStatus } = useSession()
   const t = getCopy(locale).orders
 
   const [search, setSearch] = useState('')
+  const [isFinishedOpen, setIsFinishedOpen] = useState(false)
   const [fieldErrors, setFieldErrors] = useState({})
   const [form, setForm] = useState({
     patientName: '',
     phone: '',
-    productName: '',
+    productsInput: '',
     comment: '',
     arrivalDate: '',
-    urgency: 'Normal'
+    versement: '0'
   })
   const patientNameRef = useRef(null)
   const phoneRef = useRef(null)
-  const productNameRef = useRef(null)
+  const productsInputRef = useRef(null)
   const arrivalDateRef = useRef(null)
-  const urgencyRef = useRef(null)
 
   const fieldRefMap = {
     patientName: patientNameRef,
     phone: phoneRef,
-    productName: productNameRef,
-    arrivalDate: arrivalDateRef,
-    urgency: urgencyRef
+    productsInput: productsInputRef,
+    arrivalDate: arrivalDateRef
   }
 
   function validateRequiredFields() {
@@ -93,33 +63,47 @@ export default function OrdersTable({ showControls = false }) {
     if (!form.phone.trim()) {
       errors.phone = t.validation.phoneRequired
     }
-    if (!form.productName.trim()) {
-      errors.productName = t.validation.productNameRequired
+    if (parseProductsInput(form.productsInput).length === 0) {
+      errors.productsInput = t.validation.productsRequired
     }
     if (!form.arrivalDate) {
       errors.arrivalDate = t.validation.arrivalDateRequired
     }
-    if (!form.urgency) {
-      errors.urgency = t.validation.urgencyRequired
+
+    const versementValue = Number(form.versement || 0)
+    if (!Number.isFinite(versementValue) || versementValue < 0) {
+      errors.versement = t.validation.versementInvalid
     }
+
     return errors
   }
 
   const filteredOrders = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return orders
+
     return orders.filter(order =>
-      [order.productName, order.patientName, order.phone]
+      [productsToText(order.products), order.patientName, order.phone]
         .join(' ')
         .toLowerCase()
         .includes(q)
     )
   }, [orders, search])
 
+  const activeOrders = filteredOrders.filter(order => order.status !== 'finished')
+  const finishedOrders = filteredOrders.filter(order => order.status === 'finished')
   const today = new Date().toISOString().slice(0, 10)
-  const dueOrders = orders.filter(
-    order => order.arrivalDate <= today && order.status === 'Not Yet'
+  const dueOrders = activeOrders.filter(
+    order => order.arrivalDate <= today && order.status === 'pending'
   )
+
+  function navigateToOrder(orderId) {
+    router.push(`/orders/${orderId}`)
+  }
+
+  function isInteractiveElement(target) {
+    return Boolean(target?.closest('button, a, input, select, textarea, label'))
+  }
 
   return (
     <section className='space-y-4'>
@@ -174,25 +158,25 @@ export default function OrdersTable({ showControls = false }) {
                 <p className='mt-1 text-xs text-red-600'>{fieldErrors.phone}</p>
               )}
             </label>
-            <label className='text-sm text-[var(--muted)]'>
-              {t.fields.productName}
+            <label className='text-sm text-[var(--muted)] md:col-span-2'>
+              {t.fields.products}
               <input
-                ref={productNameRef}
-                value={form.productName}
+                ref={productsInputRef}
+                value={form.productsInput}
                 onChange={e => {
                   const nextValue = e.target.value
-                  setForm(prev => ({ ...prev, productName: nextValue }))
-                  if (nextValue.trim()) {
-                    setFieldErrors(prev => ({ ...prev, productName: '' }))
+                  setForm(prev => ({ ...prev, productsInput: nextValue }))
+                  if (parseProductsInput(nextValue).length > 0) {
+                    setFieldErrors(prev => ({ ...prev, productsInput: '' }))
                   }
                 }}
-                placeholder={t.placeholders.productName}
+                placeholder={t.placeholders.products}
                 required
-                aria-invalid={!!fieldErrors.productName}
+                aria-invalid={!!fieldErrors.productsInput}
                 className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
               />
-              {fieldErrors.productName && (
-                <p className='mt-1 text-xs text-red-600'>{fieldErrors.productName}</p>
+              {fieldErrors.productsInput && (
+                <p className='mt-1 text-xs text-red-600'>{fieldErrors.productsInput}</p>
               )}
             </label>
             <label className='text-sm text-[var(--muted)]'>
@@ -208,12 +192,46 @@ export default function OrdersTable({ showControls = false }) {
                     setFieldErrors(prev => ({ ...prev, arrivalDate: '' }))
                   }
                 }}
+                onFocus={e => {
+                  if (typeof e.currentTarget.showPicker === 'function') {
+                    e.currentTarget.showPicker()
+                  }
+                }}
+                onKeyDown={e => {
+                  if (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Delete') {
+                    e.preventDefault()
+                  }
+                }}
+                onPaste={e => e.preventDefault()}
                 required
                 aria-invalid={!!fieldErrors.arrivalDate}
                 className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
               />
               {fieldErrors.arrivalDate && (
                 <p className='mt-1 text-xs text-red-600'>{fieldErrors.arrivalDate}</p>
+              )}
+            </label>
+            <label className='text-sm text-[var(--muted)]'>
+              {t.fields.versement}
+              <input
+                type='number'
+                min='0'
+                step='0.01'
+                value={form.versement}
+                onChange={e => {
+                  const nextValue = e.target.value
+                  setForm(prev => ({ ...prev, versement: nextValue }))
+                  const parsed = Number(nextValue || 0)
+                  if (Number.isFinite(parsed) && parsed >= 0) {
+                    setFieldErrors(prev => ({ ...prev, versement: '' }))
+                  }
+                }}
+                placeholder={t.placeholders.versement}
+                aria-invalid={!!fieldErrors.versement}
+                className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
+              />
+              {fieldErrors.versement && (
+                <p className='mt-1 text-xs text-red-600'>{fieldErrors.versement}</p>
               )}
             </label>
             <label className='text-sm text-[var(--muted)] md:col-span-2'>
@@ -226,29 +244,6 @@ export default function OrdersTable({ showControls = false }) {
                 placeholder={t.placeholders.comment}
                 className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
               />
-            </label>
-            <label className='text-sm text-[var(--muted)]'>
-              {t.fields.urgency}
-              <select
-                ref={urgencyRef}
-                value={form.urgency}
-                onChange={e => {
-                  const nextValue = e.target.value
-                  setForm(prev => ({ ...prev, urgency: nextValue }))
-                  if (nextValue) {
-                    setFieldErrors(prev => ({ ...prev, urgency: '' }))
-                  }
-                }}
-                required
-                aria-invalid={!!fieldErrors.urgency}
-                className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
-              >
-                <option value='Urgent'>{t.urgency.Urgent}</option>
-                <option value='Normal'>{t.urgency.Normal}</option>
-              </select>
-              {fieldErrors.urgency && (
-                <p className='mt-1 text-xs text-red-600'>{fieldErrors.urgency}</p>
-              )}
             </label>
           </div>
           <button
@@ -263,15 +258,24 @@ export default function OrdersTable({ showControls = false }) {
                 targetRef?.current?.focus()
                 return
               }
-              await createOrder(form)
+
+              await createOrder({
+                patientName: form.patientName,
+                phone: form.phone,
+                products: parseProductsInput(form.productsInput),
+                comment: form.comment,
+                arrivalDate: form.arrivalDate,
+                versement: Number(form.versement || 0)
+              })
+
               setFieldErrors({})
               setForm({
                 patientName: '',
                 phone: '',
-                productName: '',
+                productsInput: '',
                 comment: '',
                 arrivalDate: '',
-                urgency: 'Normal'
+                versement: '0'
               })
             }}
             className='mt-4 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500'
@@ -310,7 +314,7 @@ export default function OrdersTable({ showControls = false }) {
                   className='rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] p-3'
                 >
                   <p className='text-sm font-semibold text-[var(--foreground)]'>
-                    {order.productName}
+                    {productsToText(order.products)}
                   </p>
                   <p className='text-xs text-[var(--muted)]'>
                     {order.patientName} - {order.phone}
@@ -320,22 +324,22 @@ export default function OrdersTable({ showControls = false }) {
                   </p>
                   <div className='mt-2 flex gap-2'>
                     <button
-                      onClick={() => void updateOrderStatus(order.id, 'Arrived')}
+                      onClick={() => void updateOrderStatus(order.id, 'finished')}
                       className='rounded-md bg-emerald-600 px-2 py-1 text-xs font-semibold text-white'
                     >
-                      {t.reminderActions.arrived}
+                      {t.reminderActions.finished}
                     </button>
                     <button
-                      onClick={() => void updateOrderStatus(order.id, 'Ordered')}
+                      onClick={() => void updateOrderStatus(order.id, 'ordered')}
                       className='rounded-md bg-sky-600 px-2 py-1 text-xs font-semibold text-white'
                     >
                       {t.reminderActions.ordered}
                     </button>
                     <button
-                      onClick={() => void updateOrderStatus(order.id, 'Not Yet')}
+                      onClick={() => void updateOrderStatus(order.id, 'pending')}
                       className='rounded-md bg-amber-600 px-2 py-1 text-xs font-semibold text-white'
                     >
-                      {t.reminderActions.notYet}
+                      {t.reminderActions.pending}
                     </button>
                   </div>
                 </div>
@@ -351,110 +355,300 @@ export default function OrdersTable({ showControls = false }) {
             {t.tableTitle}
           </h2>
         </header>
-        <div className='overflow-x-auto'>
-          <table className='w-full min-w-[820px] table-fixed text-left text-sm'>
+        <div className='space-y-3 p-3 lg:hidden'>
+          {activeOrders.map(order => {
+            const commentsCount = (order.comments || []).length
+            return (
+              <article
+                key={order.id}
+                className='rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] p-3'
+                role='button'
+                tabIndex={0}
+                onClick={event => {
+                  if (isInteractiveElement(event.target)) return
+                  navigateToOrder(order.id)
+                }}
+                onKeyDown={event => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    navigateToOrder(order.id)
+                  }
+                }}
+              >
+                <div className='flex items-start justify-between gap-2'>
+                  <div>
+                    <p className='text-sm font-semibold text-[var(--foreground)]'>
+                      {order.patientName}
+                    </p>
+                    <p className='text-xs text-[var(--muted)]'>{order.phone}</p>
+                  </div>
+                </div>
+
+                <p className='mt-2 text-xs text-[var(--muted)]'>
+                  <span className='font-semibold text-[var(--foreground)]'>
+                    {t.columns.products}:{' '}
+                  </span>
+                  {productsToText(order.products)}
+                </p>
+                <div className='mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--muted)]'>
+                  <p>
+                    <span className='font-semibold text-[var(--foreground)]'>
+                      {t.columns.arrivalDate}:{' '}
+                    </span>
+                    {formatShortDate(order.arrivalDate, locale)}
+                  </p>
+                  <p>
+                    <span className='font-semibold text-[var(--foreground)]'>
+                      {t.columns.versement}:{' '}
+                    </span>
+                    {Number(order.versement || 0).toFixed(2)}
+                  </p>
+                  {commentsCount > 0 && (
+                    <p>
+                      <span className='font-semibold text-[var(--foreground)]'>
+                        {t.columns.comments}:{' '}
+                      </span>
+                      {commentsCount}
+                    </p>
+                  )}
+                </div>
+
+                <div className='mt-2'>
+                  <span
+                    className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${statusStyles[order.status] || ''}`}
+                  >
+                    {t.status[order.status] || order.status}
+                  </span>
+                  {showControls && (
+                    <label className='mt-2 block text-[10px] text-[var(--muted)]'>
+                      {t.statusLabel}
+                      <select
+                        value={order.status}
+                        onChange={e => void updateOrderStatus(order.id, e.target.value)}
+                        className='mt-1 w-full rounded border border-[var(--border)] bg-transparent px-2 py-1.5 text-xs text-[var(--foreground)]'
+                      >
+                        <option value='pending'>{t.status.pending}</option>
+                        <option value='ordered'>{t.status.ordered}</option>
+                        <option value='finished'>{t.status.finished}</option>
+                      </select>
+                    </label>
+                  )}
+                </div>
+              </article>
+            )
+          })}
+        </div>
+
+        <div className='hidden overflow-x-auto lg:block'>
+          <table className='w-full table-fixed text-left text-sm'>
             <thead>
               <tr className='border-b border-[var(--border)] text-[var(--muted)]'>
-                <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.id}</th>
                 <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.patient}</th>
                 <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.phone}</th>
-                <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.product}</th>
+                <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.products}</th>
                 <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.arrivalDate}</th>
-                <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.urgency}</th>
+                <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.versement}</th>
                 <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.status}</th>
-                <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.comments}</th>
+                <th className='px-3 py-3 text-right font-medium sm:px-5'>{t.columns.comments}</th>
               </tr>
             </thead>
             <tbody>
-              {filteredOrders.map(order => (
-                <tr
-                  key={order.id}
-                  className='border-b border-[var(--border)]/70 align-top transition hover:bg-[var(--surface-soft)]'
-                >
-                  <td className='px-3 py-3 font-medium text-[var(--foreground)] sm:px-5'>
-                    <div className='flex min-w-0 flex-wrap items-center gap-2'>
-                      <span className='break-all text-xs sm:text-sm'>{order.id}</span>
-                      <Link
-                        href={`/orders/${order.id}`}
-                        className='rounded border border-[var(--border)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-soft)]'
-                      >
-                        {t.openDetails}
-                      </Link>
-                    </div>
-                  </td>
-                  <td className='px-3 py-3 text-[var(--foreground)] sm:px-5'>
-                    <p className='break-words'>{order.patientName}</p>
-                  </td>
-                  <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
-                    <p className='break-all'>{order.phone}</p>
-                  </td>
-                  <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
-                    <p className='break-words'>{order.productName}</p>
-                  </td>
-                  <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
-                    {formatShortDate(order.arrivalDate, locale)}
-                  </td>
-                  <td className='px-3 py-3 sm:px-5'>
-                    <span className={`break-words text-xs font-semibold ${urgencyStyles[order.urgency]}`}>
-                      {t.urgency[order.urgency] || order.urgency}
-                    </span>
-                  </td>
-                  <td className='px-3 py-3 sm:px-5'>
-                    <div className='space-y-1'>
-                      <span
-                        className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${statusStyles[order.status] || ''}`}
-                      >
-                        {t.status[order.status] || order.status}
-                      </span>
-                      {showControls && (
-                        <label className='block text-[10px] text-[var(--muted)]'>
-                          {t.statusLabel}
-                          <select
-                            value={order.status}
-                            onChange={e =>
-                              void updateOrderStatus(order.id, e.target.value)
-                            }
-                            className='mt-1 w-full rounded border border-[var(--border)] bg-transparent px-1.5 py-1 text-[11px] text-[var(--foreground)]'
-                          >
-                            <option value='Not Yet'>{t.status['Not Yet']}</option>
-                            <option value='Ordered'>{t.status.Ordered}</option>
-                            <option value='Arrived'>{t.status.Arrived}</option>
-                          </select>
-                        </label>
-                      )}
-                    </div>
-                  </td>
-                  <td className='px-3 py-3 text-xs text-[var(--muted)] sm:px-5'>
-                    {(order.comments || []).length === 0 ? (
-                      <p>{t.noComments}</p>
-                    ) : (
+              {activeOrders.map(order => {
+                const commentsCount = (order.comments || []).length
+                return (
+                  <tr
+                    key={order.id}
+                    className='border-b border-[var(--border)]/70 align-top transition hover:bg-[var(--surface-soft)]'
+                    role='button'
+                    tabIndex={0}
+                    onClick={event => {
+                      if (isInteractiveElement(event.target)) return
+                      navigateToOrder(order.id)
+                    }}
+                    onKeyDown={event => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        navigateToOrder(order.id)
+                      }
+                    }}
+                  >
+                    <td className='px-3 py-3 text-[var(--foreground)] sm:px-5'>
+                      <p className='break-words font-medium'>{order.patientName}</p>
+                    </td>
+                    <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
+                      <p className='break-all'>{order.phone}</p>
+                    </td>
+                    <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
+                      <p className='break-words'>{productsToText(order.products)}</p>
+                    </td>
+                    <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
+                      {formatShortDate(order.arrivalDate, locale)}
+                    </td>
+                    <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
+                      <span>{Number(order.versement || 0).toFixed(2)}</span>
+                    </td>
+                    <td className='px-3 py-3 sm:px-5'>
                       <div className='space-y-1'>
-                        {order.comments.slice(-3).map(comment => (
-                          <p key={comment.id} className='break-words'>
-                            <span className='font-semibold text-[var(--foreground)]'>
-                              {comment.author}:
-                            </span>{' '}
-                            {comment.text}
-                          </p>
-                        ))}
+                        <span
+                          className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${statusStyles[order.status] || ''}`}
+                        >
+                          {t.status[order.status] || order.status}
+                        </span>
+                        {showControls && (
+                          <label className='block text-[10px] text-[var(--muted)]'>
+                            {t.statusLabel}
+                            <select
+                              value={order.status}
+                              onChange={e =>
+                                void updateOrderStatus(order.id, e.target.value)
+                              }
+                              className='mt-1 w-full rounded border border-[var(--border)] bg-transparent px-1.5 py-1 text-[11px] text-[var(--foreground)]'
+                            >
+                              <option value='pending'>{t.status.pending}</option>
+                              <option value='ordered'>{t.status.ordered}</option>
+                              <option value='finished'>{t.status.finished}</option>
+                            </select>
+                          </label>
+                        )}
                       </div>
-                    )}
-                    {showControls && (
-                      <CommentComposer
-                        orderId={order.id}
-                        onSubmit={addOrderComment}
-                        placeholder={t.commentPlaceholder}
-                        cta={t.addComment}
-                      />
-                    )}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className='px-3 py-3 text-right text-[var(--muted)] sm:px-5'>
+                      {commentsCount > 0 ? (
+                        <span className='inline-flex min-w-7 justify-center rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-xs font-semibold text-[var(--foreground)]'>
+                          {commentsCount}
+                        </span>
+                      ) : (
+                        <span className='text-xs text-[var(--muted)]'>-</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
       </section>
+
+      <section className='panel overflow-hidden'>
+        <header className='border-b border-[var(--border)] px-5 py-4'>
+          <div className='flex flex-wrap items-center justify-between gap-3'>
+            <h2 className='text-lg font-semibold text-[var(--foreground)]'>
+              {t.finishedTableTitle}
+            </h2>
+            <button
+              onClick={() => setIsFinishedOpen(prev => !prev)}
+              className='rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface)]'
+            >
+              {isFinishedOpen ? t.hideFinished : t.showFinished}
+            </button>
+          </div>
+        </header>
+        {!isFinishedOpen ? (
+          <p className='px-5 py-4 text-sm text-[var(--muted)]'>{t.showFinished}</p>
+        ) : finishedOrders.length === 0 ? (
+          <p className='px-5 py-4 text-sm text-[var(--muted)]'>{t.finishedEmpty}</p>
+        ) : (
+          <>
+            <div className='space-y-3 p-3 lg:hidden'>
+              {finishedOrders.map(order => {
+                const commentsCount = (order.comments || []).length
+                return (
+                  <article
+                    key={order.id}
+                    className='rounded-xl border border-emerald-300/70 bg-emerald-50/85 p-3 dark:border-emerald-500/35 dark:bg-emerald-900/20'
+                    role='button'
+                    tabIndex={0}
+                    onClick={event => {
+                      if (isInteractiveElement(event.target)) return
+                      navigateToOrder(order.id)
+                    }}
+                    onKeyDown={event => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        navigateToOrder(order.id)
+                      }
+                    }}
+                  >
+                    <p className='text-sm font-semibold text-[var(--foreground)]'>
+                      {order.patientName}
+                    </p>
+                    <p className='text-xs text-[var(--muted)]'>{productsToText(order.products)}</p>
+                    <div className='mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--muted)]'>
+                      <p>{formatShortDate(order.arrivalDate, locale)}</p>
+                      <p>{Number(order.versement || 0).toFixed(2)}</p>
+                      {commentsCount > 0 && <p>{t.columns.comments}: {commentsCount}</p>}
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+            <div className='hidden overflow-x-auto lg:block'>
+              <table className='w-full table-fixed text-left text-sm'>
+                <thead>
+                  <tr className='border-b border-[var(--border)] text-[var(--muted)]'>
+                    <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.patient}</th>
+                    <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.phone}</th>
+                    <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.products}</th>
+                    <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.arrivalDate}</th>
+                    <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.versement}</th>
+                    <th className='px-3 py-3 text-right font-medium sm:px-5'>
+                      {t.columns.comments}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {finishedOrders.map(order => {
+                    const commentsCount = (order.comments || []).length
+                    return (
+                      <tr
+                        key={order.id}
+                        className='border-b border-emerald-200/80 bg-emerald-50/70 align-top transition hover:bg-emerald-100/70 dark:border-emerald-500/25 dark:bg-emerald-900/15 dark:hover:bg-emerald-900/25'
+                        role='button'
+                        tabIndex={0}
+                        onClick={event => {
+                          if (isInteractiveElement(event.target)) return
+                          navigateToOrder(order.id)
+                        }}
+                        onKeyDown={event => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            navigateToOrder(order.id)
+                          }
+                        }}
+                      >
+                        <td className='px-3 py-3 text-[var(--foreground)] sm:px-5'>
+                          <p className='break-words font-medium'>{order.patientName}</p>
+                        </td>
+                        <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
+                          <p className='break-all'>{order.phone}</p>
+                        </td>
+                        <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
+                          <p className='break-words'>{productsToText(order.products)}</p>
+                        </td>
+                        <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
+                          {formatShortDate(order.arrivalDate, locale)}
+                        </td>
+                        <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
+                          <span>{Number(order.versement || 0).toFixed(2)}</span>
+                        </td>
+                        <td className='px-3 py-3 text-right text-[var(--muted)] sm:px-5'>
+                          {commentsCount > 0 ? (
+                            <span className='inline-flex min-w-7 justify-center rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-xs font-semibold text-[var(--foreground)]'>
+                              {commentsCount}
+                            </span>
+                          ) : (
+                            <span className='text-xs text-[var(--muted)]'>-</span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </section>
     </section>
   )
 }
-

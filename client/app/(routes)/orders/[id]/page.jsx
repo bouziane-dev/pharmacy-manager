@@ -8,6 +8,13 @@ import { formatShortDate, getCopy } from '@/app/lib/i18n'
 import { useRouteGuard } from '@/app/lib/useRouteGuard'
 import { useSession } from '@/app/providers'
 const digitsOnly = value => value.replace(/\D/g, '')
+const parseProductsInput = value =>
+  String(value || '')
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean)
+const productsToText = products =>
+  Array.isArray(products) ? products.join(', ') : ''
 
 export default function OrderDetailsPage() {
   const { user, isLoading, isBlocked } = useRouteGuard({})
@@ -70,11 +77,13 @@ export default function OrderDetailsPage() {
               />
             </label>
             <label className='text-sm text-[var(--muted)]'>
-              {orderText.fields.productName}
+              {orderText.fields.products}
               <input
-                value={order.productName}
+                value={productsToText(order.products)}
                 onChange={e =>
-                  void updateOrder(order.id, { productName: e.target.value })
+                  void updateOrder(order.id, {
+                    products: parseProductsInput(e.target.value)
+                  })
                 }
                 className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)]'
               />
@@ -87,6 +96,17 @@ export default function OrderDetailsPage() {
                 onChange={e =>
                   void updateOrder(order.id, { arrivalDate: e.target.value })
                 }
+                onFocus={e => {
+                  if (typeof e.currentTarget.showPicker === 'function') {
+                    e.currentTarget.showPicker()
+                  }
+                }}
+                onKeyDown={e => {
+                  if (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Delete') {
+                    e.preventDefault()
+                  }
+                }}
+                onPaste={e => e.preventDefault()}
                 className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)]'
               />
               <p className='mt-1 text-xs text-[var(--muted)]'>
@@ -94,15 +114,19 @@ export default function OrderDetailsPage() {
               </p>
             </label>
             <label className='text-sm text-[var(--muted)]'>
-              {orderText.fields.urgency}
-              <select
-                value={order.urgency}
-                onChange={e => void updateOrder(order.id, { urgency: e.target.value })}
+              {orderText.fields.versement}
+              <input
+                type='number'
+                min='0'
+                step='0.01'
+                value={order.versement ?? 0}
+                onChange={e =>
+                  void updateOrder(order.id, {
+                    versement: Number(e.target.value || 0)
+                  })
+                }
                 className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)]'
-              >
-                <option value='Urgent'>{orderText.urgency.Urgent}</option>
-                <option value='Normal'>{orderText.urgency.Normal}</option>
-              </select>
+              />
             </label>
             <label className='text-sm text-[var(--muted)]'>
               {orderText.columns.status}
@@ -111,9 +135,9 @@ export default function OrderDetailsPage() {
                 onChange={e => void updateOrder(order.id, { status: e.target.value })}
                 className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)]'
               >
-                <option value='Not Yet'>{orderText.status['Not Yet']}</option>
-                <option value='Ordered'>{orderText.status.Ordered}</option>
-                <option value='Arrived'>{orderText.status.Arrived}</option>
+                <option value='pending'>{orderText.status.pending}</option>
+                <option value='ordered'>{orderText.status.ordered}</option>
+                <option value='finished'>{orderText.status.finished}</option>
               </select>
             </label>
           </div>

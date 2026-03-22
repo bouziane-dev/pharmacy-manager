@@ -1,0 +1,72 @@
+const Pharmacy = require("../models/Pharmacy");
+
+const RESERVED_SUBDOMAINS = new Set(["www", "api", "localhost"]);
+
+function stripPort(hostHeader) {
+  return String(hostHeader || "")
+    .trim()
+    .toLowerCase()
+    .split(":")[0];
+}
+
+function extractSubdomain(hostHeader) {
+  const host = stripPort(hostHeader);
+  if (!host) return null;
+
+  const parts = host.split(".").filter(Boolean);
+  if (parts.length >= 3) {
+    return parts[0];
+  }
+
+  if (parts.length === 2 && parts[1] === "localhost") {
+    return parts[0];
+  }
+
+  return null;
+}
+
+function sanitizeSubdomain(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "");
+}
+
+async function resolvePharmacyFromSubdomain(req, res, next) {
+  try {
+    const host = req.headers.host;
+    if (!host) {
+      return res.status(400).json({ error: "Host header is required" });
+    }
+
+    const hostSubdomain = extractSubdomain(host);
+    const headerSubdomain = sanitizeSubdomain(req.headers["x-tenant-subdomain"]);
+    const subdomain = hostSubdomain || headerSubdomain;
+    if (!subdomain || RESERVED_SUBDOMAINS.has(subdomain)) {
+      return res.status(400).json({
+        error: "A valid pharmacy subdomain is required",
+      });
+    }
+
+    const pharmacy = await Pharmacy.findOne({ subdomain }).select(
+      "_id name subdomain ownerId ownerUserId isActive subscriptionStatus"
+    );
+
+    if (!pharmacy) {
+      return res.status(404).json({ error: "Pharmacy not found for subdomain" });
+    }
+
+    if (!pharmacy.isActive) {
+      return res.status(403).json({ error: "Pharmacy is disabled" });
+    }
+
+    req.subdomain = subdomain;
+    req.pharmacy = pharmacy;
+    req.pharmacyId = String(pharmacy._id);
+    return next();
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+}
+
+module.exports = resolvePharmacyFromSubdomain;
