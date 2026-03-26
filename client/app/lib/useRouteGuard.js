@@ -16,8 +16,12 @@ export function isSuperAdminUser(user) {
 export function getHomePathForUser(user) {
   if (!user) return '/auth'
   if (isSuperAdminUser(user)) return '/superadmin'
-  if (!user.onboardingCompleted) return '/onboarding/role'
-  if (user.primaryRole === 'owner' && !user.subscriptionActive) return '/subscription'
+  if (
+    user.primaryRole === 'owner' &&
+    (!user.subscriptionActive || !user.pharmacyId)
+  ) {
+    return '/subscription'
+  }
   return '/dashboard'
 }
 
@@ -60,11 +64,6 @@ export function useRouteGuard({
       return
     }
 
-    if (!user.onboardingCompleted) {
-      router.replace('/onboarding/role')
-      return
-    }
-
     if (
       requireSubscription &&
       user.primaryRole === 'owner' &&
@@ -75,11 +74,12 @@ export function useRouteGuard({
     }
 
     if (requireMembership && !currentWorkspace) {
-      if (user.primaryRole === 'pharmacist') {
-        router.replace('/invitations/pending')
-      } else {
+      if (user.primaryRole === 'owner') {
         router.replace('/subscription')
+      } else {
+        router.replace('/dashboard')
       }
+      return
     }
   }, [
     currentWorkspace,
@@ -102,7 +102,11 @@ export function useRouteGuard({
     !user.subscriptionActive
 
   const missingWorkspace =
-    !!user && !isSuperAdminUser(user) && requireMembership && !currentWorkspace
+    !!user &&
+    !isSuperAdminUser(user) &&
+    requireMembership &&
+    user.primaryRole === 'owner' &&
+    !currentWorkspace
 
   return {
     user,

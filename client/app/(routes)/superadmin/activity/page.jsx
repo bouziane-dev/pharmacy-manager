@@ -15,7 +15,7 @@ const defaultActions = [
   'CREATE_STAFF',
   'RESET_STAFF_PIN',
   'DISABLE_STAFF',
-  'SUPERADMIN_UPDATE_PHARMACY_STATUS'
+  'DELETE_STAFF'
 ]
 
 function formatDateTime(value, locale) {

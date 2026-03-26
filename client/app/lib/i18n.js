@@ -64,7 +64,7 @@ export const i18n = {
     },
     authPage: {
       signIn: 'Sign in',
-      helper: 'Use your Google account to access Pharmacy Manager.',
+      helper: 'Use your Google account to sign in as pharmacy owner.',
       cta: 'Continue with Google',
       loading: 'Signing you in...',
       failed: 'Google sign-in failed. Please try again.'
@@ -72,6 +72,7 @@ export const i18n = {
     topbar: {
       workspace: 'Workspace',
       roleSuperadmin: 'SUPERADMIN',
+      roleOwner: 'OWNER',
       roleAdmin: 'ADMIN',
       roleWorker: 'WORKER',
       confirmSignOutTitle: 'Sign out',
@@ -81,9 +82,13 @@ export const i18n = {
     },
     dashboard: {
       stats: [
-        { id: 'total', label: 'Total Orders', delta: 'Live' },
+        { id: 'finished', label: 'Finished Orders', delta: 'Archived' },
         { id: 'due', label: 'Due Today', delta: 'Need review' },
-        { id: 'arrived', label: 'Arrived', delta: 'Completed' }
+        { id: 'arrived', label: 'Arrived', delta: 'At pharmacy' },
+        { id: 'ordered', label: 'Ordered', delta: 'In progress' },
+        { id: 'waiting', label: 'Waiting', delta: 'Pending' },
+        { id: 'completed', label: 'Completed', delta: 'Arrived + finished' },
+        { id: 'total', label: 'Total', delta: 'All orders' }
       ]
     },
     invitations: {
@@ -158,6 +163,7 @@ export const i18n = {
       remindersText:
         'This order reached its planned date. Update the current status.',
       reminderActions: {
+        arrived: 'Arrived',
         finished: 'Finished',
         ordered: 'Ordered',
         pending: 'Pending'
@@ -181,6 +187,7 @@ export const i18n = {
       status: {
         pending: 'Pending',
         ordered: 'Ordered',
+        arrived: 'Arrived',
         finished: 'Finished'
       },
       commentPlaceholder: 'Add a comment',
@@ -224,20 +231,27 @@ export const i18n = {
       active: 'Active'
     },
     subscription: {
-      required: 'Subscription Required',
-      unlock: 'Activate a plan to unlock admin features',
+      setupLabel: 'Owner Setup',
+      setupTitle: 'Create your pharmacy dashboard',
+      setupText:
+        'Set any dashboard name you want, then pick a unique slug for your future link.',
       signedInAs: 'Signed in as',
-      mockBilling: 'This is an MVP placeholder flow for billing.',
-      upTo5Workers: 'Up to 5 workers',
-      upTo15Workers: 'Up to 15 workers',
-      features: ['Orders dashboard', 'Agenda drag and drop', 'Team management'],
-      choose: 'Choose',
-      active: 'Subscription Active',
-      nextStepLabel: 'Step 2',
-      pharmacyTitle: 'Create your pharmacy',
-      pharmacyText: 'Set a pharmacy dashboard name to complete owner onboarding.',
-      pharmacyPlaceholder: 'My Pharmacy',
-      createPharmacy: 'Create Pharmacy'
+      dashboardNameLabel: 'Dashboard name',
+      dashboardNamePlaceholder: 'My Pharmacy',
+      dashboardNameHint: 'This can be any name. You can change it later.',
+      dashboardNameRequired: 'Dashboard name is required.',
+      slugLabel: 'Unique slug',
+      slugPlaceholder: 'my-pharmacy',
+      slugHint: 'This will be your pharmacy link.',
+      slugInvalid:
+        'Use lowercase letters, numbers, and hyphens only. Start and end with a letter or number.',
+      slugChecking: 'Checking slug availability...',
+      slugAvailable: 'Slug is available.',
+      slugTaken: 'Slug is already used.',
+      slugCheckError: 'Could not verify slug right now. Please retry.',
+      slugTakenError: 'Please choose an available slug before continuing.',
+      creating: 'Creating...',
+      createPharmacy: 'Create Dashboard'
     },
     subscriptionPreview: {
       mode: 'Preview Mode',
@@ -280,7 +294,7 @@ export const i18n = {
     },
     authPage: {
       signIn: 'Connexion',
-      helper: 'Utilisez votre compte Google pour accéder à Pharmacy Manager.',
+      helper: 'Utilisez votre compte Google pour vous connecter en tant que propriétaire.',
       cta: 'Continuer avec Google',
       loading: 'Connexion en cours...',
       failed: 'Échec de la connexion Google. Veuillez réessayer.'
@@ -288,18 +302,23 @@ export const i18n = {
     topbar: {
       workspace: 'Espace',
       roleSuperadmin: 'SUPERADMIN',
+      roleOwner: 'PROPRIÉTAIRE',
       roleAdmin: 'ADMIN',
       roleWorker: 'PHARMACIEN',
-      confirmSignOutTitle: 'Deconnexion',
+      confirmSignOutTitle: 'Déconnexion',
       confirmSignOut: 'Voulez-vous vraiment vous déconnecter ?',
-      confirmYes: 'Se deconnecter',
+      confirmYes: 'Se déconnecter',
       confirmNo: 'Annuler'
     },
     dashboard: {
       stats: [
-        { id: 'total', label: 'Total des commandes', delta: 'En direct' },
+        { id: 'finished', label: 'Commandes terminées', delta: 'Archivées' },
         { id: 'due', label: 'À traiter aujourd’hui', delta: 'À vérifier' },
-        { id: 'arrived', label: 'Arrivées', delta: 'Finalisées' }
+        { id: 'arrived', label: 'Arrivées', delta: 'En pharmacie' },
+        { id: 'ordered', label: 'Commandées', delta: 'En cours' },
+        { id: 'waiting', label: 'En attente', delta: 'À traiter' },
+        { id: 'completed', label: 'Complétées', delta: 'Arrivées + terminées' },
+        { id: 'total', label: 'Total', delta: 'Toutes les commandes' }
       ]
     },
     invitations: {
@@ -362,7 +381,7 @@ export const i18n = {
         patientNameRequired: 'Le nom du patient est requis.',
         phoneRequired: 'Le telephone est requis.',
         productsRequired: 'Au moins un produit est requis.',
-        arrivalDateRequired: "La date d'arrivee estimee est requise.",
+        arrivalDateRequired: "La date d'arrivée estimée est requise.",
         versementInvalid: 'Le versement doit etre un nombre positif ou zero.'
       },
       addButton: 'Ajouter',
@@ -374,6 +393,7 @@ export const i18n = {
       remindersText:
         'Cette commande a atteint sa date prévue. Mettez à jour son statut.',
       reminderActions: {
+        arrived: 'Arrivée',
         finished: 'Terminée',
         ordered: 'Commandée',
         pending: 'En attente'
@@ -397,6 +417,7 @@ export const i18n = {
       status: {
         pending: 'En attente',
         ordered: 'Commandée',
+        arrived: 'Arrivée',
         finished: 'Terminée'
       },
       commentPlaceholder: 'Ajouter un commentaire',
@@ -440,25 +461,27 @@ export const i18n = {
       active: 'Actif'
     },
     subscription: {
-      required: 'Abonnement requis',
-      unlock: 'Activez un plan pour débloquer les fonctionnalités administrateur',
+      setupLabel: 'Configuration propriétaire',
+      setupTitle: 'Créez votre tableau de bord pharmacie',
+      setupText:
+        'Choisissez le nom du tableau de bord que vous voulez, puis un slug unique pour votre lien.',
       signedInAs: 'Connecté en tant que',
-      mockBilling: 'Ceci est un flux MVP temporaire pour la facturation.',
-      upTo5Workers: 'Jusqu’à 5 membres',
-      upTo15Workers: 'Jusqu’à 15 membres',
-      features: [
-        'Tableau des commandes',
-        'Agenda avec glisser-déposer',
-        'Gestion de l’équipe'
-      ],
-      choose: 'Choisir',
-      active: 'Abonnement actif',
-      nextStepLabel: 'Etape 2',
-      pharmacyTitle: 'Créez votre pharmacie',
-      pharmacyText:
-        'Définissez le nom du tableau de bord de votre pharmacie pour terminer l’intégration propriétaire.',
-      pharmacyPlaceholder: 'Ma Pharmacie',
-      createPharmacy: 'Créer la pharmacie'
+      dashboardNameLabel: 'Nom du tableau de bord',
+      dashboardNamePlaceholder: 'Ma Pharmacie',
+      dashboardNameHint: 'Le nom est libre. Vous pouvez le changer plus tard.',
+      dashboardNameRequired: 'Le nom du tableau de bord est requis.',
+      slugLabel: 'Slug unique',
+      slugPlaceholder: 'ma-pharmacie',
+      slugHint: 'Ce slug formera votre lien pharmacie.',
+      slugInvalid:
+        'Utilisez seulement lettres minuscules, chiffres et tirets. Commencez et terminez par lettre ou chiffre.',
+      slugChecking: 'Vérification de disponibilité du slug...',
+      slugAvailable: 'Slug disponible.',
+      slugTaken: 'Slug déjà utilisé.',
+      slugCheckError: 'Vérification impossible pour le moment. Réessayez.',
+      slugTakenError: 'Choisissez un slug disponible avant de continuer.',
+      creating: 'Creation...',
+      createPharmacy: 'Créer le tableau de bord'
     },
     subscriptionPreview: {
       mode: 'Mode aperçu',

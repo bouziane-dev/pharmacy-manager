@@ -6,8 +6,8 @@ const orderController = require("../controllers/orderController");
 
 const router = express.Router();
 
-router.use(resolvePharmacyFromSubdomain);
 router.use(requireAuth);
+router.use(resolvePharmacyFromSubdomain);
 router.use(requirePharmacyAccess(["owner", "staff"]));
 
 router.get("/", orderController.listOrders);

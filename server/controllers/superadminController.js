@@ -75,7 +75,9 @@ async function listPharmacies(req, res) {
     const sortOrder = normalizeSortOrder(req.query.sort);
     const searchTerm = cleanString(req.query.search);
 
-    const query = {};
+    const query = {
+      action: { $not: /^SUPERADMIN_/ },
+    };
     if (searchTerm) {
       const regex = new RegExp(escapeRegex(searchTerm), "i");
       query.$or = [{ name: regex }, { subdomain: regex }];
@@ -299,6 +301,9 @@ async function listGlobalActivityLogs(req, res) {
 
     const action = cleanSingleLine(req.query.action);
     if (action) {
+      if (action.toUpperCase().startsWith("SUPERADMIN_")) {
+        return res.status(400).json({ error: "Invalid action filter" });
+      }
       query.action = action;
     }
 

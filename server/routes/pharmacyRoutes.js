@@ -4,6 +4,11 @@ const pharmacyController = require("../controllers/pharmacyController");
 
 const router = express.Router();
 
+router.get(
+  "/check-subdomain",
+  requireAuth,
+  pharmacyController.checkSubdomainAvailability
+);
 router.post("/create", requireAuth, pharmacyController.createPharmacy);
 
 module.exports = router;

@@ -154,6 +154,9 @@ router.get("/google/callback", (req, res, next) => {
           user.pharmacyId = ownedPharmacy._id;
         }
         user.role = "owner";
+        user.primaryRole = "owner";
+        user.onboardingCompleted = true;
+        user.subscriptionActive = true;
       } else {
         user.role = "superadmin";
         user.primaryRole = "superadmin";
@@ -258,7 +261,7 @@ router.post(
       }
 
       if (!isValidPin(pin)) {
-        return res.status(400).json({ error: "PIN must be exactly 4 digits" });
+        return res.status(400).json({ error: "PIN must be between 2 and 6 digits" });
       }
 
       const user = await User.findOne({

@@ -9,7 +9,6 @@ import {
   ClipboardList,
   CreditCard,
   FileClock,
-  Inbox,
   LayoutDashboard,
   Users
 } from 'lucide-react'
@@ -20,16 +19,9 @@ const tenantNavItems = [
   { key: 'dashboard', href: '/dashboard', icon: LayoutDashboard, adminOnly: false },
   { key: 'orders', href: '/orders', icon: ClipboardList, adminOnly: false },
   { key: 'agenda', href: '/agenda', icon: CalendarDays, adminOnly: false },
-  {
-    key: 'pendingInvitations',
-    href: '/invitations/pending',
-    icon: Inbox,
-    adminOnly: false,
-    pharmacistOnly: true
-  },
   { key: 'activity', href: '/admin/activity', icon: Activity, adminOnly: true },
   { key: 'users', href: '/users', icon: Users, adminOnly: true },
-  { key: 'subscription', href: '/subscription', icon: CreditCard, adminOnly: true }
+  { key: 'subscription', href: '/subscription', icon: CreditCard, ownerOnly: true }
 ]
 
 const superAdminNavItems = [
@@ -56,12 +48,13 @@ const superAdminNavItems = [
 
 export default function Sidebar({ open, collapsed, setOpen }) {
   const pathname = usePathname()
-  const { user, locale, currentWorkspace } = useSession()
+  const { user, locale } = useSession()
   const t = getCopy(locale)
   const isSuperAdmin =
     user?.role === 'superadmin' ||
     user?.accountRole === 'superadmin' ||
     user?.primaryRole === 'superadmin'
+  const isOwner = user?.accountRole === 'owner' || user?.primaryRole === 'owner'
 
   const navItems = isSuperAdmin ? superAdminNavItems : tenantNavItems
 
@@ -70,16 +63,9 @@ export default function Sidebar({ open, collapsed, setOpen }) {
       if (isSuperAdmin) return true
       return (
         (!item.adminOnly || user?.role === 'admin') &&
-        (!item.pharmacistOnly || user?.role === 'worker')
+        (!item.pharmacistOnly || user?.role === 'worker') &&
+        (!item.ownerOnly || isOwner)
       )
-    })
-    .filter(item => {
-      if (isSuperAdmin) return true
-      // Pharmacists without any workspace can only access invitations.
-      if (user?.role === 'worker' && !currentWorkspace) {
-        return item.href === '/invitations/pending'
-      }
-      return true
     })
 
   return (

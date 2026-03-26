@@ -16,6 +16,7 @@ const orderRoutes = require("./routes/orderRoutes");
 const staffRoutes = require("./routes/staffRoutes");
 const activityLogsRoutes = require("./routes/activityLogs");
 const superadminRoutes = require("./routes/superadmin");
+const User = require("./models/User");
 
 const app = express();
 
@@ -61,12 +62,23 @@ function collectAllowedOrigins(...rawValues) {
   return Array.from(origins);
 }
 
+function isAllowedLocalhostOrigin(candidateOrigin) {
+  try {
+    const parsedOrigin = new URL(candidateOrigin);
+    const protocol = String(parsedOrigin.protocol || "").toLowerCase();
+    const hostname = String(parsedOrigin.hostname || "").toLowerCase();
+    return protocol === "http:" && (hostname === "localhost" || hostname.endsWith(".localhost"));
+  } catch (_error) {
+    return false;
+  }
+}
+
 const trustProxy = resolveTrustProxy(process.env.TRUST_PROXY);
 const corsOrigins = collectAllowedOrigins(
   process.env.FRONTEND_ORIGIN,
   process.env.FRONTEND_AUTH_SUCCESS_URL,
   process.env.FRONTEND_AUTH_FAILURE_URL,
-  process.env.FRONTEND_ONBOARDING_URL
+  process.env.FRONTEND_ONBOARDING_URL,
 );
 
 if (isAuthDebugEnabled()) {
@@ -90,21 +102,24 @@ const corsOptions =
             return callback(null, true);
           }
 
+          // Local tenant URLs like http://test1.localhost:3000
+          if (isAllowedLocalhostOrigin(origin)) {
+            return callback(null, true);
+          }
+
           if (isAuthDebugEnabled()) {
             console.warn(`[cors] Blocked origin: ${origin}`);
           }
           return callback(new Error("Not allowed by CORS"));
         },
         methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Authorization", "Content-Type"],
+        allowedHeaders: ["Authorization", "Content-Type", "X-Tenant-Subdomain"],
         credentials: false,
         maxAge: 86_400,
       }
     : {};
 
-app.use(
-  cors(corsOptions)
-);
+app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 app.use(securityHeaders);
 app.use(simpleRateLimit({ windowMs: 60_000, max: 300 }));
@@ -147,7 +162,7 @@ app.use((error, req, res, next) => {
 const requiredServerEnv = ["MONGO_URI", "PORT", "JWT_SECRET"];
 const missingServerEnv = requiredServerEnv.filter((name) => !process.env[name]);
 const placeholderServerEnv = requiredServerEnv.filter((name) =>
-  String(process.env[name]).startsWith("replace-with-")
+  String(process.env[name]).startsWith("replace-with-"),
 );
 
 if (missingServerEnv.length > 0 || placeholderServerEnv.length > 0) {
@@ -155,13 +170,49 @@ if (missingServerEnv.length > 0 || placeholderServerEnv.length > 0) {
     `Invalid server environment variable(s): ${[
       ...missingServerEnv,
       ...placeholderServerEnv,
-    ].join(", ")}`
+    ].join(", ")}`,
+  );
+}
+
+function hasExpectedPartialStringFilter(indexSpec, fieldName) {
+  const filter = indexSpec?.partialFilterExpression?.[fieldName];
+  return (
+    filter &&
+    typeof filter === "object" &&
+    filter.$exists === true &&
+    filter.$type === "string"
+  );
+}
+
+async function ensureUniqueStringIndex(indexName, fieldName) {
+  const indexes = await User.collection.indexes();
+  const existingIndex = indexes.find((index) => index.name === indexName);
+  const hasExpectedFilter = hasExpectedPartialStringFilter(
+    existingIndex,
+    fieldName,
+  );
+
+  if (existingIndex && !hasExpectedFilter) {
+    await User.collection.dropIndex(indexName);
+  }
+
+  await User.collection.createIndex(
+    { [fieldName]: 1 },
+    {
+      name: indexName,
+      unique: true,
+      partialFilterExpression: {
+        [fieldName]: { $exists: true, $type: "string" },
+      },
+    },
   );
 }
 
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => {
+  .then(async () => {
+    await ensureUniqueStringIndex("googleId_1", "googleId");
+    await ensureUniqueStringIndex("email_1", "email");
     app.listen(process.env.PORT, () => {
       console.log(`Server listening on port ${process.env.PORT}`);
     });
@@ -170,3 +221,4 @@ mongoose
     console.error("MongoDB connection failed:", error.message);
     process.exit(1);
   });
+

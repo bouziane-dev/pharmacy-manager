@@ -42,10 +42,9 @@ async function createPharmacy(req, res) {
         .json({ error: "Only owners can create a pharmacy workspace" });
     }
 
+    // Billing plans are not enabled yet. Treat owner setup as subscription-active.
     if (!user.subscriptionActive) {
-      return res.status(403).json({
-        error: "An active subscription is required before pharmacy creation",
-      });
+      user.subscriptionActive = true;
     }
 
     if (user.pharmacyId) {
@@ -104,6 +103,31 @@ async function createPharmacy(req, res) {
   }
 }
 
+async function checkSubdomainAvailability(req, res) {
+  try {
+    const normalizedSubdomain = normalizeSubdomain(req.query.subdomain);
+
+    if (!normalizedSubdomain || !SUBDOMAIN_PATTERN.test(normalizedSubdomain)) {
+      return res.status(400).json({
+        error:
+          "Subdomain is required and must contain only lowercase letters, digits, and hyphens",
+      });
+    }
+
+    const existingSubdomain = await Pharmacy.findOne({
+      subdomain: normalizedSubdomain,
+    }).select("_id");
+
+    return res.status(200).json({
+      subdomain: normalizedSubdomain,
+      available: !existingSubdomain,
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+}
+
 module.exports = {
   createPharmacy,
+  checkSubdomainAvailability,
 };

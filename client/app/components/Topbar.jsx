@@ -1,7 +1,10 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import {
+  ArrowRightLeft,
   Globe,
+  KeyRound,
   LogOut,
   Menu,
   Moon,
@@ -26,21 +29,69 @@ export default function Topbar({
     user,
     logout,
     showConfirmToast,
-    currentWorkspace,
-    userWorkspaces,
-    setActiveWorkspace
+    fetchStaffLoginUsers,
+    loginWithPin
   } = useSession()
   const t = getCopy(locale)
   const isSuperAdmin =
     user?.role === 'superadmin' ||
     user?.accountRole === 'superadmin' ||
     user?.primaryRole === 'superadmin'
+  const isOwner =
+    user?.accountRole === 'owner' ||
+    user?.primaryRole === 'owner'
+  const isStaffAdmin =
+    user?.accountRole === 'staff' && user?.staffRole === 'admin'
   const roleLabel =
     isSuperAdmin
       ? t.topbar.roleSuperadmin
-      : user?.role === 'admin'
+      : isOwner
+        ? t.topbar.roleOwner
+        : isStaffAdmin
         ? t.topbar.roleAdmin
         : t.topbar.roleWorker
+  const showStaffSwitcher = user?.accountRole === 'staff'
+  const [staffUsers, setStaffUsers] = useState([])
+  const [selectedStaffUserId, setSelectedStaffUserId] = useState('')
+  const [staffPin, setStaffPin] = useState('')
+  const [switchError, setSwitchError] = useState('')
+  const [isSwitching, setIsSwitching] = useState(false)
+  const currentUserId = String(user?.id || '')
+  const isCurrentSelection =
+    !!selectedStaffUserId && String(selectedStaffUserId) === currentUserId
+
+  useEffect(() => {
+    if (!showStaffSwitcher) {
+      setStaffUsers([])
+      setSelectedStaffUserId('')
+      setStaffPin('')
+      setSwitchError('')
+      return
+    }
+
+    let cancelled = false
+    ;(async () => {
+      const users = await fetchStaffLoginUsers()
+      if (cancelled) return
+      const nextUsers = users || []
+      setStaffUsers(nextUsers)
+      setSelectedStaffUserId(prev => {
+        const hasCurrentUser = nextUsers.some(
+          item => String(item.id || '') === currentUserId
+        )
+        if (hasCurrentUser) return currentUserId
+        const hasPreviousSelection = nextUsers.some(
+          item => String(item.id || '') === String(prev || '')
+        )
+        if (hasPreviousSelection) return prev
+        return nextUsers[0]?.id || ''
+      })
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [currentUserId, fetchStaffLoginUsers, showStaffSwitcher])
 
   function handleLogout() {
     showConfirmToast({
@@ -52,6 +103,26 @@ export default function Topbar({
         logout()
       }
     })
+  }
+
+  async function handleStaffSwitchSubmit(event) {
+    event.preventDefault()
+    if (!selectedStaffUserId || staffPin.length < 2 || staffPin.length > 6) return
+
+    try {
+      setIsSwitching(true)
+      setSwitchError('')
+      await loginWithPin(selectedStaffUserId, staffPin)
+      setStaffPin('')
+    } catch (_error) {
+      setSwitchError(
+        locale === 'fr'
+          ? 'PIN incorrect. Réessayez.'
+          : 'Incorrect PIN. Please try again.'
+      )
+    } finally {
+      setIsSwitching(false)
+    }
   }
 
   return (
@@ -76,26 +147,69 @@ export default function Topbar({
         </div>
 
         <div className='flex items-center gap-2 sm:gap-3'>
-          {userWorkspaces?.length > 0 && (
-            <label className='hidden items-center gap-2 text-xs text-[var(--muted)] lg:flex'>
-              {t.topbar.workspace}
+          {showStaffSwitcher && (
+            <form
+              onSubmit={handleStaffSwitchSubmit}
+              className='hidden items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-soft)]/80 px-2 py-1.5 lg:flex'
+            >
+              <span className='inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]'>
+                <ArrowRightLeft size={12} />
+                {locale === 'fr' ? 'Profil équipe' : 'Staff profile'}
+              </span>
               <select
-                value={currentWorkspace?.id || ''}
-                onChange={e => setActiveWorkspace(e.target.value)}
-                className='rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs text-[var(--foreground)]'
+                value={selectedStaffUserId}
+                onChange={event => {
+                  setSelectedStaffUserId(event.target.value)
+                  setSwitchError('')
+                }}
+                className='min-w-36 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 text-xs font-medium text-[var(--foreground)] outline-none ring-emerald-400/40 transition focus:ring'
               >
-                {userWorkspaces.map(workspace => (
-                  <option key={workspace.id} value={workspace.id}>
-                    {workspace.name}
+                <option value=''>
+                  {locale === 'fr' ? 'Sélectionner un profil' : 'Select profile'}
+                </option>
+                {staffUsers.map(item => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
                   </option>
                 ))}
               </select>
-            </label>
+              <input
+                value={staffPin}
+                onChange={event =>
+                  setStaffPin(event.target.value.replace(/\D/g, '').slice(0, 6))
+                }
+                placeholder={locale === 'fr' ? 'PIN (2-6)' : 'PIN (2-6)'}
+                className='w-24 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 text-xs text-[var(--foreground)] outline-none ring-emerald-400/40 transition focus:ring'
+              />
+              <button
+                type='submit'
+                disabled={
+                  isSwitching ||
+                  !selectedStaffUserId ||
+                  isCurrentSelection ||
+                  staffPin.length < 2 ||
+                  staffPin.length > 6
+                }
+                className='inline-flex items-center gap-1 rounded-lg bg-[linear-gradient(90deg,#059669,#0284c7)] px-3 py-1.5 text-xs font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-55'
+              >
+                <KeyRound size={12} />
+                {isCurrentSelection
+                  ? locale === 'fr'
+                    ? 'Actuel'
+                    : 'Current'
+                  : locale === 'fr'
+                    ? 'Changer'
+                    : 'Switch'}
+              </button>
+            </form>
           )}
 
           <div className='hidden text-right sm:block'>
             <p className='text-sm font-medium text-[var(--foreground)]'>{user?.name}</p>
             <p className='text-xs uppercase text-[var(--muted)]'>{roleLabel}</p>
+            {showStaffSwitcher && switchError && (
+              <p className='text-[10px] normal-case text-red-500'>{switchError}</p>
+            )}
           </div>
 
           <button

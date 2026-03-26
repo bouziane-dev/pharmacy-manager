@@ -69,14 +69,14 @@ function AuthContent() {
     []
   )
 
-  function getPostAuthPath(nextUser, onboardingRequired) {
+  function getPostAuthPath(nextUser) {
     if (nextUser.role === 'superadmin' || nextUser.accountRole === 'superadmin') {
       return '/superadmin'
     }
-    if (onboardingRequired || !nextUser.onboardingCompleted) {
-      return '/onboarding/role'
-    }
-    if (nextUser.primaryRole === 'owner' && !nextUser.subscriptionActive) {
+    if (
+      nextUser.primaryRole === 'owner' &&
+      (!nextUser.subscriptionActive || !nextUser.pharmacyId)
+    ) {
       return '/subscription'
     }
     return '/dashboard'
@@ -84,7 +84,7 @@ function AuthContent() {
 
   useEffect(() => {
     if (user) {
-      router.replace(getPostAuthPath(user, false))
+      router.replace(getPostAuthPath(user))
     }
   }, [router, user])
 
@@ -119,8 +119,6 @@ function AuthContent() {
     const token = searchParams.get('token')
     const encodedUser = searchParams.get('user')
     const authError = searchParams.get('error')
-    const onboardingRequired = searchParams.get('onboardingRequired') === 'true'
-
     if (authError) {
       setIsLoading(false)
       setErrorMessage(t.failed)
@@ -165,7 +163,7 @@ function AuthContent() {
         pharmacyId: parsedUser.pharmacyId || null
       }
       login(nextUser, token)
-      router.replace(getPostAuthPath(nextUser, onboardingRequired))
+      router.replace(getPostAuthPath(nextUser))
     } catch (_error) {
       hasProcessedCallback.current = false
       setIsLoading(false)
@@ -229,7 +227,7 @@ function AuthContent() {
         <h1 className='mt-2 text-2xl font-semibold text-[var(--foreground)]'>{t.signIn}</h1>
         <p className='mt-1 text-sm text-[var(--muted)]'>
           {isTenantHost
-            ? 'Select a staff profile and enter PIN, or sign in as owner with Google.'
+            ? 'Staff accounts are created by the owner. Select a staff profile and enter PIN, or sign in as owner with Google.'
             : t.helper}
         </p>
 
@@ -253,25 +251,27 @@ function AuthContent() {
               {staffUsers.length === 0 && <option value=''>No staff profile available</option>}
               {staffUsers.map(item => (
                 <option key={item.id} value={item.id}>
-                  {item.name} ({item.role})
+                  {item.name}
                 </option>
               ))}
             </select>
             <input
               type='password'
               inputMode='numeric'
-              pattern='[0-9]{4}'
-              maxLength={4}
+              pattern='[0-9]{2,6}'
+              maxLength={6}
               value={staffPin}
               onChange={event =>
-                setStaffPin(event.target.value.replace(/\D/g, '').slice(0, 4))
+                setStaffPin(event.target.value.replace(/\D/g, '').slice(0, 6))
               }
-              placeholder='4-digit PIN'
+              placeholder='PIN (2-6 digits)'
               className='w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/50 transition focus:ring'
             />
             <button
               type='submit'
-              disabled={isStaffLoading || !selectedUserId || staffPin.length !== 4}
+              disabled={
+                isStaffLoading || !selectedUserId || staffPin.length < 2 || staffPin.length > 6
+              }
               className='flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-cyan-500 disabled:opacity-50'
             >
               <UserRound size={16} />

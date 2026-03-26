@@ -14,8 +14,37 @@ const DEFAULT_ACTION_OPTIONS = [
   'ADD_ORDER_COMMENT',
   'CREATE_STAFF',
   'RESET_STAFF_PIN',
-  'DISABLE_STAFF'
+  'DISABLE_STAFF',
+  'DELETE_STAFF'
 ]
+
+function getActionLabel(action, locale) {
+  const labels = locale === 'fr'
+    ? {
+        CREATE_ORDER: 'Creation commande',
+        UPDATE_STATUS: 'Mise a jour statut',
+        UPDATE_ORDER: 'Modification commande',
+        DELETE_ORDER: 'Suppression commande',
+        ADD_ORDER_COMMENT: 'Ajout commentaire',
+        CREATE_STAFF: 'Ajout membre',
+        RESET_STAFF_PIN: 'Reinitialisation PIN',
+        DELETE_STAFF: 'Suppression membre',
+        PIN_LOGIN: 'Connexion PIN'
+      }
+    : {
+        CREATE_ORDER: 'Order created',
+        UPDATE_STATUS: 'Status updated',
+        UPDATE_ORDER: 'Order updated',
+        DELETE_ORDER: 'Order deleted',
+        ADD_ORDER_COMMENT: 'Comment added',
+        CREATE_STAFF: 'Staff created',
+        RESET_STAFF_PIN: 'PIN reset',
+        DELETE_STAFF: 'Staff deleted',
+        PIN_LOGIN: 'PIN login'
+      }
+
+  return labels[action] || action
+}
 
 function formatLogDate(dateValue, locale) {
   if (!dateValue) return '-'
@@ -152,7 +181,7 @@ export default function ActivityLogsPage() {
           </h2>
           <p className='mt-2 text-sm text-[var(--muted)]'>
             {locale === 'fr'
-              ? "Suivez les actions recentes de l'equipe avec filtres."
+              ? "Suivez les actions récentes de l'équipe avec filtres."
               : 'Review recent staff actions with filters.'}
           </p>
           {errorMessage && (
@@ -195,7 +224,7 @@ export default function ActivityLogsPage() {
                 <option value=''>{locale === 'fr' ? 'Toutes' : 'All actions'}</option>
                 {actionOptions.map(action => (
                   <option key={action} value={action}>
-                    {action}
+                    {getActionLabel(action, locale)}
                   </option>
                 ))}
               </select>
@@ -262,7 +291,7 @@ export default function ActivityLogsPage() {
                     </td>
                     <td className='px-4 py-3'>
                       <span className='rounded-full bg-cyan-500/10 px-2.5 py-1 text-xs font-semibold text-cyan-700 dark:bg-cyan-400/20 dark:text-cyan-300'>
-                        {log.action}
+                        {getActionLabel(log.action, locale)}
                       </span>
                     </td>
                     <td className='px-4 py-3 text-[var(--foreground)]'>{log.description}</td>

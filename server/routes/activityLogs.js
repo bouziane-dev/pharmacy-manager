@@ -38,8 +38,8 @@ function requireOwnerOrAdmin(req, res, next) {
   return next();
 }
 
-router.use(resolvePharmacyFromSubdomain);
 router.use(requireAuth);
+router.use(resolvePharmacyFromSubdomain);
 router.use(requirePharmacyAccess(["owner", "staff"]));
 router.use(requireOwnerOrAdmin);
 
@@ -53,6 +53,7 @@ router.get(
       const skip = (page - 1) * limit;
 
       const query = { pharmacyId: req.pharmacyId };
+      query.action = { $not: /^SUPERADMIN_/ };
 
       const userId = cleanString(req.query.userId);
       if (userId) {
@@ -64,6 +65,9 @@ router.get(
 
       const action = cleanSingleLine(req.query.action);
       if (action) {
+        if (action.toUpperCase().startsWith("SUPERADMIN_")) {
+          return res.status(400).json({ error: "Invalid action filter" });
+        }
         query.action = action;
       }
 

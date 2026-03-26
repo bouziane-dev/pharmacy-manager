@@ -1,17 +1,44 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { useSession } from '@/app/providers'
 import { getCopy } from '@/app/lib/i18n'
 
+function getReadableActionLabel(action, locale) {
+  const labels =
+    locale === 'fr'
+      ? {
+          CREATE_STAFF: 'Ajout membre',
+          RESET_STAFF_PIN: 'Reinitialisation PIN',
+          DELETE_STAFF: 'Suppression membre',
+          CREATE_ORDER: 'Creation commande',
+          UPDATE_ORDER: 'Modification commande',
+          UPDATE_STATUS: 'Mise a jour statut',
+          DELETE_ORDER: 'Suppression commande',
+          ADD_ORDER_COMMENT: 'Ajout commentaire',
+          PIN_LOGIN: 'Connexion PIN',
+          UPDATE_STAFF_ROLE: 'Rôle staff modifié'
+        }
+      : {
+          CREATE_STAFF: 'Staff created',
+          RESET_STAFF_PIN: 'PIN reset',
+          DELETE_STAFF: 'Staff deleted',
+          CREATE_ORDER: 'Order created',
+          UPDATE_ORDER: 'Order updated',
+          UPDATE_STATUS: 'Status updated',
+          DELETE_ORDER: 'Order deleted',
+          ADD_ORDER_COMMENT: 'Comment added',
+          PIN_LOGIN: 'PIN login',
+          UPDATE_STAFF_ROLE: 'Staff role updated'
+        }
+
+  return labels[action] || action
+}
+
 export default function UsersTable() {
-  const router = useRouter()
   const [name, setName] = useState('')
-  const [role, setRole] = useState('staff')
+  const [role, setRole] = useState('pharmacist')
   const [pin, setPin] = useState('')
-  const [switchUserId, setSwitchUserId] = useState('')
-  const [switchPin, setSwitchPin] = useState('')
   const [staff, setStaff] = useState([])
   const [activityLogs, setActivityLogs] = useState([])
   const [isLoading, setIsLoading] = useState(false)
@@ -19,14 +46,25 @@ export default function UsersTable() {
   const [issuedPin, setIssuedPin] = useState('')
   const {
     locale,
+    user,
     listStaffMembers,
     addStaffMember,
     resetStaffMemberPin,
-    disableStaffMember,
-    loginWithPin,
+    updateStaffMemberRole,
+    deleteStaffMember,
     fetchActivityLogs
   } = useSession()
   const t = getCopy(locale).users
+  const generalActionError =
+    locale === 'fr'
+      ? "Une erreur s'est produite. Veuillez réessayer."
+      : 'Something went wrong. Please try again.'
+  const duplicatePinErrorMessage =
+    locale === 'fr'
+      ? 'Ce code PIN est déjà utilisé. Choisissez un autre PIN.'
+      : 'This PIN is already in use. Please choose another PIN.'
+  const canManageStaffRoles =
+    user?.accountRole === 'owner' || user?.primaryRole === 'owner'
 
   async function refreshData() {
     try {
@@ -37,10 +75,9 @@ export default function UsersTable() {
         fetchActivityLogs({ page: 1, limit: 20 }).catch(() => ({ logs: [] }))
       ])
       setStaff(staffRows)
-      setSwitchUserId(prev => prev || staffRows.find(item => item.isActive)?.id || '')
       setActivityLogs(activityResult.logs || [])
     } catch (error) {
-      setErrorMessage(error.message)
+      setErrorMessage(generalActionError)
     } finally {
       setIsLoading(false)
     }
@@ -50,66 +87,94 @@ export default function UsersTable() {
     refreshData()
   }, [])
 
-  const activeStaff = useMemo(
-    () => staff.filter(item => item.isActive),
-    [staff]
-  )
-
   async function handleCreateStaff() {
     try {
       setIsLoading(true)
       setErrorMessage('')
+      setIssuedPin('')
       const result = await addStaffMember({
         name,
         role,
-        pin: pin.trim() || undefined
+        pin: pin.trim()
       })
       setIssuedPin(result.pin || '')
       setName('')
       setPin('')
       await refreshData()
     } catch (error) {
-      setErrorMessage(error.message)
+      const rawMessage = String(error?.message || '').toLowerCase()
+      if (
+        rawMessage.includes('pin') &&
+        (rawMessage.includes('already') || rawMessage.includes('used'))
+      ) {
+        setErrorMessage(duplicatePinErrorMessage)
+      } else if (rawMessage.includes('pin')) {
+        setErrorMessage(
+          locale === 'fr'
+            ? 'PIN invalide. Utilisez 2 à 6 chiffres.'
+            : 'Invalid PIN. Use 2 to 6 digits.'
+        )
+      } else {
+        setErrorMessage(generalActionError)
+      }
       setIsLoading(false)
     }
   }
 
   async function handleResetPin(staffId) {
+    const manualPinInput = window.prompt(
+      'Enter new PIN (2-6 digits). Leave empty to auto-generate.'
+    )
+    if (manualPinInput === null) return
+    const normalizedPin = manualPinInput.replace(/\D/g, '').slice(0, 6)
+    if (normalizedPin && (normalizedPin.length < 2 || normalizedPin.length > 6)) {
+      setErrorMessage('PIN must be between 2 and 6 digits')
+      return
+    }
+
     try {
       setIsLoading(true)
       setErrorMessage('')
-      const result = await resetStaffMemberPin(staffId)
-      setIssuedPin(result.pin || '')
+      await resetStaffMemberPin(staffId, normalizedPin)
+      setIssuedPin('')
       await refreshData()
     } catch (error) {
-      setErrorMessage(error.message)
+      if (String(error?.message || '').toLowerCase().includes('pin')) {
+        setErrorMessage(
+          locale === 'fr'
+            ? 'PIN invalide. Utilisez 2 à 6 chiffres.'
+            : 'Invalid PIN. Use 2 to 6 digits.'
+        )
+      } else {
+        setErrorMessage(generalActionError)
+      }
       setIsLoading(false)
     }
   }
 
-  async function handleDisable(staffId) {
+  async function handleDelete(staffId) {
     try {
       setIsLoading(true)
       setErrorMessage('')
-      await disableStaffMember(staffId)
+      await deleteStaffMember(staffId)
       await refreshData()
     } catch (error) {
-      setErrorMessage(error.message)
+      setErrorMessage(generalActionError)
       setIsLoading(false)
     }
   }
 
-  async function handleSessionSwitch(event) {
-    event.preventDefault()
-    if (!switchUserId || switchPin.length !== 4) return
+  async function handleUpdateRole(staffId, nextRole, currentRole) {
+    if (!canManageStaffRoles) return
+    if (!staffId || !nextRole || nextRole === currentRole) return
 
     try {
       setIsLoading(true)
       setErrorMessage('')
-      await loginWithPin(switchUserId, switchPin)
-      router.replace('/dashboard')
-    } catch (error) {
-      setErrorMessage(error.message)
+      await updateStaffMemberRole(staffId, nextRole)
+      await refreshData()
+    } catch (_error) {
+      setErrorMessage(generalActionError)
       setIsLoading(false)
     }
   }
@@ -130,7 +195,7 @@ export default function UsersTable() {
         )}
         {issuedPin && (
           <p className='mt-3 rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700'>
-            Generated PIN: <span className='font-bold tracking-widest'>{issuedPin}</span>
+            Assigned PIN: <span className='font-bold tracking-widest'>{issuedPin}</span>
           </p>
         )}
         <div className='mt-3 grid gap-3 md:grid-cols-4'>
@@ -145,61 +210,23 @@ export default function UsersTable() {
             onChange={event => setRole(event.target.value)}
             className='rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none'
           >
-            <option value='staff'>Staff</option>
             <option value='pharmacist'>Pharmacist</option>
             <option value='admin'>Admin</option>
-            <option value='assistant'>Assistant</option>
           </select>
           <input
             value={pin}
-            onChange={event => setPin(event.target.value.replace(/\D/g, '').slice(0, 4))}
-            placeholder='PIN (optional)'
+            onChange={event => setPin(event.target.value.replace(/\D/g, '').slice(0, 6))}
+            placeholder='PIN (2-6 digits)'
             className='rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/50 transition focus:ring'
           />
           <button
             onClick={handleCreateStaff}
-            disabled={isLoading || !name.trim()}
+            disabled={isLoading || !name.trim() || pin.length < 2 || pin.length > 6}
             className='rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50'
           >
             Add Staff
           </button>
         </div>
-      </article>
-
-      <article className='panel p-5'>
-        <h2 className='text-lg font-semibold text-[var(--foreground)]'>Session Switch</h2>
-        <p className='mt-2 text-sm text-[var(--muted)]'>
-          Switch to any active staff profile without logging out first.
-        </p>
-        <form onSubmit={handleSessionSwitch} className='mt-3 grid gap-3 md:grid-cols-3'>
-          <select
-            value={switchUserId}
-            onChange={event => setSwitchUserId(event.target.value)}
-            className='rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none'
-          >
-            <option value=''>Select profile</option>
-            {activeStaff.map(item => (
-              <option key={item.id} value={item.id}>
-                {item.name} ({item.role})
-              </option>
-            ))}
-          </select>
-          <input
-            value={switchPin}
-            onChange={event =>
-              setSwitchPin(event.target.value.replace(/\D/g, '').slice(0, 4))
-            }
-            placeholder='Staff PIN'
-            className='rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-cyan-400/50 transition focus:ring'
-          />
-          <button
-            type='submit'
-            disabled={isLoading || !switchUserId || switchPin.length !== 4}
-            className='rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-500 disabled:opacity-50'
-          >
-            Switch Session
-          </button>
-        </form>
       </article>
 
       <article className='panel overflow-hidden'>
@@ -228,7 +255,25 @@ export default function UsersTable() {
                   <td className='px-3 py-3 text-[var(--foreground)] sm:px-5'>
                     <p className='break-words'>{item.name}</p>
                   </td>
-                  <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>{item.role}</td>
+                  <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
+                    {canManageStaffRoles ? (
+                      <div className='flex items-center gap-2'>
+                        <select
+                          value={item.role}
+                          onChange={event =>
+                            handleUpdateRole(item.id, event.target.value, item.role)
+                          }
+                          disabled={isLoading}
+                          className='rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs text-[var(--foreground)] outline-none'
+                        >
+                          <option value='pharmacist'>Pharmacist</option>
+                          <option value='admin'>Admin</option>
+                        </select>
+                      </div>
+                    ) : (
+                      item.role
+                    )}
+                  </td>
                   <td className='px-3 py-3 sm:px-5'>
                     <span
                       className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
@@ -250,11 +295,11 @@ export default function UsersTable() {
                         Reset PIN
                       </button>
                       <button
-                        onClick={() => handleDisable(item.id)}
-                        disabled={isLoading || !item.isActive}
+                        onClick={() => handleDelete(item.id)}
+                        disabled={isLoading}
                         className='rounded-md border border-red-400/40 px-2.5 py-1 text-xs font-semibold text-red-600 transition hover:bg-red-500/10 disabled:opacity-50'
                       >
-                        Disable
+                        Delete
                       </button>
                     </div>
                   </td>
@@ -286,7 +331,10 @@ export default function UsersTable() {
               key={log._id}
               className='rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-sm text-[var(--foreground)]'
             >
-              <span className='font-semibold'>{log.action}</span> | {log.user?.name} |{' '}
+              <span className='font-semibold'>
+                {getReadableActionLabel(log.action, locale)}
+              </span>{' '}
+              | {log.user?.name || (locale === 'fr' ? 'Inconnu' : 'Unknown')} |{' '}
               {new Date(log.createdAt).toLocaleString()}
             </p>
           ))}

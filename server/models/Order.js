@@ -73,7 +73,16 @@ const orderSchema = new mongoose.Schema(
     status: {
       type: String,
       // Keep legacy values for compatibility with old records.
-      enum: ["pending", "ordered", "done", "finished", "Not Yet", "Ordered", "Arrived"],
+      enum: [
+        "pending",
+        "ordered",
+        "arrived",
+        "done",
+        "finished",
+        "Not Yet",
+        "Ordered",
+        "Arrived",
+      ],
       default: "pending",
       required: true,
     },

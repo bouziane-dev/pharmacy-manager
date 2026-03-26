@@ -56,7 +56,7 @@ const content = {
         icon: ClipboardList
       },
       {
-        title: 'Gerer les taches',
+        title: 'Gérer les tâches',
         text: 'Keep daily tasks organized for the full team.',
         icon: Activity
       },
@@ -132,7 +132,7 @@ const content = {
     badge: 'Phlow | Pharmacie + Flow',
     title: 'Pilotez votre pharmacie avec Phlow',
     subtitle:
-      'Suivi des commandes, gestion des taches, agenda et rappels dans un seul espace.',
+      'Suivi des commandes, gestion des tâches, agenda et rappels dans un seul espace.',
     primary: 'Ouvrir l’espace',
     signin: 'Se connecter',
     preview: 'Abonnements',
@@ -163,8 +163,8 @@ const content = {
         icon: ClipboardList
       },
       {
-        title: 'Gerer les taches',
-        text: 'Organisez les taches quotidiennes de toute l’équipe.',
+        title: 'Gérer les tâches',
+        text: 'Organisez les tâches quotidiennes de toute l’équipe.',
         icon: Activity
       },
       {
@@ -272,6 +272,22 @@ export default function Home() {
     if (!isReady || isBootstrappingSession) return
     if (user) {
       router.replace(getHomePathForUser(user))
+    }
+  }, [isBootstrappingSession, isReady, router, user])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const host = String(window.location.host || '')
+      .trim()
+      .toLowerCase()
+      .split(':')[0]
+    const parts = host.split('.').filter(Boolean)
+    const subdomain = parts.length >= 3 ? parts[0] : null
+    const reserved = new Set(['www', 'api', 'localhost'])
+
+    if (!isReady || isBootstrappingSession || user) return
+    if (subdomain && !reserved.has(subdomain)) {
+      router.replace('/auth')
     }
   }, [isBootstrappingSession, isReady, router, user])
 

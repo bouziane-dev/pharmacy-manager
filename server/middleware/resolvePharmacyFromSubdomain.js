@@ -1,4 +1,5 @@
 const Pharmacy = require("../models/Pharmacy");
+const { cleanString, isValidObjectId } = require("../utils/input");
 
 const RESERVED_SUBDOMAINS = new Set(["www", "api", "localhost"]);
 
@@ -42,25 +43,34 @@ async function resolvePharmacyFromSubdomain(req, res, next) {
     const hostSubdomain = extractSubdomain(host);
     const headerSubdomain = sanitizeSubdomain(req.headers["x-tenant-subdomain"]);
     const subdomain = hostSubdomain || headerSubdomain;
-    if (!subdomain || RESERVED_SUBDOMAINS.has(subdomain)) {
+    const hasValidSubdomain = !!subdomain && !RESERVED_SUBDOMAINS.has(subdomain);
+    const userPharmacyId = cleanString(req.user?.pharmacyId);
+    const canUseUserPharmacyId = isValidObjectId(userPharmacyId);
+
+    let pharmacy = null;
+    if (hasValidSubdomain) {
+      pharmacy = await Pharmacy.findOne({ subdomain }).select(
+        "_id name subdomain ownerId ownerUserId isActive subscriptionStatus"
+      );
+    } else if (canUseUserPharmacyId) {
+      pharmacy = await Pharmacy.findById(userPharmacyId).select(
+        "_id name subdomain ownerId ownerUserId isActive subscriptionStatus"
+      );
+    } else {
       return res.status(400).json({
         error: "A valid pharmacy subdomain is required",
       });
     }
 
-    const pharmacy = await Pharmacy.findOne({ subdomain }).select(
-      "_id name subdomain ownerId ownerUserId isActive subscriptionStatus"
-    );
-
     if (!pharmacy) {
-      return res.status(404).json({ error: "Pharmacy not found for subdomain" });
+      return res.status(404).json({ error: "Pharmacy not found" });
     }
 
     if (!pharmacy.isActive) {
       return res.status(403).json({ error: "Pharmacy is disabled" });
     }
 
-    req.subdomain = subdomain;
+    req.subdomain = pharmacy.subdomain || subdomain || "";
     req.pharmacy = pharmacy;
     req.pharmacyId = String(pharmacy._id);
     return next();

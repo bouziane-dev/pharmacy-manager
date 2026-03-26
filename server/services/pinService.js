@@ -1,6 +1,6 @@
 const bcrypt = require("bcryptjs");
 
-const PIN_PATTERN = /^\d{4}$/;
+const PIN_PATTERN = /^\d{2,6}$/;
 
 function normalizePin(value) {
   return String(value ?? "").trim();
@@ -18,7 +18,7 @@ function generatePin() {
 async function hashPin(pin) {
   const normalized = normalizePin(pin);
   if (!isValidPin(normalized)) {
-    throw new Error("PIN must be exactly 4 digits");
+    throw new Error("PIN must be between 2 and 6 digits");
   }
   return bcrypt.hash(normalized, 12);
 }

@@ -73,8 +73,24 @@ const userSchema = new mongoose.Schema(
 
 userSchema.index({ pharmacyId: 1 });
 userSchema.index({ pharmacyId: 1, name: 1 });
-userSchema.index({ googleId: 1 }, { unique: true, sparse: true });
-userSchema.index({ email: 1 }, { unique: true, sparse: true });
+userSchema.index(
+  { googleId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      googleId: { $exists: true, $type: "string" },
+    },
+  }
+);
+userSchema.index(
+  { email: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      email: { $exists: true, $type: "string" },
+    },
+  }
+);
 
 userSchema.pre("validate", function normalizeAndValidate(next) {
   if (!this.email) {

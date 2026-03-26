@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 const SessionContext = createContext(null)
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
 const reservedSubdomains = new Set(['www', 'api', 'localhost'])
+const TOAST_DISPLAY_MS = 2000
 
 function extractSubdomainFromHost(hostValue) {
   const host = String(hostValue || '')
@@ -41,27 +42,38 @@ const toastCopy = {
     orderSaved: 'Commande enregistree avec succes.',
     commentAdded: 'Commentaire ajoute avec succes.',
     orderStatusUpdated: 'Statut de la commande mis a jour.',
-    orderDateUpdated: "Date d'arrivee mise a jour.",
-    subscriptionActivated: 'Abonnement active.',
-    pharmacyCreated: 'Pharmacie creee avec succes.'
+    orderDateUpdated: "Date d'arrivée mise à jour.",
+    subscriptionActivated: 'Abonnement activé.',
+    pharmacyCreated: 'Pharmacie créée avec succès.'
   }
 }
 
-async function apiRequest(path, { method = 'GET', token, body } = {}) {
-  const tenantSubdomain =
+async function apiRequest(
+  path,
+  { method = 'GET', token, body, tenantSubdomainOverride = '' } = {}
+) {
+  const tenantSubdomainFromHost =
     typeof window !== 'undefined'
       ? extractSubdomainFromHost(window.location.host)
       : null
+  const tenantSubdomain = tenantSubdomainOverride || tenantSubdomainFromHost
 
-  const response = await fetch(`${apiBaseUrl}${path}`, {
-    method,
-    headers: {
-      ...(tenantSubdomain ? { 'X-Tenant-Subdomain': tenantSubdomain } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(body ? { 'Content-Type': 'application/json' } : {})
-    },
-    ...(body ? { body: JSON.stringify(body) } : {})
-  })
+  let response
+  try {
+    response = await fetch(`${apiBaseUrl}${path}`, {
+      method,
+      headers: {
+        ...(tenantSubdomain ? { 'X-Tenant-Subdomain': tenantSubdomain } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(body ? { 'Content-Type': 'application/json' } : {})
+      },
+      ...(body ? { body: JSON.stringify(body) } : {})
+    })
+  } catch (_error) {
+    throw new Error(
+      `Cannot reach API at ${apiBaseUrl}. Make sure backend server is running and NEXT_PUBLIC_API_BASE_URL is correct.`
+    )
+  }
 
   const data = await response.json().catch(() => ({}))
   if (!response.ok) {
@@ -71,7 +83,11 @@ async function apiRequest(path, { method = 'GET', token, body } = {}) {
 }
 
 export function AppProviders({ children }) {
-  const [theme, setTheme] = useState('light')
+  const [theme, setTheme] = useState(() => {
+    if (typeof window === 'undefined') return 'light'
+    const savedTheme = window.localStorage.getItem('pm-theme')
+    return savedTheme === 'dark' || savedTheme === 'light' ? savedTheme : 'light'
+  })
   const [user, setUser] = useState(null)
   const [authToken, setAuthToken] = useState(null)
   const [locale, setLocale] = useState('fr')
@@ -92,11 +108,6 @@ export function AppProviders({ children }) {
   const [isOrdersLoading, setIsOrdersLoading] = useState(false)
 
   useEffect(() => {
-    const savedTheme = window.localStorage.getItem('pm-theme')
-    if (savedTheme === 'dark' || savedTheme === 'light') {
-      setTheme(savedTheme)
-    }
-
     const savedUser = window.localStorage.getItem('pm-user')
     if (savedUser) {
       setUser(JSON.parse(savedUser))
@@ -140,6 +151,7 @@ export function AppProviders({ children }) {
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
+    document.documentElement.style.colorScheme = theme
     window.localStorage.setItem('pm-theme', theme)
   }, [theme])
 
@@ -207,7 +219,7 @@ export function AppProviders({ children }) {
     setToasts(prev => prev.filter(item => item.id !== toastId))
   }
 
-  function activateToastFocus(durationMs = 2000) {
+  function activateToastFocus(durationMs = TOAST_DISPLAY_MS) {
     if (toastFocusTimerRef.current) {
       window.clearTimeout(toastFocusTimerRef.current)
     }
@@ -222,8 +234,8 @@ export function AppProviders({ children }) {
     if (!message) return
     const toastId = `${Date.now()}-${Math.random().toString(16).slice(2)}`
     setToasts(prev => [...prev, { id: toastId, message, type }].slice(-4))
-    activateToastFocus(2000)
-    window.setTimeout(() => dismissToast(toastId), 3500)
+    activateToastFocus(TOAST_DISPLAY_MS)
+    window.setTimeout(() => dismissToast(toastId), TOAST_DISPLAY_MS)
   }
 
   function showActionToast(key, type = 'success') {
@@ -293,6 +305,8 @@ export function AppProviders({ children }) {
           ? 'superadmin'
           : backendRole === 'owner' || effectivePrimaryRole === 'owner'
             ? 'admin'
+            : backendRole === 'staff' && nextUser.staffRole === 'admin'
+              ? 'admin'
             : 'worker'
     }
   }
@@ -385,21 +399,18 @@ export function AppProviders({ children }) {
     }
   }
 
-  async function createOrder({
-    patientName,
-    phone,
-    products,
-    comment,
-    arrivalDate,
-    versement
-  }) {
-    if (!authToken || !currentWorkspace) {
+  async function createOrder(
+    { patientName, phone, products, comment, arrivalDate, versement },
+    tokenOverride = null
+  ) {
+    const sessionToken = tokenOverride || authToken
+    if (!sessionToken || !currentWorkspace) {
       throw new Error('Active workspace is required')
     }
     try {
       const result = await apiRequest('/api/orders', {
         method: 'POST',
-        token: authToken,
+        token: sessionToken,
         body: {
           pharmacyId: currentWorkspace.id,
           patientName,
@@ -416,6 +427,16 @@ export function AppProviders({ children }) {
       showToast(error.message, 'error')
       throw error
     }
+  }
+
+  async function resolveStaffByPin(pin) {
+    if (!authToken) throw new Error('Missing auth token')
+    const result = await apiRequest('/api/staff/resolve-pin', {
+      method: 'POST',
+      token: authToken,
+      body: { pin }
+    })
+    return result.staff
   }
 
   async function addOrderComment(orderId, text) {
@@ -551,6 +572,8 @@ export function AppProviders({ children }) {
           ? 'superadmin'
           : nextUser.accountRole === 'owner' || nextUser.primaryRole === 'owner'
           ? 'admin'
+          : nextUser.accountRole === 'staff' && nextUser.staffRole === 'admin'
+            ? 'admin'
           : nextUser.accountRole === 'staff' || nextUser.primaryRole === 'pharmacist'
             ? 'worker'
             : nextUser.role || 'worker'
@@ -717,6 +740,9 @@ export function AppProviders({ children }) {
 
   async function createPharmacy(name, subdomain) {
     if (!authToken) throw new Error('Missing auth token')
+    if (user?.pharmacyId || currentWorkspace?.id) {
+      throw new Error('A pharmacy is already linked to this owner account.')
+    }
     try {
       const result = await apiRequest('/api/pharmacy/create', {
         method: 'POST',
@@ -739,6 +765,15 @@ export function AppProviders({ children }) {
         ...prev,
         [user.email]: workspace.id
       }))
+      setUser(prev =>
+        prev
+          ? {
+              ...prev,
+              pharmacyId: String(workspace.id),
+              subscriptionActive: true
+            }
+          : prev
+      )
       showActionToast('pharmacyCreated')
       return result
     } catch (error) {
@@ -747,14 +782,30 @@ export function AppProviders({ children }) {
     }
   }
 
+  async function checkPharmacySubdomain(subdomain) {
+    if (!authToken) throw new Error('Missing auth token')
+    const normalizedSubdomain = String(subdomain || '').trim().toLowerCase()
+    if (!normalizedSubdomain) {
+      throw new Error('Subdomain is required')
+    }
+    const params = new URLSearchParams()
+    params.set('subdomain', normalizedSubdomain)
+    return apiRequest(`/api/pharmacy/check-subdomain?${params.toString()}`, {
+      token: authToken
+    })
+  }
+
   async function fetchStaffLoginUsers() {
-    const subdomain = extractSubdomainFromHost(window.location.host)
+    const hostSubdomain = extractSubdomainFromHost(window.location.host)
+    const subdomain = hostSubdomain || currentWorkspace?.subdomain || ''
     if (!subdomain) {
       return []
     }
 
     try {
-      const result = await apiRequest('/auth/staff')
+      const result = await apiRequest('/auth/staff', {
+        tenantSubdomainOverride: subdomain
+      })
       return result.users || []
     } catch (_error) {
       return []
@@ -763,9 +814,12 @@ export function AppProviders({ children }) {
 
   async function loginWithPin(userId, pin) {
     try {
+      const hostSubdomain = extractSubdomainFromHost(window.location.host)
+      const tenantSubdomain = currentWorkspace?.subdomain || hostSubdomain || ''
       const result = await apiRequest('/auth/pin-login', {
         method: 'POST',
-        body: { userId, pin }
+        body: { userId, pin },
+        tenantSubdomainOverride: tenantSubdomain
       })
       const mappedUser = mapBackendUserToClient(result.user)
       login(mappedUser, result.token)
@@ -808,13 +862,25 @@ export function AppProviders({ children }) {
     return result
   }
 
-  async function disableStaffMember(staffId) {
+  async function updateStaffMemberRole(staffId, role) {
     if (!authToken) throw new Error('Missing auth token')
-    const result = await apiRequest(`/api/staff/${staffId}/disable`, {
+    const normalizedRole = String(role || '').trim().toLowerCase()
+    const result = await apiRequest(`/api/staff/${staffId}/role`, {
       method: 'PATCH',
+      token: authToken,
+      body: { role: normalizedRole }
+    })
+    showToast('Staff role updated.')
+    return result
+  }
+
+  async function deleteStaffMember(staffId) {
+    if (!authToken) throw new Error('Missing auth token')
+    const result = await apiRequest(`/api/staff/${staffId}`, {
+      method: 'DELETE',
       token: authToken
     })
-    showToast('Staff member disabled.')
+    showToast('Staff member deleted.')
     return result
   }
 
@@ -1020,6 +1086,7 @@ export function AppProviders({ children }) {
       chooseRole,
       logout,
       createOrder,
+      resolveStaffByPin,
       addOrderComment,
       updateOrderStatus,
       updateOrderArrivalDate,
@@ -1033,12 +1100,14 @@ export function AppProviders({ children }) {
       showConfirmToast,
       activateSubscription,
       createPharmacy,
+      checkPharmacySubdomain,
       fetchStaffLoginUsers,
       loginWithPin,
       listStaffMembers,
       addStaffMember,
       resetStaffMemberPin,
-      disableStaffMember,
+      updateStaffMemberRole,
+      deleteStaffMember,
       fetchActivityLogs,
       fetchSuperAdminStats,
       fetchSuperAdminPharmacies,
@@ -1063,11 +1132,14 @@ export function AppProviders({ children }) {
       userWorkspaces,
       workspaceMembers,
       createPharmacy,
+      resolveStaffByPin,
+      checkPharmacySubdomain,
       fetchStaffLoginUsers,
       listStaffMembers,
       addStaffMember,
       resetStaffMemberPin,
-      disableStaffMember,
+      updateStaffMemberRole,
+      deleteStaffMember,
       fetchActivityLogs,
       fetchSuperAdminStats,
       fetchSuperAdminPharmacies,
