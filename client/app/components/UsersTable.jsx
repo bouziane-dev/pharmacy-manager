@@ -111,8 +111,30 @@ export default function UsersTable() {
       } else if (rawMessage.includes('pin')) {
         setErrorMessage(
           locale === 'fr'
-            ? 'PIN invalide. Utilisez 2 à 6 chiffres.'
+            ? 'PIN invalide. Utilisez 2 a 6 chiffres.'
             : 'Invalid PIN. Use 2 to 6 digits.'
+        )
+      } else if (rawMessage.includes('name') && rawMessage.includes('already')) {
+        setErrorMessage(
+          locale === 'fr'
+            ? 'Un membre avec ce nom existe deja dans cette pharmacie.'
+            : 'A staff member with this name already exists in this pharmacy.'
+        )
+      } else if (rawMessage.includes('invalid staff role')) {
+        setErrorMessage(
+          locale === 'fr'
+            ? 'Role invalide. Utilisez Admin ou Pharmacist.'
+            : 'Invalid role. Use Admin or Pharmacist.'
+        )
+      } else if (
+        rawMessage.includes('no access to this pharmacy') ||
+        rawMessage.includes('insufficient role') ||
+        rawMessage.includes('only owner')
+      ) {
+        setErrorMessage(
+          locale === 'fr'
+            ? "Vous n'avez pas la permission d'ajouter un membre dans cet espace."
+            : 'You do not have permission to add staff in this workspace.'
         )
       } else {
         setErrorMessage(generalActionError)
@@ -343,3 +365,4 @@ export default function UsersTable() {
     </section>
   )
 }
+

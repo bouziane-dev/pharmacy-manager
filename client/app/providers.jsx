@@ -485,11 +485,13 @@ export function AppProviders({ children }) {
   }
 
   async function resolveStaffByPin(pin) {
-    if (!authToken) throw new Error('Missing auth token')
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
     const result = await apiRequest('/api/staff/resolve-pin', {
       method: 'POST',
       token: authToken,
-      body: { pin }
+      body: { pin, pharmacyId: currentWorkspace.id }
     })
     return result.staff
   }
@@ -899,52 +901,68 @@ export function AppProviders({ children }) {
   }
 
   async function listStaffMembers() {
-    if (!authToken) throw new Error('Missing auth token')
-    const result = await apiRequest('/api/staff', {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    const params = new URLSearchParams()
+    params.set('pharmacyId', currentWorkspace.id)
+    const result = await apiRequest(`/api/staff?${params.toString()}`, {
       token: authToken
     })
     return result.staff || []
   }
 
   async function addStaffMember({ name, role, pin }) {
-    if (!authToken) throw new Error('Missing auth token')
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
     const result = await apiRequest('/api/staff', {
       method: 'POST',
       token: authToken,
-      body: { name, role, pin }
+      body: { name, role, pin, pharmacyId: currentWorkspace.id }
     })
     showToast('Staff member created successfully.')
     return result
   }
 
   async function resetStaffMemberPin(staffId, pin = '') {
-    if (!authToken) throw new Error('Missing auth token')
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
     const result = await apiRequest(`/api/staff/${staffId}/reset-pin`, {
       method: 'PATCH',
       token: authToken,
-      body: pin ? { pin } : {}
+      body: pin
+        ? { pin, pharmacyId: currentWorkspace.id }
+        : { pharmacyId: currentWorkspace.id }
     })
     showToast('PIN reset successfully.')
     return result
   }
 
   async function updateStaffMemberRole(staffId, role) {
-    if (!authToken) throw new Error('Missing auth token')
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
     const normalizedRole = String(role || '')
       .trim()
       .toLowerCase()
     const result = await apiRequest(`/api/staff/${staffId}/role`, {
       method: 'PATCH',
       token: authToken,
-      body: { role: normalizedRole }
+      body: { role: normalizedRole, pharmacyId: currentWorkspace.id }
     })
     showToast('Staff role updated.')
     return result
   }
 
   async function deleteStaffMember(staffId) {
-    if (!authToken) throw new Error('Missing auth token')
-    const result = await apiRequest(`/api/staff/${staffId}`, {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    const params = new URLSearchParams()
+    params.set('pharmacyId', currentWorkspace.id)
+    const result = await apiRequest(`/api/staff/${staffId}?${params.toString()}`, {
       method: 'DELETE',
       token: authToken
     })
