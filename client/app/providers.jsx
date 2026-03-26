@@ -56,6 +56,29 @@ const toastCopy = {
   }
 }
 
+const errorCopy = {
+  en: {
+    'Request failed': 'Request failed.',
+    'Host header is required': 'Host header is required.',
+    'A valid pharmacy subdomain is required':
+      'A valid pharmacy workspace is required.',
+    'Pharmacy not found': 'Pharmacy not found.',
+    'Pharmacy is disabled': 'Pharmacy is disabled.',
+    'No access to this pharmacy': 'No access to this pharmacy.',
+    'Unauthorized pharmacy access': 'Unauthorized pharmacy access.'
+  },
+  fr: {
+    'Request failed': 'La requete a echoue.',
+    'Host header is required': "L'en-tete Host est requis.",
+    'A valid pharmacy subdomain is required':
+      'Un espace pharmacie valide est requis.',
+    'Pharmacy not found': 'Pharmacie introuvable.',
+    'Pharmacy is disabled': 'La pharmacie est desactivee.',
+    'No access to this pharmacy': "Vous n'avez pas acces a cette pharmacie.",
+    'Unauthorized pharmacy access': 'Acces non autorise a la pharmacie.'
+  }
+}
+
 async function apiRequest(
   path,
   { method = 'GET', token, body, tenantSubdomainOverride = '' } = {}
@@ -244,8 +267,16 @@ export function AppProviders({ children }) {
 
   function showToast(message, type = 'success') {
     if (!message) return
+    const normalizedMessage = String(message)
+    const localizedError =
+      type === 'error'
+        ? (errorCopy[locale] || errorCopy.en)[normalizedMessage] ||
+          normalizedMessage
+        : normalizedMessage
     const toastId = `${Date.now()}-${Math.random().toString(16).slice(2)}`
-    setToasts(prev => [...prev, { id: toastId, message, type }].slice(-4))
+    setToasts(prev =>
+      [...prev, { id: toastId, message: localizedError, type }].slice(-4)
+    )
     activateToastFocus(TOAST_DISPLAY_MS)
     window.setTimeout(() => dismissToast(toastId), TOAST_DISPLAY_MS)
   }

@@ -33,6 +33,25 @@ function sanitizeSubdomain(value) {
     .replace(/[^a-z0-9-]/g, "");
 }
 
+function extractRequestPharmacyId(req) {
+  const candidates = [
+    req.pharmacyId,
+    req.params?.pharmacyId,
+    req.query?.pharmacyId,
+    req.body?.pharmacyId,
+    req.headers?.["x-pharmacy-id"],
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = cleanString(candidate);
+    if (normalized && isValidObjectId(normalized)) {
+      return normalized;
+    }
+  }
+
+  return null;
+}
+
 async function resolvePharmacyFromSubdomain(req, res, next) {
   try {
     const host = req.headers.host;
@@ -44,11 +63,16 @@ async function resolvePharmacyFromSubdomain(req, res, next) {
     const headerSubdomain = sanitizeSubdomain(req.headers["x-tenant-subdomain"]);
     const subdomain = hostSubdomain || headerSubdomain;
     const hasValidSubdomain = !!subdomain && !RESERVED_SUBDOMAINS.has(subdomain);
+    const requestPharmacyId = extractRequestPharmacyId(req);
     const userPharmacyId = cleanString(req.user?.pharmacyId);
     const canUseUserPharmacyId = isValidObjectId(userPharmacyId);
 
     let pharmacy = null;
-    if (hasValidSubdomain) {
+    if (requestPharmacyId) {
+      pharmacy = await Pharmacy.findById(requestPharmacyId).select(
+        "_id name subdomain ownerId ownerUserId isActive subscriptionStatus"
+      );
+    } else if (hasValidSubdomain) {
       pharmacy = await Pharmacy.findOne({ subdomain }).select(
         "_id name subdomain ownerId ownerUserId isActive subscriptionStatus"
       );
