@@ -1,9 +1,17 @@
 ﻿'use client'
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react'
 
 const SessionContext = createContext(null)
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
+const apiBaseUrl =
+  process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
 const reservedSubdomains = new Set(['www', 'api', 'localhost'])
 const TOAST_DISPLAY_MS = 2000
 
@@ -86,7 +94,9 @@ export function AppProviders({ children }) {
   const [theme, setTheme] = useState(() => {
     if (typeof window === 'undefined') return 'light'
     const savedTheme = window.localStorage.getItem('pm-theme')
-    return savedTheme === 'dark' || savedTheme === 'light' ? savedTheme : 'light'
+    return savedTheme === 'dark' || savedTheme === 'light'
+      ? savedTheme
+      : 'light'
   })
   const [user, setUser] = useState(null)
   const [authToken, setAuthToken] = useState(null)
@@ -128,7 +138,9 @@ export function AppProviders({ children }) {
     if (savedMemberships) {
       setMemberships(JSON.parse(savedMemberships))
     }
-    const savedActiveWorkspace = window.localStorage.getItem('pm-active-workspace')
+    const savedActiveWorkspace = window.localStorage.getItem(
+      'pm-active-workspace'
+    )
     if (savedActiveWorkspace) {
       setActiveWorkspaceByEmail(JSON.parse(savedActiveWorkspace))
     }
@@ -307,11 +319,15 @@ export function AppProviders({ children }) {
             ? 'admin'
             : backendRole === 'staff' && nextUser.staffRole === 'admin'
               ? 'admin'
-            : 'worker'
+              : 'worker'
     }
   }
 
-  function hydrateMembershipState(sessionUser, workspacesFromApi, membershipsFromApi) {
+  function hydrateMembershipState(
+    sessionUser,
+    workspacesFromApi,
+    membershipsFromApi
+  ) {
     const resolvedEmail = String(
       sessionUser.email || `staff-${sessionUser.id || 'user'}@local.staff`
     ).toLowerCase()
@@ -319,7 +335,8 @@ export function AppProviders({ children }) {
       id: String(item.id),
       name: item.name,
       subdomain: item.subdomain || '',
-      ownerEmail: String(item.ownerUserId) === String(sessionUser.id) ? resolvedEmail : ''
+      ownerEmail:
+        String(item.ownerUserId) === String(sessionUser.id) ? resolvedEmail : ''
     }))
     const memberWorkspaceIds = (membershipsFromApi || []).map(item =>
       String(item.pharmacyId)
@@ -363,7 +380,11 @@ export function AppProviders({ children }) {
           setInvitations([])
           setWorkspaceInvitations([])
         } else {
-          hydrateMembershipState(result.user, result.workspaces, result.memberships)
+          hydrateMembershipState(
+            result.user,
+            result.workspaces,
+            result.memberships
+          )
           await refreshPendingInvitations(sessionToken, mappedUser.email)
         }
       }
@@ -379,7 +400,10 @@ export function AppProviders({ children }) {
     bootstrapSession(authToken)
   }, [authToken])
 
-  async function refreshWorkspaceOrders(tokenOverride = null, workspaceOverride = null) {
+  async function refreshWorkspaceOrders(
+    tokenOverride = null,
+    workspaceOverride = null
+  ) {
     const sessionToken = tokenOverride || authToken
     const workspaceId = workspaceOverride || currentWorkspace?.id
     if (!sessionToken || !workspaceId) {
@@ -496,7 +520,10 @@ export function AppProviders({ children }) {
     showActionToast('orderDateUpdated')
   }
 
-  async function refreshPendingInvitations(tokenOverride = null, emailOverride = null) {
+  async function refreshPendingInvitations(
+    tokenOverride = null,
+    emailOverride = null
+  ) {
     const sessionToken = tokenOverride || authToken
     const targetEmail = (emailOverride || user?.email || '').toLowerCase()
     if (!sessionToken || !targetEmail) return
@@ -511,7 +538,9 @@ export function AppProviders({ children }) {
         workspaceName: item.pharmacyId?.name || 'Pharmacy',
         toEmail: item.email || targetEmail,
         fromName:
-          item.invitedByUserId?.displayName || item.invitedByUserId?.email || 'Owner',
+          item.invitedByUserId?.displayName ||
+          item.invitedByUserId?.email ||
+          'Owner',
         status: item.status,
         role: item.role,
         createdAt: item.createdAt
@@ -549,7 +578,9 @@ export function AppProviders({ children }) {
         workspaceName: currentWorkspace?.name || 'Pharmacy',
         toEmail: item.email,
         fromName:
-          item.invitedByUserId?.displayName || item.invitedByUserId?.email || 'Owner',
+          item.invitedByUserId?.displayName ||
+          item.invitedByUserId?.email ||
+          'Owner',
         status: item.status,
         role: item.role,
         createdAt: item.createdAt
@@ -568,15 +599,17 @@ export function AppProviders({ children }) {
       ...nextUser,
       email: fallbackEmail.toLowerCase(),
       role:
-        nextUser.accountRole === 'superadmin' || nextUser.primaryRole === 'superadmin'
+        nextUser.accountRole === 'superadmin' ||
+        nextUser.primaryRole === 'superadmin'
           ? 'superadmin'
           : nextUser.accountRole === 'owner' || nextUser.primaryRole === 'owner'
-          ? 'admin'
-          : nextUser.accountRole === 'staff' && nextUser.staffRole === 'admin'
             ? 'admin'
-          : nextUser.accountRole === 'staff' || nextUser.primaryRole === 'pharmacist'
-            ? 'worker'
-            : nextUser.role || 'worker'
+            : nextUser.accountRole === 'staff' && nextUser.staffRole === 'admin'
+              ? 'admin'
+              : nextUser.accountRole === 'staff' ||
+                  nextUser.primaryRole === 'pharmacist'
+                ? 'worker'
+                : nextUser.role || 'worker'
     }
     setUser(normalized)
     if (token) {
@@ -784,7 +817,9 @@ export function AppProviders({ children }) {
 
   async function checkPharmacySubdomain(subdomain) {
     if (!authToken) throw new Error('Missing auth token')
-    const normalizedSubdomain = String(subdomain || '').trim().toLowerCase()
+    const normalizedSubdomain = String(subdomain || '')
+      .trim()
+      .toLowerCase()
     if (!normalizedSubdomain) {
       throw new Error('Subdomain is required')
     }
@@ -864,7 +899,9 @@ export function AppProviders({ children }) {
 
   async function updateStaffMemberRole(staffId, role) {
     if (!authToken) throw new Error('Missing auth token')
-    const normalizedRole = String(role || '').trim().toLowerCase()
+    const normalizedRole = String(role || '')
+      .trim()
+      .toLowerCase()
     const result = await apiRequest(`/api/staff/${staffId}/role`, {
       method: 'PATCH',
       token: authToken,
@@ -943,11 +980,14 @@ export function AppProviders({ children }) {
   async function updateSuperAdminPharmacyStatus(pharmacyId, isActive) {
     if (!authToken) throw new Error('Missing auth token')
     if (!pharmacyId) throw new Error('pharmacyId is required')
-    const result = await apiRequest(`/api/superadmin/pharmacies/${pharmacyId}/status`, {
-      method: 'PATCH',
-      token: authToken,
-      body: { isActive: Boolean(isActive) }
-    })
+    const result = await apiRequest(
+      `/api/superadmin/pharmacies/${pharmacyId}/status`,
+      {
+        method: 'PATCH',
+        token: authToken,
+        body: { isActive: Boolean(isActive) }
+      }
+    )
     showToast('Pharmacy status updated.')
     return result
   }
@@ -998,7 +1038,8 @@ export function AppProviders({ children }) {
 
   const userWorkspaceIds = useMemo(() => {
     if (!user?.email) return []
-    if (user.role === 'superadmin' || user.accountRole === 'superadmin') return []
+    if (user.role === 'superadmin' || user.accountRole === 'superadmin')
+      return []
     const owned = workspaces
       .filter(ws => ws.ownerEmail === user.email)
       .map(ws => ws.id)
@@ -1061,7 +1102,8 @@ export function AppProviders({ children }) {
   const pendingWorkspaceInvitations = useMemo(() => {
     if (!currentWorkspace) return []
     return workspaceInvitations.filter(
-      item => item.workspaceId === currentWorkspace.id && item.status === 'pending'
+      item =>
+        item.workspaceId === currentWorkspace.id && item.status === 'pending'
     )
   }, [currentWorkspace, workspaceInvitations])
 
@@ -1159,36 +1201,36 @@ export function AppProviders({ children }) {
           <article className='w-full max-w-xl overflow-hidden rounded-3xl border border-emerald-300/35 bg-[linear-gradient(145deg,rgba(255,255,255,0.96),rgba(236,253,245,0.94),rgba(209,250,229,0.9))] p-0 shadow-[0_28px_70px_rgba(2,132,199,0.2)] dark:border-emerald-400/30 dark:bg-[linear-gradient(145deg,rgba(2,6,23,0.96),rgba(6,78,59,0.35),rgba(2,44,34,0.92))]'>
             <div className='h-1.5 w-full bg-[linear-gradient(90deg,rgba(16,185,129,0.95),rgba(14,165,233,0.92))]' />
             <div className='p-6 sm:p-7'>
-            {confirmToast.title && (
-              <h3 className='text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100'>
-                {confirmToast.title}
-              </h3>
-            )}
-            {confirmToast.message && (
-              <p className='mt-3 max-w-prose text-sm leading-6 text-slate-700 dark:text-slate-300'>
-                {confirmToast.message}
-              </p>
-            )}
-            <div className='mt-6 flex flex-wrap justify-end gap-2'>
-              <button
-                onClick={closeConfirmToast}
-                className='rounded-xl border border-slate-300/80 bg-white/75 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-600/70 dark:bg-slate-900/50 dark:text-slate-200 dark:hover:bg-slate-800'
-              >
-                {confirmToast.cancelLabel}
-              </button>
-              <button
-                onClick={() => {
-                  const confirmAction = confirmActionRef.current
-                  closeConfirmToast()
-                  if (typeof confirmAction === 'function') {
-                    confirmAction()
-                  }
-                }}
-                className='rounded-xl bg-[linear-gradient(90deg,#059669,#0284c7)] px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(2,132,199,0.35)] transition hover:brightness-110'
-              >
-                {confirmToast.confirmLabel}
-              </button>
-            </div>
+              {confirmToast.title && (
+                <h3 className='text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100'>
+                  {confirmToast.title}
+                </h3>
+              )}
+              {confirmToast.message && (
+                <p className='mt-3 max-w-prose text-sm leading-6 text-slate-700 dark:text-slate-300'>
+                  {confirmToast.message}
+                </p>
+              )}
+              <div className='mt-6 flex flex-wrap justify-end gap-2'>
+                <button
+                  onClick={closeConfirmToast}
+                  className='rounded-xl border border-slate-300/80 bg-white/75 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-600/70 dark:bg-slate-900/50 dark:text-slate-200 dark:hover:bg-slate-800'
+                >
+                  {confirmToast.cancelLabel}
+                </button>
+                <button
+                  onClick={() => {
+                    const confirmAction = confirmActionRef.current
+                    closeConfirmToast()
+                    if (typeof confirmAction === 'function') {
+                      confirmAction()
+                    }
+                  }}
+                  className='rounded-xl bg-[linear-gradient(90deg,#059669,#0284c7)] px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(2,132,199,0.35)] transition hover:brightness-110'
+                >
+                  {confirmToast.confirmLabel}
+                </button>
+              </div>
             </div>
           </article>
         </div>
@@ -1198,37 +1240,39 @@ export function AppProviders({ children }) {
       )}
       <div className='pointer-events-none fixed inset-0 z-[60] flex items-center justify-center px-4'>
         <div className='flex w-full max-w-md flex-col gap-3'>
-        {toasts.map(toast => (
-          <article
-            key={toast.id}
-            className={`pointer-events-auto overflow-hidden rounded-3xl border shadow-[0_22px_55px_rgba(2,6,23,0.28)] backdrop-blur ${
-              toast.type === 'error'
-                ? 'border-rose-400/45 bg-[linear-gradient(145deg,rgba(254,242,242,0.96),rgba(254,226,226,0.95),rgba(255,241,242,0.92))] text-rose-900 dark:border-rose-400/35 dark:bg-[linear-gradient(145deg,rgba(127,29,29,0.92),rgba(136,19,55,0.9))] dark:text-rose-50'
-                : 'border-emerald-400/45 bg-[linear-gradient(145deg,rgba(236,253,245,0.97),rgba(209,250,229,0.94),rgba(224,242,254,0.92))] text-emerald-900 dark:border-emerald-300/35 dark:bg-[linear-gradient(145deg,rgba(6,78,59,0.9),rgba(3,105,161,0.85))] dark:text-emerald-50'
-            }`}
-          >
-            <div className='flex items-start justify-between gap-3 px-5 py-4'>
-              <div className='flex items-start gap-3'>
-                <span
-                  className={`mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
-                    toast.type === 'error'
-                      ? 'bg-rose-100 text-rose-700 dark:bg-rose-200 dark:text-rose-900'
-                      : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-200 dark:text-emerald-900'
-                  }`}
+          {toasts.map(toast => (
+            <article
+              key={toast.id}
+              className={`pointer-events-auto overflow-hidden rounded-3xl border shadow-[0_22px_55px_rgba(2,6,23,0.28)] backdrop-blur ${
+                toast.type === 'error'
+                  ? 'border-rose-400/45 bg-[linear-gradient(145deg,rgba(254,242,242,0.96),rgba(254,226,226,0.95),rgba(255,241,242,0.92))] text-rose-900 dark:border-rose-400/35 dark:bg-[linear-gradient(145deg,rgba(127,29,29,0.92),rgba(136,19,55,0.9))] dark:text-rose-50'
+                  : 'border-emerald-400/45 bg-[linear-gradient(145deg,rgba(236,253,245,0.97),rgba(209,250,229,0.94),rgba(224,242,254,0.92))] text-emerald-900 dark:border-emerald-300/35 dark:bg-[linear-gradient(145deg,rgba(6,78,59,0.9),rgba(3,105,161,0.85))] dark:text-emerald-50'
+              }`}
+            >
+              <div className='flex items-start justify-between gap-3 px-5 py-4'>
+                <div className='flex items-start gap-3'>
+                  <span
+                    className={`mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                      toast.type === 'error'
+                        ? 'bg-rose-100 text-rose-700 dark:bg-rose-200 dark:text-rose-900'
+                        : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-200 dark:text-emerald-900'
+                    }`}
+                  >
+                    {toast.type === 'error' ? '!' : '✓'}
+                  </span>
+                  <p className='text-base font-semibold leading-6'>
+                    {toast.message}
+                  </p>
+                </div>
+                <button
+                  onClick={() => dismissToast(toast.id)}
+                  className='text-current/80 rounded px-1 text-sm font-semibold transition hover:text-current'
                 >
-                  {toast.type === 'error' ? '!' : '✓'}
-                </span>
-                <p className='text-base font-semibold leading-6'>{toast.message}</p>
+                  ✕
+                </button>
               </div>
-              <button
-                onClick={() => dismissToast(toast.id)}
-                className='rounded px-1 text-sm font-semibold text-current/80 transition hover:text-current'
-              >
-                ✕
-              </button>
-            </div>
-          </article>
-        ))}
+            </article>
+          ))}
         </div>
       </div>
     </SessionContext.Provider>
@@ -1242,4 +1286,3 @@ export function useSession() {
   }
   return ctx
 }
-
