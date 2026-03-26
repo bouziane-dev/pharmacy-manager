@@ -78,6 +78,62 @@ function buildRedirectUrl(baseUrl, params) {
   return url.toString();
 }
 
+function encodeState(payload) {
+  return Buffer.from(JSON.stringify(payload)).toString("base64url");
+}
+
+function decodeState(stateValue) {
+  if (!stateValue) return null;
+  try {
+    return JSON.parse(Buffer.from(String(stateValue), "base64url").toString("utf8"));
+  } catch (_error) {
+    return null;
+  }
+}
+
+function normalizeReturnToUrl(candidateValue) {
+  const candidate = String(candidateValue || "").trim();
+  if (!candidate) return null;
+
+  let parsed;
+  try {
+    parsed = new URL(candidate);
+  } catch (_error) {
+    return null;
+  }
+
+  const protocol = String(parsed.protocol || "").toLowerCase();
+  const host = String(parsed.hostname || "").toLowerCase();
+  if (protocol !== "https:" && !(protocol === "http:" && host.endsWith(".localhost"))) {
+    return null;
+  }
+
+  const isProductionRoot = host === "phlowit.com" || host === "www.phlowit.com";
+  const isProductionTenant = host.endsWith(".phlowit.com");
+  const isLocalhost = host === "localhost" || host.endsWith(".localhost");
+  if (!isProductionRoot && !isProductionTenant && !isLocalhost) {
+    return null;
+  }
+
+  parsed.pathname = "/auth";
+  parsed.search = "";
+  parsed.hash = "";
+  return parsed.toString();
+}
+
+function resolveReturnToFromRequest(req) {
+  const queryValue = normalizeReturnToUrl(req?.query?.returnTo);
+  if (queryValue) return queryValue;
+
+  const refererValue = normalizeReturnToUrl(req.get("referer"));
+  if (refererValue) return refererValue;
+
+  const originValue = normalizeReturnToUrl(req.get("origin"));
+  if (originValue) return originValue;
+
+  return null;
+}
+
 function buildSafeUser(user) {
   return {
     id: user._id,
@@ -102,11 +158,17 @@ router.get(
     logAuthEvent("google_start", requestContext(req));
     next();
   },
-  passport.authenticate("google", {
-    scope: ["profile", "email"],
-    session: false,
-    prompt: "select_account",
-  })
+  (req, res, next) => {
+    const normalizedReturnTo = resolveReturnToFromRequest(req);
+    const state = encodeState({ returnTo: normalizedReturnTo });
+
+    passport.authenticate("google", {
+      scope: ["profile", "email"],
+      session: false,
+      prompt: "select_account",
+      state,
+    })(req, res, next);
+  }
 );
 
 router.get("/google/callback", (req, res, next) => {
@@ -122,9 +184,16 @@ router.get("/google/callback", (req, res, next) => {
         hasUser: Boolean(user),
       });
 
-      if (process.env.FRONTEND_AUTH_FAILURE_URL) {
+      const parsedState = decodeState(req.query.state);
+      const stateReturnTo = normalizeReturnToUrl(parsedState?.returnTo);
+      const normalizedFailureFallback = normalizeReturnToUrl(
+        process.env.FRONTEND_AUTH_FAILURE_URL
+      );
+      const failureBaseUrl = stateReturnTo || normalizedFailureFallback;
+
+      if (failureBaseUrl) {
         try {
-          const failureUrl = buildRedirectUrl(process.env.FRONTEND_AUTH_FAILURE_URL, {
+          const failureUrl = buildRedirectUrl(failureBaseUrl, {
             error: "auth_failed",
           });
           return res.redirect(302, failureUrl);
@@ -175,24 +244,27 @@ router.get("/google/callback", (req, res, next) => {
       });
 
       const safeUser = buildSafeUser(user);
-      const onboardingRequired =
-        !isSuperAdmin && !user.onboardingCompleted;
 
       logAuthEvent("jwt_issued", {
         userId: safeUser.id?.toString?.() || String(safeUser.id),
         email: safeUser.email,
-        onboardingRequired,
         tokenLength: token.length,
       });
 
-      if (process.env.FRONTEND_AUTH_SUCCESS_URL) {
+      const parsedState = decodeState(req.query.state);
+      const stateReturnTo = normalizeReturnToUrl(parsedState?.returnTo);
+      const normalizedSuccessFallback = normalizeReturnToUrl(
+        process.env.FRONTEND_AUTH_SUCCESS_URL
+      );
+      const successBaseUrl = stateReturnTo || normalizedSuccessFallback;
+
+      if (successBaseUrl) {
         const encodedUser = Buffer.from(JSON.stringify(safeUser)).toString("base64url");
         let successUrl;
         try {
-          successUrl = buildRedirectUrl(process.env.FRONTEND_AUTH_SUCCESS_URL, {
+          successUrl = buildRedirectUrl(successBaseUrl, {
             token,
             user: encodedUser,
-            onboardingRequired: onboardingRequired ? "true" : "false",
           });
         } catch (redirectError) {
           console.error(
@@ -209,7 +281,6 @@ router.get("/google/callback", (req, res, next) => {
       return res.status(200).json({
         token,
         user: safeUser,
-        onboardingRequired,
       });
     } catch (callbackError) {
       return res.status(500).json({ error: callbackError.message });

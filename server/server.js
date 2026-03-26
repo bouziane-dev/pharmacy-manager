@@ -78,7 +78,6 @@ const corsOrigins = collectAllowedOrigins(
   process.env.FRONTEND_ORIGIN,
   process.env.FRONTEND_AUTH_SUCCESS_URL,
   process.env.FRONTEND_AUTH_FAILURE_URL,
-  process.env.FRONTEND_ONBOARDING_URL,
 );
 
 if (isAuthDebugEnabled()) {

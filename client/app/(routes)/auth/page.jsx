@@ -173,7 +173,16 @@ function AuthContent() {
 
   function handleGoogleLogin() {
     setIsLoading(true)
-    window.location.href = `${apiBaseUrl}/auth/google`
+    const returnTo =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/auth`
+        : ''
+    const params = new URLSearchParams()
+    if (returnTo) {
+      params.set('returnTo', returnTo)
+    }
+    const query = params.toString()
+    window.location.href = `${apiBaseUrl}/auth/google${query ? `?${query}` : ''}`
   }
 
   async function handleStaffLogin(event) {
