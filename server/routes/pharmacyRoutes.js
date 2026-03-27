@@ -5,9 +5,9 @@ const pharmacyController = require("../controllers/pharmacyController");
 const router = express.Router();
 
 router.get(
-  "/check-subdomain",
+  "/check-slug",
   requireAuth,
-  pharmacyController.checkSubdomainAvailability
+  pharmacyController.checkSlugAvailability
 );
 router.post("/create", requireAuth, pharmacyController.createPharmacy);
 

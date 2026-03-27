@@ -7,30 +7,21 @@ import { Globe, Moon, ShieldCheck, Sun, UserRound } from 'lucide-react'
 import { useSession } from '@/app/providers'
 import { getCopy, getLocaleButtonLabel, getNextLocale } from '@/app/lib/i18n'
 
-const reservedSubdomains = new Set(['www', 'api', 'localhost'])
-
 function decodeBase64Url(input) {
   const base64 = input.replace(/-/g, '+').replace(/_/g, '/')
   const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
   return window.atob(padded)
 }
 
-function extractSubdomain(hostValue) {
-  const host = String(hostValue || '')
+function normalizePharmacySlug(value) {
+  const normalized = String(value || '')
     .trim()
     .toLowerCase()
-    .split(':')[0]
-
-  if (!host) return null
-
-  const parts = host.split('.').filter(Boolean)
-  if (parts.length >= 3) {
-    return reservedSubdomains.has(parts[0]) ? null : parts[0]
-  }
-  if (parts.length === 2 && parts[1] === 'localhost') {
-    return reservedSubdomains.has(parts[0]) ? null : parts[0]
-  }
-  return null
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+  if (!normalized) return null
+  if (!/^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])?$/.test(normalized)) return null
+  return normalized
 }
 
 export default function AuthPage() {
@@ -60,7 +51,6 @@ function AuthContent() {
   const [staffUsers, setStaffUsers] = useState([])
   const [selectedUserId, setSelectedUserId] = useState('')
   const [staffPin, setStaffPin] = useState('')
-  const [isTenantHost, setIsTenantHost] = useState(false)
   const hasProcessedCallback = useRef(false)
   const common = getCopy(locale)
   const t = common.authPage
@@ -68,6 +58,16 @@ function AuthContent() {
     () => process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000',
     []
   )
+  const pharmacySlugFromQuery = useMemo(
+    () =>
+      normalizePharmacySlug(
+        searchParams.get('pharmacy') ||
+          searchParams.get('pharmacySlug') ||
+          searchParams.get('slug')
+      ) || '',
+    [searchParams]
+  )
+  const isPharmacySlugContext = Boolean(pharmacySlugFromQuery)
 
   function getPostAuthPath(nextUser) {
     if (nextUser.role === 'superadmin' || nextUser.accountRole === 'superadmin') {
@@ -89,17 +89,13 @@ function AuthContent() {
   }, [router, user])
 
   useEffect(() => {
-    setIsTenantHost(Boolean(extractSubdomain(window.location.host)))
-  }, [])
-
-  useEffect(() => {
-    if (!isTenantHost) return
+    if (!isPharmacySlugContext) return
 
     let cancelled = false
     ;(async () => {
       try {
         setIsStaffLoading(true)
-        const users = await fetchStaffLoginUsers()
+        const users = await fetchStaffLoginUsers(pharmacySlugFromQuery)
         if (cancelled) return
         setStaffUsers(users)
         setSelectedUserId(users[0]?.id || '')
@@ -113,7 +109,7 @@ function AuthContent() {
     return () => {
       cancelled = true
     }
-  }, [fetchStaffLoginUsers, isTenantHost])
+  }, [fetchStaffLoginUsers, isPharmacySlugContext, pharmacySlugFromQuery])
 
   useEffect(() => {
     const token = searchParams.get('token')
@@ -175,7 +171,11 @@ function AuthContent() {
     setIsLoading(true)
     const returnTo =
       typeof window !== 'undefined'
-        ? `${window.location.origin}/auth`
+        ? `${window.location.origin}/auth${
+            pharmacySlugFromQuery
+              ? `?${new URLSearchParams({ pharmacy: pharmacySlugFromQuery }).toString()}`
+              : ''
+          }`
         : ''
     const params = new URLSearchParams()
     if (returnTo) {
@@ -192,7 +192,7 @@ function AuthContent() {
     try {
       setIsLoading(true)
       setErrorMessage('')
-      await loginWithPin(selectedUserId, staffPin.trim())
+      await loginWithPin(selectedUserId, staffPin.trim(), pharmacySlugFromQuery)
       router.replace('/dashboard')
     } catch (error) {
       setErrorMessage(error.message)
@@ -235,7 +235,7 @@ function AuthContent() {
 
         <h1 className='mt-2 text-2xl font-semibold text-[var(--foreground)]'>{t.signIn}</h1>
         <p className='mt-1 text-sm text-[var(--muted)]'>
-          {isTenantHost
+          {isPharmacySlugContext
             ? 'Staff accounts are created by the owner. Select a staff profile and enter PIN, or sign in as owner with Google.'
             : t.helper}
         </p>
@@ -246,7 +246,7 @@ function AuthContent() {
           </p>
         )}
 
-        {isTenantHost && (
+        {isPharmacySlugContext && (
           <form onSubmit={handleStaffLogin} className='mt-5 space-y-3'>
             <label className='block text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]'>
               Staff Session
@@ -295,7 +295,7 @@ function AuthContent() {
             className='flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500'
           >
             <ShieldCheck size={16} />
-            {isTenantHost ? 'Owner Sign-in with Google' : t.cta}
+            {isPharmacySlugContext ? 'Owner Sign-in with Google' : t.cta}
           </button>
         </div>
       </section>

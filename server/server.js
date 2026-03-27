@@ -67,7 +67,7 @@ function isAllowedLocalhostOrigin(candidateOrigin) {
     const parsedOrigin = new URL(candidateOrigin);
     const protocol = String(parsedOrigin.protocol || "").toLowerCase();
     const hostname = String(parsedOrigin.hostname || "").toLowerCase();
-    return protocol === "http:" && (hostname === "localhost" || hostname.endsWith(".localhost"));
+    return protocol === "http:" && hostname === "localhost";
   } catch (_error) {
     return false;
   }
@@ -101,7 +101,7 @@ const corsOptions =
             return callback(null, true);
           }
 
-          // Local tenant URLs like http://test1.localhost:3000
+          // Local path-based frontend URL like http://localhost:3000
           if (isAllowedLocalhostOrigin(origin)) {
             return callback(null, true);
           }
@@ -112,7 +112,7 @@ const corsOptions =
           return callback(new Error("Not allowed by CORS"));
         },
         methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Authorization", "Content-Type", "X-Tenant-Subdomain"],
+        allowedHeaders: ["Authorization", "Content-Type", "X-Pharmacy-Slug", "X-Pharmacy-Id"],
         credentials: false,
         maxAge: 86_400,
       }

@@ -12,24 +12,54 @@ import {
 const SessionContext = createContext(null)
 const apiBaseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
-const reservedSubdomains = new Set(['www', 'api', 'localhost'])
+const RESERVED_PATH_SEGMENTS = new Set([
+  'auth',
+  'dashboard',
+  'orders',
+  'agenda',
+  'users',
+  'subscription',
+  'superadmin',
+  'admin',
+  'onboarding',
+  'invitations'
+])
 const TOAST_DISPLAY_MS = 2000
 
-function extractSubdomainFromHost(hostValue) {
-  const host = String(hostValue || '')
+function normalizePharmacySlug(value) {
+  const normalized = String(value || '')
     .trim()
     .toLowerCase()
-    .split(':')[0]
-  if (!host) return null
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+  if (!normalized) return null
+  if (!/^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])?$/.test(normalized)) return null
+  return normalized
+}
 
-  const parts = host.split('.').filter(Boolean)
-  if (parts.length >= 3) {
-    return reservedSubdomains.has(parts[0]) ? null : parts[0]
+function extractSlugFromPathname(pathnameValue) {
+  const pathname = String(pathnameValue || '').trim()
+  if (!pathname || pathname === '/') return null
+  const segments = pathname.split('/').filter(Boolean)
+  if (segments.length === 0) return null
+  const firstSegment = normalizePharmacySlug(segments[0])
+  if (!firstSegment) return null
+  return RESERVED_PATH_SEGMENTS.has(firstSegment) ? null : firstSegment
+}
+
+function resolvePharmacySlugFromLocation() {
+  if (typeof window === 'undefined') return null
+  try {
+    const currentUrl = new URL(window.location.href)
+    const querySlug =
+      normalizePharmacySlug(currentUrl.searchParams.get('pharmacy')) ||
+      normalizePharmacySlug(currentUrl.searchParams.get('pharmacySlug')) ||
+      normalizePharmacySlug(currentUrl.searchParams.get('slug'))
+    if (querySlug) return querySlug
+    return extractSlugFromPathname(currentUrl.pathname)
+  } catch (_error) {
+    return null
   }
-  if (parts.length === 2 && parts[1] === 'localhost') {
-    return reservedSubdomains.has(parts[0]) ? null : parts[0]
-  }
-  return null
 }
 const toastCopy = {
   en: {
@@ -59,8 +89,7 @@ const toastCopy = {
 const errorCopy = {
   en: {
     'Request failed': 'Request failed.',
-    'Host header is required': 'Host header is required.',
-    'A valid pharmacy subdomain is required':
+    'A valid pharmacy slug is required':
       'A valid pharmacy workspace is required.',
     'Pharmacy not found': 'Pharmacy not found.',
     'Pharmacy is disabled': 'Pharmacy is disabled.',
@@ -69,8 +98,7 @@ const errorCopy = {
   },
   fr: {
     'Request failed': 'La requete a echoue.',
-    'Host header is required': "L'en-tete Host est requis.",
-    'A valid pharmacy subdomain is required':
+    'A valid pharmacy slug is required':
       'Un espace pharmacie valide est requis.',
     'Pharmacy not found': 'Pharmacie introuvable.',
     'Pharmacy is disabled': 'La pharmacie est desactivee.',
@@ -81,20 +109,22 @@ const errorCopy = {
 
 async function apiRequest(
   path,
-  { method = 'GET', token, body, tenantSubdomainOverride = '' } = {}
+  {
+    method = 'GET',
+    token,
+    body,
+    pharmacySlugOverride = ''
+  } = {}
 ) {
-  const tenantSubdomainFromHost =
-    typeof window !== 'undefined'
-      ? extractSubdomainFromHost(window.location.host)
-      : null
-  const tenantSubdomain = tenantSubdomainOverride || tenantSubdomainFromHost
+  const pharmacySlug =
+    normalizePharmacySlug(pharmacySlugOverride) || resolvePharmacySlugFromLocation()
 
   let response
   try {
     response = await fetch(`${apiBaseUrl}${path}`, {
       method,
       headers: {
-        ...(tenantSubdomain ? { 'X-Tenant-Subdomain': tenantSubdomain } : {}),
+        ...(pharmacySlug ? { 'X-Pharmacy-Slug': pharmacySlug } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(body ? { 'Content-Type': 'application/json' } : {})
       },
@@ -365,7 +395,7 @@ export function AppProviders({ children }) {
     const workspaceItems = (workspacesFromApi || []).map(item => ({
       id: String(item.id),
       name: item.name,
-      subdomain: item.subdomain || '',
+      subdomain: item.slug || item.subdomain || '',
       ownerEmail:
         String(item.ownerUserId) === String(sessionUser.id) ? resolvedEmail : ''
     }))
@@ -804,7 +834,7 @@ export function AppProviders({ children }) {
     }
   }
 
-  async function createPharmacy(name, subdomain) {
+  async function createPharmacy(name, slug) {
     if (!authToken) throw new Error('Missing auth token')
     if (user?.pharmacyId || currentWorkspace?.id) {
       throw new Error('A pharmacy is already linked to this owner account.')
@@ -813,13 +843,13 @@ export function AppProviders({ children }) {
       const result = await apiRequest('/api/pharmacy/create', {
         method: 'POST',
         token: authToken,
-        body: { name, subdomain }
+        body: { name, slug }
       })
 
       const workspace = {
         id: result.pharmacy._id,
         name: result.pharmacy.name,
-        subdomain: result.pharmacy.subdomain || '',
+        subdomain: result.pharmacy.slug || result.pharmacy.subdomain || '',
         ownerEmail: user?.email || ''
       }
       setWorkspaces(prev => [...prev, workspace])
@@ -848,31 +878,35 @@ export function AppProviders({ children }) {
     }
   }
 
-  async function checkPharmacySubdomain(subdomain) {
+  async function checkPharmacySlug(slug) {
     if (!authToken) throw new Error('Missing auth token')
-    const normalizedSubdomain = String(subdomain || '')
+    const normalizedSlug = String(slug || '')
       .trim()
       .toLowerCase()
-    if (!normalizedSubdomain) {
-      throw new Error('Subdomain is required')
+    if (!normalizedSlug) {
+      throw new Error('Slug is required')
     }
     const params = new URLSearchParams()
-    params.set('subdomain', normalizedSubdomain)
-    return apiRequest(`/api/pharmacy/check-subdomain?${params.toString()}`, {
+    params.set('slug', normalizedSlug)
+    return apiRequest(`/api/pharmacy/check-slug?${params.toString()}`, {
       token: authToken
     })
   }
 
-  async function fetchStaffLoginUsers() {
-    const hostSubdomain = extractSubdomainFromHost(window.location.host)
-    const subdomain = hostSubdomain || currentWorkspace?.subdomain || ''
-    if (!subdomain) {
+  async function fetchStaffLoginUsers(pharmacySlugOverride = '') {
+    const slug =
+      normalizePharmacySlug(pharmacySlugOverride) ||
+      normalizePharmacySlug(currentWorkspace?.subdomain) ||
+      resolvePharmacySlugFromLocation()
+    if (!slug) {
       return []
     }
 
     try {
-      const result = await apiRequest('/auth/staff', {
-        tenantSubdomainOverride: subdomain
+      const params = new URLSearchParams()
+      params.set('pharmacy', slug)
+      const result = await apiRequest(`/auth/staff?${params.toString()}`, {
+        pharmacySlugOverride: slug
       })
       return result.users || []
     } catch (_error) {
@@ -880,14 +914,16 @@ export function AppProviders({ children }) {
     }
   }
 
-  async function loginWithPin(userId, pin) {
+  async function loginWithPin(userId, pin, pharmacySlugOverride = '') {
     try {
-      const hostSubdomain = extractSubdomainFromHost(window.location.host)
-      const tenantSubdomain = currentWorkspace?.subdomain || hostSubdomain || ''
+      const slug =
+        normalizePharmacySlug(pharmacySlugOverride) ||
+        normalizePharmacySlug(currentWorkspace?.subdomain) ||
+        resolvePharmacySlugFromLocation()
       const result = await apiRequest('/auth/pin-login', {
         method: 'POST',
-        body: { userId, pin },
-        tenantSubdomainOverride: tenantSubdomain
+        body: { userId, pin, pharmacySlug: slug || '' },
+        pharmacySlugOverride: slug || ''
       })
       const mappedUser = mapBackendUserToClient(result.user)
       login(mappedUser, result.token)
@@ -1191,7 +1227,7 @@ export function AppProviders({ children }) {
       showConfirmToast,
       activateSubscription,
       createPharmacy,
-      checkPharmacySubdomain,
+      checkPharmacySlug,
       fetchStaffLoginUsers,
       loginWithPin,
       listStaffMembers,
@@ -1224,7 +1260,7 @@ export function AppProviders({ children }) {
       workspaceMembers,
       createPharmacy,
       resolveStaffByPin,
-      checkPharmacySubdomain,
+      checkPharmacySlug,
       fetchStaffLoginUsers,
       listStaffMembers,
       addStaffMember,

@@ -1,36 +1,16 @@
 const Pharmacy = require("../models/Pharmacy");
 const { cleanString, isValidObjectId } = require("../utils/input");
 
-const RESERVED_SUBDOMAINS = new Set(["www", "api", "localhost"]);
+const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])?$/;
 
-function stripPort(hostHeader) {
-  return String(hostHeader || "")
+function normalizeSlug(value) {
+  const normalized = String(value || "")
     .trim()
     .toLowerCase()
-    .split(":")[0];
-}
-
-function extractSubdomain(hostHeader) {
-  const host = stripPort(hostHeader);
-  if (!host) return null;
-
-  const parts = host.split(".").filter(Boolean);
-  if (parts.length >= 3) {
-    return parts[0];
-  }
-
-  if (parts.length === 2 && parts[1] === "localhost") {
-    return parts[0];
-  }
-
-  return null;
-}
-
-function sanitizeSubdomain(value) {
-  return String(value || "")
-    .trim()
-    .toLowerCase()
+    .replace(/\s+/g, "-")
     .replace(/[^a-z0-9-]/g, "");
+  if (!normalized) return null;
+  return normalized;
 }
 
 function extractRequestPharmacyId(req) {
@@ -52,18 +32,33 @@ function extractRequestPharmacyId(req) {
   return null;
 }
 
-async function resolvePharmacyFromSubdomain(req, res, next) {
-  try {
-    const host = req.headers.host;
-    if (!host) {
-      return res.status(400).json({ error: "Host header is required" });
-    }
+function extractRequestSlug(req) {
+  const candidates = [
+    req.pharmacySlug,
+    req.params?.pharmacySlug,
+    req.query?.pharmacySlug,
+    req.query?.pharmacy,
+    req.query?.slug,
+    req.body?.pharmacySlug,
+    req.body?.pharmacy,
+    req.body?.slug,
+    req.headers?.["x-pharmacy-slug"],
+  ];
 
-    const hostSubdomain = extractSubdomain(host);
-    const headerSubdomain = sanitizeSubdomain(req.headers["x-tenant-subdomain"]);
-    const subdomain = hostSubdomain || headerSubdomain;
-    const hasValidSubdomain = !!subdomain && !RESERVED_SUBDOMAINS.has(subdomain);
+  for (const candidate of candidates) {
+    const normalized = normalizeSlug(candidate);
+    if (normalized && SLUG_PATTERN.test(normalized)) {
+      return normalized;
+    }
+  }
+
+  return null;
+}
+
+async function resolvePharmacyFromSlug(req, res, next) {
+  try {
     const requestPharmacyId = extractRequestPharmacyId(req);
+    const requestSlug = extractRequestSlug(req);
     const userPharmacyId = cleanString(req.user?.pharmacyId);
     const canUseUserPharmacyId = isValidObjectId(userPharmacyId);
 
@@ -72,8 +67,8 @@ async function resolvePharmacyFromSubdomain(req, res, next) {
       pharmacy = await Pharmacy.findById(requestPharmacyId).select(
         "_id name subdomain ownerId ownerUserId isActive subscriptionStatus"
       );
-    } else if (hasValidSubdomain) {
-      pharmacy = await Pharmacy.findOne({ subdomain }).select(
+    } else if (requestSlug) {
+      pharmacy = await Pharmacy.findOne({ subdomain: requestSlug }).select(
         "_id name subdomain ownerId ownerUserId isActive subscriptionStatus"
       );
     } else if (canUseUserPharmacyId) {
@@ -82,7 +77,7 @@ async function resolvePharmacyFromSubdomain(req, res, next) {
       );
     } else {
       return res.status(400).json({
-        error: "A valid pharmacy subdomain is required",
+        error: "A valid pharmacy slug is required",
       });
     }
 
@@ -94,7 +89,7 @@ async function resolvePharmacyFromSubdomain(req, res, next) {
       return res.status(403).json({ error: "Pharmacy is disabled" });
     }
 
-    req.subdomain = pharmacy.subdomain || subdomain || "";
+    req.pharmacySlug = pharmacy.subdomain || requestSlug || "";
     req.pharmacy = pharmacy;
     req.pharmacyId = String(pharmacy._id);
     return next();
@@ -103,4 +98,4 @@ async function resolvePharmacyFromSubdomain(req, res, next) {
   }
 }
 
-module.exports = resolvePharmacyFromSubdomain;
+module.exports = resolvePharmacyFromSlug;

@@ -1,13 +1,13 @@
 const express = require("express");
 const requireAuth = require("../middleware/requireAuth");
-const resolvePharmacyFromSubdomain = require("../middleware/resolvePharmacyFromSubdomain");
+const resolvePharmacyFromSlug = require("../middleware/resolvePharmacyFromSlug");
 const requirePharmacyAccess = require("../middleware/requirePharmacyAccess");
 const orderController = require("../controllers/orderController");
 
 const router = express.Router();
 
 router.use(requireAuth);
-router.use(resolvePharmacyFromSubdomain);
+router.use(resolvePharmacyFromSlug);
 router.use(requirePharmacyAccess(["owner", "staff"]));
 
 router.get("/", orderController.listOrders);

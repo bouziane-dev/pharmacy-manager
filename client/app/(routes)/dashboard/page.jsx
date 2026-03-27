@@ -7,7 +7,7 @@ import OverviewCards from '@/app/components/OverviewCards'
 import { getCopy } from '@/app/lib/i18n'
 import { useRouteGuard } from '@/app/lib/useRouteGuard'
 import { useSession } from '@/app/providers'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 function getLocalIsoDate() {
   const now = new Date()
@@ -17,10 +17,12 @@ function getLocalIsoDate() {
 
 export default function DashboardPage() {
   const { user, isLoading, isBlocked } = useRouteGuard({})
-  const { locale, orders, currentWorkspace } = useSession()
+  const { locale, orders, currentWorkspace, listStaffMembers } = useSession()
   const [showExtraStats, setShowExtraStats] = useState(false)
+  const [staffCount, setStaffCount] = useState(0)
   const t = getCopy(locale)
   const today = getLocalIsoDate()
+  const canShowWorkspaceInfo = user?.role === 'admin'
   const statsValues = {
     finished: orders.filter(order => order.status === 'finished').length,
     due: orders.filter(
@@ -42,19 +44,61 @@ export default function DashboardPage() {
   const visibleStats = stats.filter(item => importantStatIds.has(item.id))
   const extraStats = stats.filter(item => !importantStatIds.has(item.id))
 
+  useEffect(() => {
+    if (!canShowWorkspaceInfo || !currentWorkspace?.id) {
+      setStaffCount(0)
+      return
+    }
+
+    let isCancelled = false
+    listStaffMembers()
+      .then(rows => {
+        if (isCancelled) return
+        setStaffCount(Array.isArray(rows) ? rows.length : 0)
+      })
+      .catch(() => {
+        if (isCancelled) return
+        setStaffCount(0)
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [canShowWorkspaceInfo, currentWorkspace?.id, listStaffMembers])
+
   if (isLoading || isBlocked || !user) return null
 
   return (
     <AppShell title={t.pages.dashboard}>
       <div className='space-y-4'>
-        <section className='rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3'>
-          <p className='text-xs uppercase tracking-[0.16em] text-[var(--muted)]'>
-            {locale === 'fr' ? 'Nom du dashboard' : 'Dashboard name'}
-          </p>
-          <p className='mt-1 text-sm font-semibold text-[var(--foreground)]'>
-            {currentWorkspace?.name || (locale === 'fr' ? 'Dashboard' : 'Dashboard')}
-          </p>
-        </section>
+        {canShowWorkspaceInfo && (
+          <section className='rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3'>
+            <p className='text-xs uppercase tracking-[0.16em] text-[var(--muted)]'>
+              {t.dashboard.sideInfoTitle}
+            </p>
+            <div className='mt-2 grid gap-2 text-sm sm:grid-cols-3'>
+              <p className='rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-[var(--foreground)]'>
+                <span className='text-xs text-[var(--muted)]'>{t.dashboard.pharmacyName}</span>
+                <br />
+                <span className='font-semibold'>
+                  {currentWorkspace?.name || t.dashboard.noWorkspace}
+                </span>
+              </p>
+              <p className='rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-[var(--foreground)]'>
+                <span className='text-xs text-[var(--muted)]'>{t.dashboard.pharmacySlug}</span>
+                <br />
+                <span className='font-semibold'>
+                  {currentWorkspace?.subdomain || t.dashboard.noSlug}
+                </span>
+              </p>
+              <p className='rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-[var(--foreground)]'>
+                <span className='text-xs text-[var(--muted)]'>{t.dashboard.staffCount}</span>
+                <br />
+                <span className='font-semibold'>{staffCount}</span>
+              </p>
+            </div>
+          </section>
+        )}
         <InvitationNotifications />
         <OverviewCards stats={visibleStats} />
         {extraStats.length > 0 && (

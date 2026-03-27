@@ -1,6 +1,6 @@
 const express = require("express");
 const ActivityLog = require("../models/ActivityLog");
-const resolvePharmacyFromSubdomain = require("../middleware/resolvePharmacyFromSubdomain");
+const resolvePharmacyFromSlug = require("../middleware/resolvePharmacyFromSlug");
 const requireAuth = require("../middleware/requireAuth");
 const requirePharmacyAccess = require("../middleware/requirePharmacyAccess");
 const simpleRateLimit = require("../middleware/simpleRateLimit");
@@ -39,7 +39,7 @@ function requireOwnerOrAdmin(req, res, next) {
 }
 
 router.use(requireAuth);
-router.use(resolvePharmacyFromSubdomain);
+router.use(resolvePharmacyFromSlug);
 router.use(requirePharmacyAccess(["owner", "staff"]));
 router.use(requireOwnerOrAdmin);
 

@@ -17,7 +17,7 @@ function getReadableActionLabel(action, locale) {
           DELETE_ORDER: 'Suppression commande',
           ADD_ORDER_COMMENT: 'Ajout commentaire',
           PIN_LOGIN: 'Connexion PIN',
-          UPDATE_STAFF_ROLE: 'Rôle staff modifié'
+          UPDATE_STAFF_ROLE: 'Role staff modifie'
         }
       : {
           CREATE_STAFF: 'Staff created',
@@ -54,15 +54,12 @@ export default function UsersTable() {
     deleteStaffMember,
     fetchActivityLogs
   } = useSession()
+
   const t = getCopy(locale).users
   const generalActionError =
-    locale === 'fr'
-      ? "Une erreur s'est produite. Veuillez réessayer."
-      : 'Something went wrong. Please try again.'
+    t.errors?.generic || 'Something went wrong. Please try again.'
   const duplicatePinErrorMessage =
-    locale === 'fr'
-      ? 'Ce code PIN est déjà utilisé. Choisissez un autre PIN.'
-      : 'This PIN is already in use. Please choose another PIN.'
+    t.errors?.duplicatePin || 'This PIN is already in use. Please choose another PIN.'
   const canManageStaffRoles =
     user?.accountRole === 'owner' || user?.primaryRole === 'owner'
 
@@ -76,7 +73,7 @@ export default function UsersTable() {
       ])
       setStaff(staffRows)
       setActivityLogs(activityResult.logs || [])
-    } catch (error) {
+    } catch (_error) {
       setErrorMessage(generalActionError)
     } finally {
       setIsLoading(false)
@@ -109,32 +106,22 @@ export default function UsersTable() {
       ) {
         setErrorMessage(duplicatePinErrorMessage)
       } else if (rawMessage.includes('pin')) {
-        setErrorMessage(
-          locale === 'fr'
-            ? 'PIN invalide. Utilisez 2 a 6 chiffres.'
-            : 'Invalid PIN. Use 2 to 6 digits.'
-        )
+        setErrorMessage(t.errors?.invalidPin || 'Invalid PIN. Use 2 to 6 digits.')
       } else if (rawMessage.includes('name') && rawMessage.includes('already')) {
         setErrorMessage(
-          locale === 'fr'
-            ? 'Un membre avec ce nom existe deja dans cette pharmacie.'
-            : 'A staff member with this name already exists in this pharmacy.'
+          t.errors?.duplicateName ||
+            'A staff member with this name already exists in this pharmacy.'
         )
       } else if (rawMessage.includes('invalid staff role')) {
-        setErrorMessage(
-          locale === 'fr'
-            ? 'Role invalide. Utilisez Admin ou Pharmacist.'
-            : 'Invalid role. Use Admin or Pharmacist.'
-        )
+        setErrorMessage(t.errors?.invalidRole || 'Invalid role. Use Admin or Pharmacist.')
       } else if (
         rawMessage.includes('no access to this pharmacy') ||
         rawMessage.includes('insufficient role') ||
         rawMessage.includes('only owner')
       ) {
         setErrorMessage(
-          locale === 'fr'
-            ? "Vous n'avez pas la permission d'ajouter un membre dans cet espace."
-            : 'You do not have permission to add staff in this workspace.'
+          t.errors?.noPermission ||
+            'You do not have permission to add staff in this workspace.'
         )
       } else {
         setErrorMessage(generalActionError)
@@ -145,12 +132,13 @@ export default function UsersTable() {
 
   async function handleResetPin(staffId) {
     const manualPinInput = window.prompt(
-      'Enter new PIN (2-6 digits). Leave empty to auto-generate.'
+      t.prompts?.resetPin ||
+        'Enter new PIN (2-6 digits). Leave empty to auto-generate.'
     )
     if (manualPinInput === null) return
     const normalizedPin = manualPinInput.replace(/\D/g, '').slice(0, 6)
     if (normalizedPin && (normalizedPin.length < 2 || normalizedPin.length > 6)) {
-      setErrorMessage('PIN must be between 2 and 6 digits')
+      setErrorMessage(t.errors?.pinLength || 'PIN must be between 2 and 6 digits')
       return
     }
 
@@ -162,11 +150,7 @@ export default function UsersTable() {
       await refreshData()
     } catch (error) {
       if (String(error?.message || '').toLowerCase().includes('pin')) {
-        setErrorMessage(
-          locale === 'fr'
-            ? 'PIN invalide. Utilisez 2 à 6 chiffres.'
-            : 'Invalid PIN. Use 2 to 6 digits.'
-        )
+        setErrorMessage(t.errors?.invalidPin || 'Invalid PIN. Use 2 to 6 digits.')
       } else {
         setErrorMessage(generalActionError)
       }
@@ -180,7 +164,7 @@ export default function UsersTable() {
       setErrorMessage('')
       await deleteStaffMember(staffId)
       await refreshData()
-    } catch (error) {
+    } catch (_error) {
       setErrorMessage(generalActionError)
       setIsLoading(false)
     }
@@ -205,10 +189,11 @@ export default function UsersTable() {
     <section className='space-y-4'>
       <article className='panel p-5'>
         <h2 className='text-lg font-semibold text-[var(--foreground)]'>
-          Staff Management
+          {t.managementTitle || 'Staff Management'}
         </h2>
         <p className='mt-2 text-sm text-[var(--muted)]'>
-          Create staff PIN profiles scoped to this pharmacy subdomain.
+          {t.managementDescription ||
+            'Create staff PIN profiles scoped to this pharmacy slug.'}
         </p>
         {errorMessage && (
           <p className='mt-3 rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm text-red-600'>
@@ -217,14 +202,15 @@ export default function UsersTable() {
         )}
         {issuedPin && (
           <p className='mt-3 rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700'>
-            Assigned PIN: <span className='font-bold tracking-widest'>{issuedPin}</span>
+            {t.assignedPinLabel || 'Assigned PIN'}:{' '}
+            <span className='font-bold tracking-widest'>{issuedPin}</span>
           </p>
         )}
         <div className='mt-3 grid gap-3 md:grid-cols-4'>
           <input
             value={name}
             onChange={event => setName(event.target.value)}
-            placeholder='Staff name'
+            placeholder={t.placeholders?.staffName || 'Staff name'}
             className='rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/50 transition focus:ring'
           />
           <select
@@ -232,13 +218,13 @@ export default function UsersTable() {
             onChange={event => setRole(event.target.value)}
             className='rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none'
           >
-            <option value='pharmacist'>Pharmacist</option>
-            <option value='admin'>Admin</option>
+            <option value='pharmacist'>{t.inviteRoles?.pharmacist || 'Pharmacist'}</option>
+            <option value='admin'>{t.inviteRoles?.admin || 'Admin'}</option>
           </select>
           <input
             value={pin}
             onChange={event => setPin(event.target.value.replace(/\D/g, '').slice(0, 6))}
-            placeholder='PIN (2-6 digits)'
+            placeholder={t.placeholders?.pin || 'PIN (2-6 digits)'}
             className='rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/50 transition focus:ring'
           />
           <button
@@ -246,7 +232,7 @@ export default function UsersTable() {
             disabled={isLoading || !name.trim() || pin.length < 2 || pin.length > 6}
             className='rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50'
           >
-            Add Staff
+            {t.addStaff || 'Add Staff'}
           </button>
         </div>
       </article>
@@ -262,10 +248,14 @@ export default function UsersTable() {
           <table className='w-full min-w-[640px] table-fixed text-left text-sm'>
             <thead>
               <tr className='border-b border-[var(--border)] text-[var(--muted)]'>
-                <th className='px-3 py-3 font-medium sm:px-5'>Name</th>
-                <th className='px-3 py-3 font-medium sm:px-5'>Role</th>
-                <th className='px-3 py-3 font-medium sm:px-5'>Status</th>
-                <th className='px-3 py-3 font-medium sm:px-5'>Actions</th>
+                <th className='px-3 py-3 font-medium sm:px-5'>{t.columns?.name || 'Name'}</th>
+                <th className='px-3 py-3 font-medium sm:px-5'>{t.columns?.role || 'Role'}</th>
+                <th className='px-3 py-3 font-medium sm:px-5'>
+                  {t.columns?.status || 'Status'}
+                </th>
+                <th className='px-3 py-3 font-medium sm:px-5'>
+                  {t.columns?.actions || 'Actions'}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -288,8 +278,10 @@ export default function UsersTable() {
                           disabled={isLoading}
                           className='rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs text-[var(--foreground)] outline-none'
                         >
-                          <option value='pharmacist'>Pharmacist</option>
-                          <option value='admin'>Admin</option>
+                          <option value='pharmacist'>
+                            {t.inviteRoles?.pharmacist || 'Pharmacist'}
+                          </option>
+                          <option value='admin'>{t.inviteRoles?.admin || 'Admin'}</option>
                         </select>
                       </div>
                     ) : (
@@ -304,7 +296,7 @@ export default function UsersTable() {
                           : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-200'
                       }`}
                     >
-                      {item.isActive ? 'Active' : 'Disabled'}
+                      {item.isActive ? t.active || 'Active' : t.statusDisabled || 'Disabled'}
                     </span>
                   </td>
                   <td className='px-3 py-3 sm:px-5'>
@@ -314,14 +306,14 @@ export default function UsersTable() {
                         disabled={isLoading}
                         className='rounded-md border border-[var(--border)] px-2.5 py-1 text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50'
                       >
-                        Reset PIN
+                        {t.resetPin || 'Reset PIN'}
                       </button>
                       <button
                         onClick={() => handleDelete(item.id)}
                         disabled={isLoading}
                         className='rounded-md border border-red-400/40 px-2.5 py-1 text-xs font-semibold text-red-600 transition hover:bg-red-500/10 disabled:opacity-50'
                       >
-                        Delete
+                        {t.delete || 'Delete'}
                       </button>
                     </div>
                   </td>
@@ -333,7 +325,7 @@ export default function UsersTable() {
                     colSpan={4}
                     className='px-5 py-8 text-center text-sm text-[var(--muted)]'
                   >
-                    No staff profiles yet.
+                    {t.noStaffProfiles || 'No staff profiles yet.'}
                   </td>
                 </tr>
               )}
@@ -343,10 +335,12 @@ export default function UsersTable() {
       </article>
 
       <article className='panel p-5'>
-        <h2 className='text-lg font-semibold text-[var(--foreground)]'>Activity Logs</h2>
+        <h2 className='text-lg font-semibold text-[var(--foreground)]'>
+          {t.activityTitle || 'Activity Logs'}
+        </h2>
         <div className='mt-3 space-y-2'>
           {activityLogs.length === 0 && (
-            <p className='text-sm text-[var(--muted)]'>No activity yet.</p>
+            <p className='text-sm text-[var(--muted)]'>{t.noActivity || 'No activity yet.'}</p>
           )}
           {activityLogs.slice(0, 20).map(log => (
             <p
@@ -356,7 +350,7 @@ export default function UsersTable() {
               <span className='font-semibold'>
                 {getReadableActionLabel(log.action, locale)}
               </span>{' '}
-              | {log.user?.name || (locale === 'fr' ? 'Inconnu' : 'Unknown')} |{' '}
+              | {log.user?.name || t.unknownUser || 'Unknown'} |{' '}
               {new Date(log.createdAt).toLocaleString()}
             </p>
           ))}
@@ -365,4 +359,3 @@ export default function UsersTable() {
     </section>
   )
 }
-

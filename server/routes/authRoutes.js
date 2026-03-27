@@ -3,7 +3,7 @@ const passport = require("../config/passport");
 const User = require("../models/User");
 const Pharmacy = require("../models/Pharmacy");
 const simpleRateLimit = require("../middleware/simpleRateLimit");
-const resolvePharmacyFromSubdomain = require("../middleware/resolvePharmacyFromSubdomain");
+const resolvePharmacyFromSlug = require("../middleware/resolvePharmacyFromSlug");
 const { signAuthToken } = require("../services/authTokenService");
 const { comparePin, isValidPin, normalizePin } = require("../services/pinService");
 const { logActivity } = require("../services/activityLogger");
@@ -104,19 +104,53 @@ function normalizeReturnToUrl(candidateValue) {
 
   const protocol = String(parsed.protocol || "").toLowerCase();
   const host = String(parsed.hostname || "").toLowerCase();
-  if (protocol !== "https:" && !(protocol === "http:" && host.endsWith(".localhost"))) {
+  if (protocol !== "https:" && !(protocol === "http:" && host === "localhost")) {
     return null;
   }
 
   const isProductionRoot = host === "phlowit.com" || host === "www.phlowit.com";
-  const isProductionTenant = host.endsWith(".phlowit.com");
-  const isLocalhost = host === "localhost" || host.endsWith(".localhost");
-  if (!isProductionRoot && !isProductionTenant && !isLocalhost) {
+  const isLocalhost = host === "localhost";
+  if (!isProductionRoot && !isLocalhost) {
     return null;
   }
 
+  const pathSegments = parsed.pathname.split("/").filter(Boolean);
+  const reservedPathSegments = new Set([
+    "auth",
+    "dashboard",
+    "orders",
+    "agenda",
+    "users",
+    "subscription",
+    "superadmin",
+    "admin",
+    "onboarding",
+    "invitations",
+  ]);
+  const pathSlug =
+    pathSegments.length === 1 &&
+    /^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])?$/i.test(pathSegments[0]) &&
+    !reservedPathSegments.has(String(pathSegments[0]).toLowerCase())
+      ? String(pathSegments[0]).toLowerCase()
+      : null;
+  const querySlugCandidate =
+    parsed.searchParams.get("pharmacy") ||
+    parsed.searchParams.get("pharmacySlug") ||
+    parsed.searchParams.get("slug") ||
+    "";
+  const normalizedQuerySlug = String(querySlugCandidate)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "");
+  const querySlug = /^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])?$/.test(normalizedQuerySlug)
+    ? normalizedQuerySlug
+    : null;
+
   parsed.pathname = "/auth";
   parsed.search = "";
+  if (querySlug || pathSlug) {
+    parsed.searchParams.set("pharmacy", querySlug || pathSlug);
+  }
   parsed.hash = "";
   return parsed.toString();
 }
@@ -302,7 +336,7 @@ async function listPublicStaffUsers(req, res) {
       pharmacy: {
         id: req.pharmacyId,
         name: req.pharmacy.name,
-        subdomain: req.pharmacy.subdomain,
+        slug: req.pharmacy.subdomain,
       },
       users: staffUsers.map((item) => ({
         id: String(item._id),
@@ -315,13 +349,13 @@ async function listPublicStaffUsers(req, res) {
   }
 }
 
-router.get("/staff", resolvePharmacyFromSubdomain, listPublicStaffUsers);
-router.get("/staff-users", resolvePharmacyFromSubdomain, listPublicStaffUsers);
+router.get("/staff", resolvePharmacyFromSlug, listPublicStaffUsers);
+router.get("/staff-users", resolvePharmacyFromSlug, listPublicStaffUsers);
 
 router.post(
   "/pin-login",
   simpleRateLimit({ windowMs: 60_000, max: 12 }),
-  resolvePharmacyFromSubdomain,
+  resolvePharmacyFromSlug,
   async (req, res) => {
     try {
       const userId = cleanString(req.body.userId);

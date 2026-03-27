@@ -86,7 +86,7 @@ const content = {
     howToUseSteps: [
       'Owner signs in with Google.',
       'Owner chooses a plan and creates the pharmacy dashboard.',
-      'Owner sets a unique subdomain (example: alshifa.saas.com).',
+      'Owner sets a unique pharmacy slug (example: phlowit.com/alshifa).',
       'Owner creates staff members and PIN codes.',
       'Owner shares the pharmacy link with staff.',
       'Staff open the link, select profile, and log in with PIN.'
@@ -193,7 +193,7 @@ const content = {
     howToUseSteps: [
       'Le propriétaire se connecte avec Google.',
       'Le propriétaire choisit un plan et crée le dashboard pharmacie.',
-      'Le propriétaire définit un sous-domaine unique (ex: alshifa.saas.com).',
+      'Le propriétaire définit un slug unique (ex: phlowit.com/alshifa).',
       'Le propriétaire crée les membres staff et leurs PIN.',
       'Le propriétaire envoie le lien de la pharmacie à l’équipe.',
       'Le staff ouvre le lien, choisit son profil et se connecte avec PIN.'
@@ -272,22 +272,6 @@ export default function Home() {
     if (!isReady || isBootstrappingSession) return
     if (user) {
       router.replace(getHomePathForUser(user))
-    }
-  }, [isBootstrappingSession, isReady, router, user])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const host = String(window.location.host || '')
-      .trim()
-      .toLowerCase()
-      .split(':')[0]
-    const parts = host.split('.').filter(Boolean)
-    const subdomain = parts.length >= 3 ? parts[0] : null
-    const reserved = new Set(['www', 'api', 'localhost'])
-
-    if (!isReady || isBootstrappingSession || user) return
-    if (subdomain && !reserved.has(subdomain)) {
-      router.replace('/auth')
     }
   }, [isBootstrappingSession, isReady, router, user])
 

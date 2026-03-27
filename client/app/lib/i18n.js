@@ -81,6 +81,12 @@ export const i18n = {
       confirmNo: 'Cancel'
     },
     dashboard: {
+      sideInfoTitle: 'Pharmacy Side Info',
+      pharmacyName: 'Pharmacy name',
+      pharmacySlug: 'Pharmacy slug',
+      staffCount: 'Staff count',
+      noWorkspace: 'Dashboard',
+      noSlug: 'No slug',
       stats: [
         { id: 'finished', label: 'Finished Orders', delta: 'Archived' },
         { id: 'due', label: 'Due Today', delta: 'Need review' },
@@ -208,6 +214,36 @@ export const i18n = {
       inviteWorker: 'Invite Worker',
       invitePlaceholder: 'worker@pharmacy.local',
       sendInvite: 'Send Invite',
+      managementTitle: 'Staff Management',
+      managementDescription:
+        'Create staff PIN profiles scoped to this pharmacy slug.',
+      assignedPinLabel: 'Assigned PIN',
+      addStaff: 'Add Staff',
+      resetPin: 'Reset PIN',
+      delete: 'Delete',
+      noStaffProfiles: 'No staff profiles yet.',
+      activityTitle: 'Activity Logs',
+      noActivity: 'No activity yet.',
+      unknownUser: 'Unknown',
+      statusDisabled: 'Disabled',
+      prompts: {
+        resetPin: 'Enter new PIN (2-6 digits). Leave empty to auto-generate.'
+      },
+      placeholders: {
+        staffName: 'Staff name',
+        pin: 'PIN (2-6 digits)'
+      },
+      errors: {
+        generic: 'Something went wrong. Please try again.',
+        duplicatePin: 'This PIN is already in use. Please choose another PIN.',
+        invalidPin: 'Invalid PIN. Use 2 to 6 digits.',
+        duplicateName:
+          'A staff member with this name already exists in this pharmacy.',
+        invalidRole: 'Invalid role. Use Admin or Pharmacist.',
+        noPermission:
+          'You do not have permission to add staff in this workspace.',
+        pinLength: 'PIN must be between 2 and 6 digits'
+      },
       teamMembers: 'Team Members',
       pendingInvites: 'Pending Invites',
       invitedBy: 'Invited by',
@@ -219,7 +255,8 @@ export const i18n = {
         name: 'Name',
         role: 'Role',
         email: 'Email',
-        status: 'Status'
+        status: 'Status',
+        actions: 'Actions'
       },
       role: {
         owner: 'Owner',
@@ -311,6 +348,12 @@ export const i18n = {
       confirmNo: 'Annuler'
     },
     dashboard: {
+      sideInfoTitle: 'Informations pharmacie',
+      pharmacyName: 'Nom pharmacie',
+      pharmacySlug: 'Slug pharmacie',
+      staffCount: 'Nombre de staff',
+      noWorkspace: 'Tableau de bord',
+      noSlug: 'Aucun slug',
       stats: [
         { id: 'finished', label: 'Commandes terminées', delta: 'Archivées' },
         { id: 'due', label: 'À traiter aujourd’hui', delta: 'À vérifier' },
@@ -438,6 +481,36 @@ export const i18n = {
       inviteWorker: 'Inviter un membre',
       invitePlaceholder: 'pharmacien@pharmacie.local',
       sendInvite: 'Envoyer',
+      managementTitle: 'Gestion des membres',
+      managementDescription:
+        'Creer des profils PIN staff lies au slug de cette pharmacie.',
+      assignedPinLabel: 'PIN attribue',
+      addStaff: 'Ajouter un membre',
+      resetPin: 'Reinitialiser PIN',
+      delete: 'Supprimer',
+      noStaffProfiles: 'Aucun profil staff pour le moment.',
+      activityTitle: "Journal d'activite",
+      noActivity: 'Aucune activite pour le moment.',
+      unknownUser: 'Inconnu',
+      statusDisabled: 'Desactive',
+      prompts: {
+        resetPin:
+          'Entrez un nouveau PIN (2-6 chiffres). Laissez vide pour generation auto.'
+      },
+      placeholders: {
+        staffName: 'Nom du membre',
+        pin: 'PIN (2-6 chiffres)'
+      },
+      errors: {
+        generic: "Une erreur s'est produite. Veuillez reessayer.",
+        duplicatePin: 'Ce code PIN est deja utilise. Choisissez un autre PIN.',
+        invalidPin: 'PIN invalide. Utilisez 2 a 6 chiffres.',
+        duplicateName: 'Un membre avec ce nom existe deja dans cette pharmacie.',
+        invalidRole: 'Role invalide. Utilisez Administrateur ou Pharmacien.',
+        noPermission:
+          "Vous n'avez pas la permission d'ajouter un membre dans cet espace.",
+        pinLength: 'Le PIN doit contenir entre 2 et 6 chiffres.'
+      },
       teamMembers: 'Membres de l’équipe',
       pendingInvites: 'Invitations en attente',
       invitedBy: 'Invité par',
@@ -449,7 +522,8 @@ export const i18n = {
         name: 'Nom',
         role: 'Rôle',
         email: 'E-mail',
-        status: 'Statut'
+        status: 'Statut',
+        actions: 'Actions'
       },
       role: {
         owner: 'Propriétaire',

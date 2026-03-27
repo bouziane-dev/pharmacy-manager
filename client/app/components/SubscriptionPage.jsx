@@ -21,7 +21,7 @@ export default function SubscriptionPage() {
     locale,
     currentWorkspace,
     createPharmacy,
-    checkPharmacySubdomain
+    checkPharmacySlug
   } = useSession()
 
   const t = getCopy(locale).subscription
@@ -31,16 +31,11 @@ export default function SubscriptionPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [slugState, setSlugState] = useState('idle')
 
-  const rootDomain = useMemo(() => {
-    if (typeof window === 'undefined') return 'phlowit.com'
-    const host = String(window.location.host || '')
-      .toLowerCase()
-      .split(':')[0]
-    const parts = host.split('.').filter(Boolean)
-    if (parts.length >= 2) {
-      return parts.slice(-2).join('.')
-    }
-    return host || 'phlowit.com'
+  const rootUrl = useMemo(() => {
+    if (typeof window === 'undefined') return 'https://phlowit.com'
+    const protocol = window.location.protocol || 'https:'
+    const host = window.location.host || 'phlowit.com'
+    return `${protocol}//${host}`
   }, [])
 
   const normalizedSubdomain = sanitizeSubdomain(pharmacySubdomain)
@@ -64,7 +59,7 @@ export default function SubscriptionPage() {
 
     const timer = window.setTimeout(async () => {
       try {
-        const result = await checkPharmacySubdomain(normalizedSubdomain)
+        const result = await checkPharmacySlug(normalizedSubdomain)
         if (cancelled) return
         setSlugState(result.available ? 'available' : 'taken')
       } catch (_error) {
@@ -78,7 +73,7 @@ export default function SubscriptionPage() {
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [checkPharmacySubdomain, normalizedSubdomain])
+  }, [checkPharmacySlug, normalizedSubdomain])
 
   async function verifySlugAvailability(subdomain) {
     if (!SUBDOMAIN_PATTERN.test(subdomain)) {
@@ -88,7 +83,7 @@ export default function SubscriptionPage() {
 
     try {
       setSlugState('checking')
-      const result = await checkPharmacySubdomain(subdomain)
+      const result = await checkPharmacySlug(subdomain)
       setSlugState(result.available ? 'available' : 'taken')
       return {
         isAvailable: Boolean(result.available),
@@ -198,9 +193,9 @@ export default function SubscriptionPage() {
             />
             <p className='text-xs text-[var(--muted)]'>
               {t.slugHint}
-              <span className='ml-1 font-semibold text-[var(--foreground)]'>
-                {normalizedSubdomain || 'your-slug'}.{rootDomain}
-              </span>
+               <span className='ml-1 font-semibold text-[var(--foreground)]'>
+                 {`${rootUrl}/${normalizedSubdomain || 'your-slug'}`}
+               </span>
             </p>
             {slugState === 'invalid' && (
               <p className='text-xs font-medium text-amber-600'>

@@ -15,9 +15,9 @@ function normalizeSubdomain(value) {
 
 async function createPharmacy(req, res) {
   try {
-    const { name, subdomain } = req.body;
+    const { name, slug, subdomain } = req.body;
     const normalizedName = cleanSingleLine(name);
-    const normalizedSubdomain = normalizeSubdomain(subdomain);
+    const normalizedSubdomain = normalizeSubdomain(slug || subdomain);
 
     if (!normalizedName) {
       return res.status(400).json({ error: "Pharmacy name is required" });
@@ -26,7 +26,7 @@ async function createPharmacy(req, res) {
     if (!normalizedSubdomain || !SUBDOMAIN_PATTERN.test(normalizedSubdomain)) {
       return res.status(400).json({
         error:
-          "Subdomain is required and must contain only lowercase letters, digits, and hyphens",
+          "Slug is required and must contain only lowercase letters, digits, and hyphens",
       });
     }
 
@@ -103,14 +103,16 @@ async function createPharmacy(req, res) {
   }
 }
 
-async function checkSubdomainAvailability(req, res) {
+async function checkSlugAvailability(req, res) {
   try {
-    const normalizedSubdomain = normalizeSubdomain(req.query.subdomain);
+    const normalizedSubdomain = normalizeSubdomain(
+      req.query.slug || req.query.pharmacySlug
+    );
 
     if (!normalizedSubdomain || !SUBDOMAIN_PATTERN.test(normalizedSubdomain)) {
       return res.status(400).json({
         error:
-          "Subdomain is required and must contain only lowercase letters, digits, and hyphens",
+          "Slug is required and must contain only lowercase letters, digits, and hyphens",
       });
     }
 
@@ -129,5 +131,5 @@ async function checkSubdomainAvailability(req, res) {
 
 module.exports = {
   createPharmacy,
-  checkSubdomainAvailability,
+  checkSlugAvailability,
 };
