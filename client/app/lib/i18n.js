@@ -36,6 +36,8 @@ export const i18n = {
     pages: {
       dashboard: 'Dashboard',
       orders: 'Orders',
+      preparations: 'Preparations',
+      inbody: 'InBody',
       agenda: 'Agenda',
       activity: 'Activity Logs',
       superadmin: 'Super Admin',
@@ -46,6 +48,8 @@ export const i18n = {
     sidebar: {
       dashboard: 'Dashboard',
       orders: 'Orders',
+      preparations: 'Preparations',
+      inbody: 'InBody',
       agenda: 'Agenda',
       activity: 'Activity',
       superadminDashboard: 'Superadmin',
@@ -204,6 +208,76 @@ export const i18n = {
       saveChanges: 'Save Changes',
       notFound: 'Order not found.'
     },
+    preparations: {
+      addTitle: 'Create Preparation',
+      addDescription: 'Track compounding preparations and update execution status.',
+      fields: {
+        preparationType: 'Preparation Type',
+        composition: 'Composition',
+        receivedBy: 'Received by',
+        preparedBy: 'Prepared by',
+        deliveredBy: 'Delivered by',
+        status: 'Status',
+        notes: 'Notes'
+      },
+      placeholders: {
+        preparationType: 'Example: Ointment, Syrup',
+        composition: 'Ingredients or formula details',
+        receivedBy: 'Pharmacist name',
+        preparedBy: 'Pharmacist name',
+        deliveredBy: 'Pharmacist name',
+        notes: 'Optional notes'
+      },
+      addButton: 'Add Preparation',
+      searchLabel: 'Search Preparations',
+      searchPlaceholder: 'Search by type, composition, or pharmacist name',
+      filterLabel: 'Filter by status',
+      listTitle: 'Preparation List',
+      empty: 'No preparations found.',
+      saveNotes: 'Save notes',
+      workflowSave: 'Save workflow',
+      delete: 'Delete',
+      status: {
+        en_cours: 'En cours',
+        prepared: 'Prepared',
+        delivered: 'Delivered'
+      }
+    },
+    inbody: {
+      patientTitle: 'Patients',
+      patientDescription: 'Create and manage patients using phone number as Patient ID.',
+      patientFields: {
+        patientId: 'Patient ID (Phone)',
+        fullName: 'Full Name',
+        email: 'Email (optional)',
+        dateOfBirth: 'Date of Birth'
+      },
+      patientPlaceholders: {
+        patientId: '0550000000',
+        fullName: 'Patient full name',
+        email: 'patient@email.com'
+      },
+      addPatient: 'Add Patient',
+      patientsListTitle: 'Patient List',
+      patientsSearch: 'Search patients by name or ID',
+      noPatients: 'No patients yet.',
+      testsTitle: 'InBody Tests',
+      testsDescription: 'Select a patient to view history and add new test records.',
+      testFields: {
+        testedAt: 'Test date & time',
+        testData: 'Test Data (JSON)',
+        notes: 'Notes (optional)'
+      },
+      testPlaceholders: {
+        testData:
+          '{\n  "weight": 70.5,\n  "muscleMass": 32.1,\n  "bodyFat": 18.2,\n  "water": 52.3\n}',
+        notes: 'Additional notes'
+      },
+      addTest: 'Add Test',
+      noPatientSelected: 'Select a patient to open test history.',
+      noTests: 'No tests recorded yet.',
+      jsonError: 'Invalid JSON format for test data.'
+    },
     agenda: {
       monthHint:
         'Monthly view. Drag an order card to another day to update arrival date.',
@@ -303,6 +377,8 @@ export const i18n = {
     pages: {
       dashboard: 'Tableau de bord',
       orders: 'Commandes',
+      preparations: 'Preparations',
+      inbody: 'InBody',
       agenda: 'Agenda',
       activity: "Journal d'activite",
       superadmin: 'Super Admin',
@@ -313,6 +389,8 @@ export const i18n = {
     sidebar: {
       dashboard: 'Tableau de bord',
       orders: 'Commandes',
+      preparations: 'Preparations',
+      inbody: 'InBody',
       agenda: 'Agenda',
       activity: 'Activite',
       superadminDashboard: 'Superadmin',
@@ -470,6 +548,79 @@ export const i18n = {
       backToOrders: 'Retour aux commandes',
       saveChanges: 'Enregistrer',
       notFound: 'Commande introuvable.'
+    },
+    preparations: {
+      addTitle: 'Creer une preparation',
+      addDescription:
+        'Suivez les preparations pharmaceutiques et mettez a jour leur statut.',
+      fields: {
+        preparationType: 'Type de preparation',
+        composition: 'Composition',
+        receivedBy: 'Recu par',
+        preparedBy: 'Prepare par',
+        deliveredBy: 'Livre par',
+        status: 'Statut',
+        notes: 'Notes'
+      },
+      placeholders: {
+        preparationType: 'Exemple : Pommade, Sirop',
+        composition: 'Details des ingredients ou formule',
+        receivedBy: 'Nom du pharmacien',
+        preparedBy: 'Nom du pharmacien',
+        deliveredBy: 'Nom du pharmacien',
+        notes: 'Notes optionnelles'
+      },
+      addButton: 'Ajouter preparation',
+      searchLabel: 'Rechercher des preparations',
+      searchPlaceholder: 'Rechercher par type, composition ou pharmacien',
+      filterLabel: 'Filtrer par statut',
+      listTitle: 'Liste des preparations',
+      empty: 'Aucune preparation trouvee.',
+      saveNotes: 'Enregistrer les notes',
+      workflowSave: 'Enregistrer workflow',
+      delete: 'Supprimer',
+      status: {
+        en_cours: 'En cours',
+        prepared: 'Preparee',
+        delivered: 'Livree'
+      }
+    },
+    inbody: {
+      patientTitle: 'Patients',
+      patientDescription:
+        'Ajoutez et gerez les patients en utilisant le telephone comme identifiant.',
+      patientFields: {
+        patientId: 'ID patient (Telephone)',
+        fullName: 'Nom complet',
+        email: 'Email (optionnel)',
+        dateOfBirth: 'Date de naissance'
+      },
+      patientPlaceholders: {
+        patientId: '0550000000',
+        fullName: 'Nom complet du patient',
+        email: 'patient@email.com'
+      },
+      addPatient: 'Ajouter patient',
+      patientsListTitle: 'Liste des patients',
+      patientsSearch: 'Rechercher par nom ou identifiant',
+      noPatients: 'Aucun patient pour le moment.',
+      testsTitle: 'Tests InBody',
+      testsDescription:
+        'Selectionnez un patient pour voir son historique et ajouter de nouveaux tests.',
+      testFields: {
+        testedAt: 'Date et heure du test',
+        testData: 'Donnees du test (JSON)',
+        notes: 'Notes (optionnel)'
+      },
+      testPlaceholders: {
+        testData:
+          '{\n  "weight": 70.5,\n  "muscleMass": 32.1,\n  "bodyFat": 18.2,\n  "water": 52.3\n}',
+        notes: 'Notes supplementaires'
+      },
+      addTest: 'Ajouter test',
+      noPatientSelected: "Selectionnez un patient pour voir l'historique.",
+      noTests: 'Aucun test enregistre.',
+      jsonError: 'Format JSON invalide pour les donnees du test.'
     },
     agenda: {
       monthHint:

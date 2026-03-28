@@ -9,6 +9,8 @@ import {
   ClipboardList,
   CreditCard,
   FileClock,
+  FlaskConical,
+  HeartPulse,
   LayoutDashboard,
   Users
 } from 'lucide-react'
@@ -18,6 +20,8 @@ import { getCopy } from '@/app/lib/i18n'
 const tenantNavItems = [
   { key: 'dashboard', href: '/dashboard', icon: LayoutDashboard, adminOnly: false },
   { key: 'orders', href: '/orders', icon: ClipboardList, adminOnly: false },
+  { key: 'preparations', href: '/preparations', icon: FlaskConical, adminOnly: false },
+  { key: 'inbody', href: '/inbody', icon: HeartPulse, adminOnly: false },
   { key: 'agenda', href: '/agenda', icon: CalendarDays, adminOnly: false },
   { key: 'activity', href: '/admin/activity', icon: Activity, adminOnly: true },
   { key: 'users', href: '/users', icon: Users, adminOnly: true },

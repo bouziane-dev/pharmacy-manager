@@ -16,6 +16,8 @@ const RESERVED_PATH_SEGMENTS = new Set([
   'auth',
   'dashboard',
   'orders',
+  'preparations',
+  'inbody',
   'agenda',
   'users',
   'subscription',
@@ -70,6 +72,11 @@ const toastCopy = {
     commentAdded: 'Comment added successfully.',
     orderStatusUpdated: 'Order status updated.',
     orderDateUpdated: 'Order arrival date updated.',
+    preparationSaved: 'Preparation saved successfully.',
+    preparationUpdated: 'Preparation updated successfully.',
+    preparationDeleted: 'Preparation deleted successfully.',
+    patientSaved: 'Patient added successfully.',
+    inBodyTestSaved: 'InBody test added successfully.',
     subscriptionActivated: 'Subscription activated.',
     pharmacyCreated: 'Pharmacy created successfully.'
   },
@@ -81,6 +88,11 @@ const toastCopy = {
     commentAdded: 'Commentaire ajoute avec succes.',
     orderStatusUpdated: 'Statut de la commande mis a jour.',
     orderDateUpdated: "Date d'arrivée mise à jour.",
+    preparationSaved: 'Preparation enregistree avec succes.',
+    preparationUpdated: 'Preparation mise a jour avec succes.',
+    preparationDeleted: 'Preparation supprimee avec succes.',
+    patientSaved: 'Patient ajoute avec succes.',
+    inBodyTestSaved: 'Test InBody ajoute avec succes.',
     subscriptionActivated: 'Abonnement activé.',
     pharmacyCreated: 'Pharmacie créée avec succès.'
   }
@@ -155,6 +167,8 @@ export function AppProviders({ children }) {
   const [authToken, setAuthToken] = useState(null)
   const [locale, setLocale] = useState('fr')
   const [orders, setOrders] = useState([])
+  const [preparations, setPreparations] = useState([])
+  const [patients, setPatients] = useState([])
   const [workspaces, setWorkspaces] = useState([])
   const [memberships, setMemberships] = useState({})
   const [activeWorkspaceByEmail, setActiveWorkspaceByEmail] = useState({})
@@ -484,6 +498,161 @@ export function AppProviders({ children }) {
     }
   }
 
+  async function refreshWorkspacePreparations(
+    tokenOverride = null,
+    workspaceOverride = null
+  ) {
+    const sessionToken = tokenOverride || authToken
+    const workspaceId = workspaceOverride || currentWorkspace?.id
+    if (!sessionToken || !workspaceId) {
+      setPreparations([])
+      return
+    }
+
+    const result = await apiRequest(`/api/preparations?pharmacyId=${workspaceId}`, {
+      token: sessionToken
+    })
+    setPreparations(result.preparations || [])
+  }
+
+  async function createPreparation(payload) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    try {
+      const result = await apiRequest('/api/preparations', {
+        method: 'POST',
+        token: authToken,
+        body: {
+          pharmacyId: currentWorkspace.id,
+          ...payload
+        }
+      })
+      setPreparations(prev => [result.preparation, ...prev])
+      showActionToast('preparationSaved')
+      return result.preparation
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
+  }
+
+  async function updatePreparation(preparationId, updates) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    try {
+      const result = await apiRequest(`/api/preparations/${preparationId}`, {
+        method: 'PATCH',
+        token: authToken,
+        body: {
+          pharmacyId: currentWorkspace.id,
+          ...updates
+        }
+      })
+      setPreparations(prev =>
+        prev.map(item => (item.id === preparationId ? result.preparation : item))
+      )
+      showActionToast('preparationUpdated')
+      return result.preparation
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
+  }
+
+  async function deletePreparation(preparationId) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    try {
+      const params = new URLSearchParams()
+      params.set('pharmacyId', currentWorkspace.id)
+      await apiRequest(`/api/preparations/${preparationId}?${params.toString()}`, {
+        method: 'DELETE',
+        token: authToken
+      })
+      setPreparations(prev => prev.filter(item => item.id !== preparationId))
+      showActionToast('preparationDeleted')
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
+  }
+
+  async function refreshWorkspacePatients(
+    tokenOverride = null,
+    workspaceOverride = null
+  ) {
+    const sessionToken = tokenOverride || authToken
+    const workspaceId = workspaceOverride || currentWorkspace?.id
+    if (!sessionToken || !workspaceId) {
+      setPatients([])
+      return
+    }
+
+    const result = await apiRequest(`/api/inbody/patients?pharmacyId=${workspaceId}`, {
+      token: sessionToken
+    })
+    setPatients(result.patients || [])
+  }
+
+  async function createPatient(payload) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    try {
+      const result = await apiRequest('/api/inbody/patients', {
+        method: 'POST',
+        token: authToken,
+        body: {
+          pharmacyId: currentWorkspace.id,
+          ...payload
+        }
+      })
+      setPatients(prev => [result.patient, ...prev])
+      showActionToast('patientSaved')
+      return result.patient
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
+  }
+
+  async function fetchPatientTests(patientRecordId) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+
+    const result = await apiRequest(
+      `/api/inbody/patients/${patientRecordId}/tests?pharmacyId=${currentWorkspace.id}`,
+      { token: authToken }
+    )
+    return result.tests || []
+  }
+
+  async function createPatientTest(patientRecordId, payload) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+
+    try {
+      const result = await apiRequest(`/api/inbody/patients/${patientRecordId}/tests`, {
+        method: 'POST',
+        token: authToken,
+        body: {
+          pharmacyId: currentWorkspace.id,
+          ...payload
+        }
+      })
+      showActionToast('inBodyTestSaved')
+      return result.test
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
+  }
+
   async function createOrder(
     { patientName, phone, products, comment, arrivalDate, versement },
     tokenOverride = null
@@ -702,6 +871,8 @@ export function AppProviders({ children }) {
     setInvitations([])
     setWorkspaceInvitations([])
     setOrders([])
+    setPreparations([])
+    setPatients([])
     setToasts([])
     setConfirmToast(null)
     setIsBootstrappingSession(false)
@@ -1145,6 +1316,8 @@ export function AppProviders({ children }) {
   useEffect(() => {
     if (!authToken || !currentWorkspace?.id) {
       setOrders([])
+      setPreparations([])
+      setPatients([])
       setWorkspaceInvitations([])
       return
     }
@@ -1154,9 +1327,21 @@ export function AppProviders({ children }) {
     refreshWorkspaceInvitations(authToken, currentWorkspace.id).catch(() => {
       setWorkspaceInvitations([])
     })
+    refreshWorkspacePreparations(authToken, currentWorkspace.id).catch(() => {
+      setPreparations([])
+    })
+    refreshWorkspacePatients(authToken, currentWorkspace.id).catch(() => {
+      setPatients([])
+    })
   }, [authToken, currentWorkspace?.id, user?.role])
 
   const sortedOrders = [...orders].sort(
+    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+  )
+  const sortedPreparations = [...preparations].sort(
+    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+  )
+  const sortedPatients = [...patients].sort(
     (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
   )
 
@@ -1201,6 +1386,8 @@ export function AppProviders({ children }) {
       locale,
       setLocale,
       orders: sortedOrders,
+      preparations: sortedPreparations,
+      patients: sortedPatients,
       currentWorkspace,
       userWorkspaces,
       workspaceMembers,
@@ -1218,6 +1405,12 @@ export function AppProviders({ children }) {
       updateOrderStatus,
       updateOrderArrivalDate,
       updateOrder,
+      createPreparation,
+      updatePreparation,
+      deletePreparation,
+      createPatient,
+      fetchPatientTests,
+      createPatientTest,
       setActiveWorkspace,
       inviteToCurrentWorkspace,
       respondToInvitation,
@@ -1249,6 +1442,8 @@ export function AppProviders({ children }) {
       pendingInvitations,
       pendingWorkspaceInvitations,
       sortedOrders,
+      sortedPreparations,
+      sortedPatients,
       theme,
       authToken,
       isBootstrappingSession,
@@ -1258,6 +1453,12 @@ export function AppProviders({ children }) {
       user,
       userWorkspaces,
       workspaceMembers,
+      createPreparation,
+      updatePreparation,
+      deletePreparation,
+      createPatient,
+      fetchPatientTests,
+      createPatientTest,
       createPharmacy,
       resolveStaffByPin,
       checkPharmacySlug,
