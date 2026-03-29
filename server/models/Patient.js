@@ -15,6 +15,13 @@ const patientSchema = new mongoose.Schema(
       match: [/^\d+$/, "Patient ID must contain digits only"],
       maxlength: 25,
     },
+    phone: {
+      type: String,
+      trim: true,
+      default: "",
+      match: [/^\d*$/, "Phone must contain digits only"],
+      maxlength: 25,
+    },
     fullName: {
       type: String,
       required: true,
@@ -30,9 +37,38 @@ const patientSchema = new mongoose.Schema(
     },
     dateOfBirth: {
       type: String,
-      required: true,
       trim: true,
-      match: [/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be YYYY-MM-DD"],
+      default: "",
+      validate: {
+        validator(value) {
+          if (!value) return true;
+          return /^\d{4}-\d{2}-\d{2}$/.test(value);
+        },
+        message: "Date of birth must be YYYY-MM-DD",
+      },
+    },
+    subscription: {
+      totalSessions: {
+        type: Number,
+        min: 0,
+        max: 500,
+        default: 0,
+      },
+      remainingSessions: {
+        type: Number,
+        min: 0,
+        max: 500,
+        default: 0,
+      },
+      updatedAt: {
+        type: Date,
+        default: null,
+      },
+    },
+    lastInBodyTestAt: {
+      type: Date,
+      default: null,
+      index: true,
     },
   },
   { timestamps: true }

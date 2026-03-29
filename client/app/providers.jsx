@@ -77,6 +77,9 @@ const toastCopy = {
     preparationDeleted: 'Preparation deleted successfully.',
     patientSaved: 'Patient added successfully.',
     inBodyTestSaved: 'InBody test added successfully.',
+    inBodySubscriptionSaved: 'InBody sessions updated successfully.',
+    inBodyTestDeleted: 'InBody test deleted successfully.',
+    patientDeleted: 'Patient deleted successfully.',
     subscriptionActivated: 'Subscription activated.',
     pharmacyCreated: 'Pharmacy created successfully.'
   },
@@ -93,6 +96,9 @@ const toastCopy = {
     preparationDeleted: 'Preparation supprimee avec succes.',
     patientSaved: 'Patient ajoute avec succes.',
     inBodyTestSaved: 'Test InBody ajoute avec succes.',
+    inBodySubscriptionSaved: 'Seances InBody mises a jour avec succes.',
+    inBodyTestDeleted: 'Test InBody supprime avec succes.',
+    patientDeleted: 'Patient supprime avec succes.',
     subscriptionActivated: 'Abonnement activé.',
     pharmacyCreated: 'Pharmacie créée avec succès.'
   }
@@ -597,6 +603,28 @@ export function AppProviders({ children }) {
     setPatients(result.patients || [])
   }
 
+  function upsertPatientInState(nextPatient) {
+    if (!nextPatient?.id) return
+    setPatients(prev =>
+      prev.some(item => item.id === nextPatient.id)
+        ? prev.map(item => (item.id === nextPatient.id ? nextPatient : item))
+        : [nextPatient, ...prev]
+    )
+  }
+
+  async function fetchInBodyOverview() {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    const result = await apiRequest(
+      `/api/inbody/overview?pharmacyId=${currentWorkspace.id}`,
+      {
+        token: authToken
+      }
+    )
+    return result.stats || null
+  }
+
   async function createPatient(payload) {
     if (!authToken || !currentWorkspace) {
       throw new Error('Active workspace is required')
@@ -610,9 +638,70 @@ export function AppProviders({ children }) {
           ...payload
         }
       })
-      setPatients(prev => [result.patient, ...prev])
+      upsertPatientInState(result.patient)
       showActionToast('patientSaved')
       return result.patient
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
+  }
+
+  async function fetchPatientProfile(patientRecordId) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+
+    const result = await apiRequest(
+      `/api/inbody/patients/${patientRecordId}?pharmacyId=${currentWorkspace.id}`,
+      {
+        token: authToken
+      }
+    )
+    if (result.patient) {
+      upsertPatientInState(result.patient)
+    }
+    return result
+  }
+
+  async function updatePatientSubscription(patientRecordId, payload) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    try {
+      const result = await apiRequest(
+        `/api/inbody/patients/${patientRecordId}/subscription`,
+        {
+          method: 'PATCH',
+          token: authToken,
+          body: {
+            pharmacyId: currentWorkspace.id,
+            ...payload
+          }
+        }
+      )
+      if (result.patient) {
+        upsertPatientInState(result.patient)
+      }
+      showActionToast('inBodySubscriptionSaved')
+      return result.patient
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
+  }
+
+  async function deletePatient(patientRecordId) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    try {
+      await apiRequest(`/api/inbody/patients/${patientRecordId}?pharmacyId=${currentWorkspace.id}`, {
+        method: 'DELETE',
+        token: authToken
+      })
+      setPatients(prev => prev.filter(item => item.id !== patientRecordId))
+      showActionToast('patientDeleted')
     } catch (error) {
       showToast(error.message, 'error')
       throw error
@@ -645,8 +734,34 @@ export function AppProviders({ children }) {
           ...payload
         }
       })
+      if (result.patient) {
+        upsertPatientInState(result.patient)
+      }
       showActionToast('inBodyTestSaved')
       return result.test
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
+  }
+
+  async function deletePatientTest(patientRecordId, testId) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    try {
+      const result = await apiRequest(
+        `/api/inbody/patients/${patientRecordId}/tests/${testId}?pharmacyId=${currentWorkspace.id}`,
+        {
+          method: 'DELETE',
+          token: authToken
+        }
+      )
+      if (result.patient) {
+        upsertPatientInState(result.patient)
+      }
+      showActionToast('inBodyTestDeleted')
+      return result
     } catch (error) {
       showToast(error.message, 'error')
       throw error
@@ -1408,9 +1523,14 @@ export function AppProviders({ children }) {
       createPreparation,
       updatePreparation,
       deletePreparation,
+      fetchInBodyOverview,
       createPatient,
+      fetchPatientProfile,
+      updatePatientSubscription,
+      deletePatient,
       fetchPatientTests,
       createPatientTest,
+      deletePatientTest,
       setActiveWorkspace,
       inviteToCurrentWorkspace,
       respondToInvitation,
@@ -1456,9 +1576,14 @@ export function AppProviders({ children }) {
       createPreparation,
       updatePreparation,
       deletePreparation,
+      fetchInBodyOverview,
       createPatient,
+      fetchPatientProfile,
+      updatePatientSubscription,
+      deletePatient,
       fetchPatientTests,
       createPatientTest,
+      deletePatientTest,
       createPharmacy,
       resolveStaffByPin,
       checkPharmacySlug,

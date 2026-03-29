@@ -258,3 +258,62 @@ body {
   box-shadow: 0 16px 35px rgba(5, 150, 105, 0.18);
   opacity: 0.98;
 }
+
+@media print {
+  @page {
+    size: auto;
+    margin: 12mm;
+  }
+
+  body {
+    background: #fff !important;
+    color: #0f172a !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  aside,
+  header.sticky,
+  .inbody-no-print {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+
+  .inbody-print-page {
+    margin: 0 !important;
+  }
+
+  .inbody-print-page > header,
+  .inbody-print-page > section,
+  .inbody-print-page .inbody-chart-card,
+  .inbody-print-page table,
+  .inbody-print-page tr,
+  .inbody-print-page td,
+  .inbody-print-page th,
+  .recharts-wrapper,
+  .recharts-responsive-container {
+    break-inside: avoid-page !important;
+    page-break-inside: avoid !important;
+  }
+
+  .inbody-print-page table {
+    border-collapse: collapse;
+  }
+
+  .inbody-print-page thead {
+    display: table-header-group;
+  }
+
+  .inbody-print-page .inbody-chart-card {
+    margin-bottom: 8mm;
+  }
+
+  .panel {
+    border-color: #d1d5db !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+}

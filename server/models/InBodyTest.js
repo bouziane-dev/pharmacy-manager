@@ -19,6 +19,32 @@ const inBodyTestSchema = new mongoose.Schema(
       required: true,
       default: {},
     },
+    operator: {
+      type: String,
+      trim: true,
+      maxlength: 120,
+      default: "",
+    },
+    weight: {
+      type: Number,
+      default: null,
+    },
+    bodyFat: {
+      type: Number,
+      default: null,
+    },
+    muscleMass: {
+      type: Number,
+      default: null,
+    },
+    bmi: {
+      type: Number,
+      default: null,
+    },
+    bodyWater: {
+      type: Number,
+      default: null,
+    },
     notes: {
       type: String,
       trim: true,
@@ -34,6 +60,10 @@ const inBodyTestSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,
+    },
+    consumedSession: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }

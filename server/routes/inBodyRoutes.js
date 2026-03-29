@@ -10,9 +10,14 @@ router.use(requireAuth);
 router.use(resolvePharmacyFromSlug);
 router.use(requirePharmacyAccess(["owner", "staff"]));
 
+router.get("/overview", inBodyController.getOverviewStats);
 router.get("/patients", inBodyController.listPatients);
 router.post("/patients", inBodyController.createPatient);
+router.get("/patients/:patientId", inBodyController.getPatientProfile);
+router.patch("/patients/:patientId/subscription", inBodyController.updatePatientSubscription);
+router.delete("/patients/:patientId", inBodyController.deletePatient);
 router.get("/patients/:patientId/tests", inBodyController.listPatientTests);
 router.post("/patients/:patientId/tests", inBodyController.createPatientTest);
+router.delete("/patients/:patientId/tests/:testId", inBodyController.deletePatientTest);
 
 module.exports = router;
