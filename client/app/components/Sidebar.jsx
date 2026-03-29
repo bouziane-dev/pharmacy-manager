@@ -81,13 +81,13 @@ export default function Sidebar({ open, collapsed, setOpen }) {
       />
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-72 border-r border-[var(--border)] bg-[var(--surface)] px-4 py-6 transition-all md:static md:translate-x-0 ${collapsed ? 'md:w-20 md:px-2' : 'md:w-72'} ${open ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`fixed inset-y-0 left-0 z-40 w-72 border-r border-[var(--border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.97),rgba(246,250,255,0.96))] px-4 py-6 shadow-[8px_0_28px_rgba(15,23,42,0.08)] transition-all dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(20,35,63,0.94))] md:static md:translate-x-0 ${collapsed ? 'md:w-20 md:px-2' : 'md:w-72'} ${open ? 'translate-x-0' : '-translate-x-full'}`}
       >
-        <p className='px-3 text-xs uppercase tracking-[0.2em] text-[var(--muted)]'>
-          {collapsed ? 'PM' : t.appName}
+        <p className='px-3 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]'>
+          {collapsed ? 'PM' : <span className='brand-glow'>{t.appName}</span>}
         </p>
 
-        <nav className='mt-6 space-y-1'>
+        <nav className='mt-6 space-y-1.5'>
           {visibleItems.map(item => {
             const isActive = item.matchPrefix
               ? pathname === item.href || pathname.startsWith(`${item.matchPrefix}/`)
@@ -98,16 +98,27 @@ export default function Sidebar({ open, collapsed, setOpen }) {
                 key={item.href}
                 href={item.href}
                 onClick={() => setOpen(false)}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition duration-200 ${
                   collapsed ? 'md:justify-center md:px-2' : ''
                 } ${
                   isActive
-                    ? 'bg-emerald-600 text-white'
+                    ? 'bg-[linear-gradient(110deg,#0ea5e9,#10b981)] text-white shadow-[0_10px_24px_rgba(2,132,199,0.35)]'
                     : 'text-[var(--muted)] hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]'
                 }`}
               >
-                <Icon size={18} />
+                <span
+                  className={`inline-flex h-8 w-8 items-center justify-center rounded-lg transition ${
+                    isActive
+                      ? 'bg-white/18 text-white'
+                      : 'bg-[var(--surface)] text-[var(--muted)] group-hover:bg-white group-hover:text-[var(--foreground)] dark:bg-slate-900/35 dark:group-hover:bg-slate-900/55'
+                  }`}
+                >
+                  <Icon size={17} />
+                </span>
                 <span className={collapsed ? 'md:hidden' : ''}>{t.sidebar[item.key]}</span>
+                {isActive && !collapsed && (
+                  <span className='ml-auto h-2 w-2 rounded-full bg-white/90 shadow-[0_0_0_5px_rgba(255,255,255,0.2)]' />
+                )}
               </Link>
             )
           })}

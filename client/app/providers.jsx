@@ -26,7 +26,7 @@ const RESERVED_PATH_SEGMENTS = new Set([
   'onboarding',
   'invitations'
 ])
-const TOAST_DISPLAY_MS = 2000
+const NON_BLOCKING_TOAST_MS = 2600
 
 function normalizePharmacySlug(value) {
   const normalized = String(value || '')
@@ -182,8 +182,6 @@ export function AppProviders({ children }) {
   const [workspaceInvitations, setWorkspaceInvitations] = useState([])
   const [profiles, setProfiles] = useState({})
   const [toasts, setToasts] = useState([])
-  const [isToastFocusActive, setIsToastFocusActive] = useState(false)
-  const toastFocusTimerRef = useRef(null)
   const [confirmToast, setConfirmToast] = useState(null)
   const confirmActionRef = useRef(null)
   const [isReady, setIsReady] = useState(false)
@@ -292,43 +290,28 @@ export function AppProviders({ children }) {
     window.localStorage.setItem('pm-profiles', JSON.stringify(profiles))
   }, [profiles])
 
-  useEffect(() => {
-    return () => {
-      if (toastFocusTimerRef.current) {
-        window.clearTimeout(toastFocusTimerRef.current)
-      }
-    }
-  }, [])
-
   function dismissToast(toastId) {
     setToasts(prev => prev.filter(item => item.id !== toastId))
-  }
-
-  function activateToastFocus(durationMs = TOAST_DISPLAY_MS) {
-    if (toastFocusTimerRef.current) {
-      window.clearTimeout(toastFocusTimerRef.current)
-    }
-    setIsToastFocusActive(true)
-    toastFocusTimerRef.current = window.setTimeout(() => {
-      setIsToastFocusActive(false)
-      toastFocusTimerRef.current = null
-    }, durationMs)
   }
 
   function showToast(message, type = 'success') {
     if (!message) return
     const normalizedMessage = String(message)
+    const normalizedType = String(type || 'success')
     const localizedError =
-      type === 'error'
+      normalizedType === 'error' || normalizedType === 'critical'
         ? (errorCopy[locale] || errorCopy.en)[normalizedMessage] ||
           normalizedMessage
         : normalizedMessage
     const toastId = `${Date.now()}-${Math.random().toString(16).slice(2)}`
     setToasts(prev =>
-      [...prev, { id: toastId, message: localizedError, type }].slice(-4)
+      [...prev, { id: toastId, message: localizedError, type: normalizedType }].slice(
+        -6
+      )
     )
-    activateToastFocus(TOAST_DISPLAY_MS)
-    window.setTimeout(() => dismissToast(toastId), TOAST_DISPLAY_MS)
+    if (normalizedType !== 'error' && normalizedType !== 'critical') {
+      window.setTimeout(() => dismissToast(toastId), NON_BLOCKING_TOAST_MS)
+    }
   }
 
   function showActionToast(key, type = 'success') {
@@ -1646,44 +1629,63 @@ export function AppProviders({ children }) {
           </article>
         </div>
       )}
-      {isToastFocusActive && toasts.length > 0 && (
-        <div className='pointer-events-none fixed inset-0 z-[58] bg-slate-950/35 backdrop-blur-sm transition-opacity duration-200' />
+      {toasts.some(toast => toast.type === 'error' || toast.type === 'critical') && (
+        <div className='fixed inset-0 z-[58] bg-slate-950/35 backdrop-blur-sm transition-opacity duration-200' />
       )}
-      <div className='pointer-events-none fixed inset-0 z-[60] flex items-center justify-center px-4'>
-        <div className='flex w-full max-w-md flex-col gap-3'>
-          {toasts.map(toast => (
+      <div className='pointer-events-none fixed inset-0 z-[60] flex items-end justify-end p-4 sm:p-6'>
+        <div className='flex w-full max-w-sm flex-col gap-3'>
+          {toasts
+            .filter(toast => toast.type !== 'error' && toast.type !== 'critical')
+            .map(toast => (
             <article
               key={toast.id}
-              className={`pointer-events-auto overflow-hidden rounded-3xl border shadow-[0_22px_55px_rgba(2,6,23,0.28)] backdrop-blur ${
-                toast.type === 'error'
-                  ? 'border-rose-400/45 bg-[linear-gradient(145deg,rgba(254,242,242,0.96),rgba(254,226,226,0.95),rgba(255,241,242,0.92))] text-rose-900 dark:border-rose-400/35 dark:bg-[linear-gradient(145deg,rgba(127,29,29,0.92),rgba(136,19,55,0.9))] dark:text-rose-50'
-                  : 'border-emerald-400/45 bg-[linear-gradient(145deg,rgba(236,253,245,0.97),rgba(209,250,229,0.94),rgba(224,242,254,0.92))] text-emerald-900 dark:border-emerald-300/35 dark:bg-[linear-gradient(145deg,rgba(6,78,59,0.9),rgba(3,105,161,0.85))] dark:text-emerald-50'
-              }`}
+              className='pointer-events-auto overflow-hidden rounded-2xl border border-emerald-400/35 bg-[linear-gradient(145deg,rgba(236,253,245,0.98),rgba(224,242,254,0.95),rgba(240,249,255,0.96))] text-emerald-900 shadow-[0_16px_40px_rgba(2,132,199,0.2)] backdrop-blur transition-all duration-300 animate-[toastSlideIn_220ms_ease-out] dark:border-emerald-300/35 dark:bg-[linear-gradient(145deg,rgba(6,78,59,0.9),rgba(3,105,161,0.86),rgba(15,23,42,0.9))] dark:text-emerald-50'
             >
-              <div className='flex items-start justify-between gap-3 px-5 py-4'>
+              <div className='flex items-start justify-between gap-3 px-4 py-3.5'>
                 <div className='flex items-start gap-3'>
-                  <span
-                    className={`mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
-                      toast.type === 'error'
-                        ? 'bg-rose-100 text-rose-700 dark:bg-rose-200 dark:text-rose-900'
-                        : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-200 dark:text-emerald-900'
-                    }`}
-                  >
-                    {toast.type === 'error' ? '!' : '✓'}
+                  <span className='mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700 dark:bg-emerald-200 dark:text-emerald-900'>
+                    ✓
                   </span>
-                  <p className='text-base font-semibold leading-6'>
+                  <p className='text-sm font-semibold leading-5'>
                     {toast.message}
                   </p>
                 </div>
                 <button
                   onClick={() => dismissToast(toast.id)}
-                  className='text-current/80 rounded px-1 text-sm font-semibold transition hover:text-current'
+                  className='rounded px-1 text-sm font-semibold text-current/70 transition hover:text-current'
                 >
                   ✕
                 </button>
               </div>
             </article>
-          ))}
+            ))}
+        </div>
+      </div>
+      <div className='pointer-events-none fixed inset-0 z-[62] flex items-center justify-center px-4'>
+        <div className='flex w-full max-w-md flex-col gap-3'>
+          {toasts
+            .filter(toast => toast.type === 'error' || toast.type === 'critical')
+            .map(toast => (
+              <article
+                key={toast.id}
+                className='pointer-events-auto overflow-hidden rounded-3xl border border-rose-400/45 bg-[linear-gradient(145deg,rgba(254,242,242,0.96),rgba(254,226,226,0.95),rgba(255,241,242,0.92))] text-rose-900 shadow-[0_24px_56px_rgba(2,6,23,0.32)] backdrop-blur animate-[toastPopIn_220ms_ease-out] dark:border-rose-400/35 dark:bg-[linear-gradient(145deg,rgba(127,29,29,0.92),rgba(136,19,55,0.9))] dark:text-rose-50'
+              >
+                <div className='flex items-start justify-between gap-3 px-5 py-4'>
+                  <div className='flex items-start gap-3'>
+                    <span className='mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-rose-100 text-xs font-bold text-rose-700 dark:bg-rose-200 dark:text-rose-900'>
+                      !
+                    </span>
+                    <p className='text-base font-semibold leading-6'>{toast.message}</p>
+                  </div>
+                  <button
+                    onClick={() => dismissToast(toast.id)}
+                    className='rounded px-1 text-sm font-semibold text-current/80 transition hover:text-current'
+                  >
+                    ✕
+                  </button>
+                </div>
+              </article>
+            ))}
         </div>
       </div>
     </SessionContext.Provider>

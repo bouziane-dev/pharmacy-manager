@@ -32,7 +32,7 @@ export function formatShortDate(dateValue, locale) {
 
 export const i18n = {
   en: {
-    appName: 'Pharmacy Manager',
+    appName: 'Phlow it',
     pages: {
       dashboard: 'Dashboard',
       orders: 'Orders',
@@ -88,6 +88,7 @@ export const i18n = {
       sideInfoTitle: 'Pharmacy Side Info',
       pharmacyName: 'Pharmacy name',
       pharmacySlug: 'Pharmacy slug',
+      ownerEmail: 'Owner email',
       staffCount: 'Staff count',
       noWorkspace: 'Dashboard',
       noSlug: 'No slug',
@@ -373,7 +374,7 @@ export const i18n = {
     }
   },
   fr: {
-    appName: 'Gestion Pharmacie',
+    appName: 'Phlow it',
     pages: {
       dashboard: 'Tableau de bord',
       orders: 'Commandes',
@@ -429,6 +430,7 @@ export const i18n = {
       sideInfoTitle: 'Informations pharmacie',
       pharmacyName: 'Nom pharmacie',
       pharmacySlug: 'Slug pharmacie',
+      ownerEmail: 'Email proprietaire',
       staffCount: 'Nombre de staff',
       noWorkspace: 'Tableau de bord',
       noSlug: 'Aucun slug',

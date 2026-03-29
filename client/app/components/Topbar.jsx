@@ -59,6 +59,10 @@ export default function Topbar({
   const currentUserId = String(user?.id || '')
   const isCurrentSelection =
     !!selectedStaffUserId && String(selectedStaffUserId) === currentUserId
+  const iconButtonClass =
+    'inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)]/85 text-[var(--foreground)] shadow-[0_4px_14px_rgba(15,23,42,0.08)] transition hover:-translate-y-[1px] hover:bg-[var(--surface-soft)] hover:shadow-[0_10px_20px_rgba(2,132,199,0.12)]'
+  const ghostButtonClass =
+    'inline-flex h-9 items-center justify-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface)]/85 px-2 text-xs font-semibold text-[var(--foreground)] shadow-[0_4px_14px_rgba(15,23,42,0.08)] transition hover:-translate-y-[1px] hover:bg-[var(--surface-soft)] hover:shadow-[0_10px_20px_rgba(2,132,199,0.12)]'
 
   useEffect(() => {
     if (!showStaffSwitcher) {
@@ -126,22 +130,19 @@ export default function Topbar({
   }
 
   return (
-    <header className='sticky top-0 z-20 border-b border-[var(--border)] bg-[var(--surface)]/90 backdrop-blur'>
+    <header className='sticky top-0 z-20 border-b border-[var(--border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(248,252,255,0.84))] shadow-[0_6px_20px_rgba(15,23,42,0.06)] backdrop-blur dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.86),rgba(20,35,63,0.82))]'>
       <div className='flex h-16 items-center justify-between gap-3 px-4 sm:px-6'>
         <div className='flex min-w-0 items-center gap-3'>
-          <button
-            className='inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--foreground)] md:hidden'
-            onClick={() => setSidebarOpen(prev => !prev)}
-          >
+          <button className={`${iconButtonClass} md:hidden`} onClick={() => setSidebarOpen(prev => !prev)}>
             <Menu size={18} />
           </button>
           <button
-            className='hidden h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--foreground)] transition hover:bg-[var(--surface-soft)] md:inline-flex'
+            className={`hidden md:inline-flex ${iconButtonClass}`}
             onClick={() => setSidebarCollapsed(prev => !prev)}
           >
             {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
           </button>
-          <h1 className='truncate text-lg font-semibold text-[var(--foreground)]'>
+          <h1 className='truncate text-lg font-semibold tracking-tight text-[var(--foreground)]'>
             {title}
           </h1>
         </div>
@@ -150,7 +151,7 @@ export default function Topbar({
           {showStaffSwitcher && (
             <form
               onSubmit={handleStaffSwitchSubmit}
-              className='hidden items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-soft)]/80 px-2 py-1.5 lg:flex'
+              className='hidden items-center gap-2 rounded-xl border border-[var(--border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(248,250,255,0.76))] px-2 py-1.5 shadow-[0_8px_18px_rgba(2,132,199,0.08)] dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.72),rgba(20,35,63,0.7))] lg:flex'
             >
               <span className='inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]'>
                 <ArrowRightLeft size={12} />
@@ -206,7 +207,9 @@ export default function Topbar({
 
           <div className='hidden text-right sm:block'>
             <p className='text-sm font-medium text-[var(--foreground)]'>{user?.name}</p>
-            <p className='text-xs uppercase text-[var(--muted)]'>{roleLabel}</p>
+            <p className='inline-flex rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]'>
+              {roleLabel}
+            </p>
             {showStaffSwitcher && switchError && (
               <p className='text-[10px] normal-case text-red-500'>{switchError}</p>
             )}
@@ -214,14 +217,14 @@ export default function Topbar({
 
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className='inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--foreground)] transition hover:bg-[var(--surface-soft)]'
+            className={iconButtonClass}
           >
             {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
           </button>
 
           <button
             onClick={() => setLocale(getNextLocale(locale))}
-            className='inline-flex h-9 items-center justify-center gap-1 rounded-lg border border-[var(--border)] px-2 text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-soft)]'
+            className={ghostButtonClass}
           >
             <Globe size={14} />
             {getLocaleButtonLabel(locale)}
@@ -229,7 +232,7 @@ export default function Topbar({
 
           <button
             onClick={handleLogout}
-            className='inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--foreground)] transition hover:bg-[var(--surface-soft)]'
+            className={iconButtonClass}
           >
             <LogOut size={16} />
           </button>

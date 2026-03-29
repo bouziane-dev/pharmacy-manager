@@ -18,7 +18,8 @@ export function getHomePathForUser(user) {
   if (isSuperAdminUser(user)) return '/superadmin'
   if (
     user.primaryRole === 'owner' &&
-    (!user.subscriptionActive || !user.pharmacyId)
+    !user.subscriptionActive &&
+    !user.pharmacyId
   ) {
     return '/subscription'
   }
@@ -67,19 +68,23 @@ export function useRouteGuard({
     if (
       requireSubscription &&
       user.primaryRole === 'owner' &&
-      !user.subscriptionActive
+      !user.subscriptionActive &&
+      !user.pharmacyId &&
+      !currentWorkspace?.id
     ) {
       router.replace('/subscription')
       return
     }
 
     if (requireMembership && !currentWorkspace) {
-      if (user.primaryRole === 'owner') {
+      if (user.primaryRole === 'owner' && !user.pharmacyId) {
         router.replace('/subscription')
-      } else {
-        router.replace('/dashboard')
+        return
       }
-      return
+      if (user.primaryRole !== 'owner') {
+        router.replace('/dashboard')
+        return
+      }
     }
   }, [
     currentWorkspace,
@@ -99,14 +104,17 @@ export function useRouteGuard({
     !isSuperAdminUser(user) &&
     requireSubscription &&
     user.primaryRole === 'owner' &&
-    !user.subscriptionActive
+    !user.subscriptionActive &&
+    !user.pharmacyId &&
+    !currentWorkspace?.id
 
   const missingWorkspace =
     !!user &&
     !isSuperAdminUser(user) &&
     requireMembership &&
     user.primaryRole === 'owner' &&
-    !currentWorkspace
+    !currentWorkspace &&
+    !user.pharmacyId
 
   return {
     user,

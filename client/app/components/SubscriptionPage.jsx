@@ -42,6 +42,14 @@ export default function SubscriptionPage() {
   const isSlugFormatValid = SUBDOMAIN_PATTERN.test(normalizedSubdomain)
   const isBusy = isSubmitting
   const hasExistingPharmacy = Boolean(user?.pharmacyId || currentWorkspace?.id)
+  const subscriptionStatusLabel = locale === 'fr' ? 'Statut abonnement' : 'Subscription status'
+  const activeLabel = locale === 'fr' ? 'Actif' : 'Active'
+  const inactiveLabel = locale === 'fr' ? 'Inactif' : 'Inactive'
+  const planTitle = locale === 'fr' ? 'Votre plan actuel' : 'Your current plan'
+  const dashboardLabel = locale === 'fr' ? 'Aller au tableau de bord' : 'Go to dashboard'
+  const pharmacyNameLabel = locale === 'fr' ? 'Nom pharmacie' : 'Pharmacy name'
+  const pharmacySlugLabel = locale === 'fr' ? 'Slug pharmacie' : 'Pharmacy slug'
+  const ownerEmailLabel = locale === 'fr' ? 'Email proprietaire' : 'Owner email'
 
   useEffect(() => {
     if (!normalizedSubdomain) {
@@ -141,7 +149,52 @@ export default function SubscriptionPage() {
   if (hasExistingPharmacy) {
     return (
       <section className='mx-auto max-w-3xl'>
-        <article className='panel min-h-[280px]' />
+        <article className='panel p-6 sm:p-7'>
+          <p className='text-xs uppercase tracking-[0.2em] text-[var(--muted)]'>
+            {t.setupLabel}
+          </p>
+          <h2 className='mt-2 text-2xl font-semibold text-[var(--foreground)]'>
+            {planTitle}
+          </h2>
+          <p className='mt-2 text-sm text-[var(--muted)]'>
+            {subscriptionStatusLabel}:{' '}
+            <span
+              className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                user?.subscriptionActive
+                  ? 'bg-emerald-500/15 text-emerald-600'
+                  : 'bg-amber-500/15 text-amber-700'
+              }`}
+            >
+              {user?.subscriptionActive ? activeLabel : inactiveLabel}
+            </span>
+          </p>
+          <div className='mt-5 grid gap-3 text-sm sm:grid-cols-3'>
+            <p className='rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-[var(--foreground)]'>
+              <span className='text-xs text-[var(--muted)]'>{pharmacyNameLabel}</span>
+              <br />
+              <span className='font-semibold'>{currentWorkspace?.name || 'Dashboard'}</span>
+            </p>
+            <p className='rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-[var(--foreground)]'>
+              <span className='text-xs text-[var(--muted)]'>{pharmacySlugLabel}</span>
+              <br />
+              <span className='font-semibold'>{currentWorkspace?.subdomain || '-'}</span>
+            </p>
+            <p className='rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-[var(--foreground)]'>
+              <span className='text-xs text-[var(--muted)]'>{ownerEmailLabel}</span>
+              <br />
+              <span className='block min-w-0 break-all font-semibold'>
+                {currentWorkspace?.ownerEmail || user?.email || '-'}
+              </span>
+            </p>
+          </div>
+          <button
+            type='button'
+            onClick={() => router.replace('/dashboard')}
+            className='mt-5 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500'
+          >
+            {dashboardLabel}
+          </button>
+        </article>
       </section>
     )
   }

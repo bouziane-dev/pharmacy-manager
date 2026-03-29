@@ -3,21 +3,29 @@
 @tailwind utilities;
 
 :root {
-  --background: #f3f6fb;
+  --background: #eef4ff;
   --foreground: #0f172a;
-  --muted: #475569;
+  --muted: #4b5b74;
   --surface: #ffffff;
-  --surface-soft: #f1f5f9;
-  --border: #dbe6f2;
+  --surface-soft: #f3f7ff;
+  --border: #d5e2f0;
+  --accent: #10b981;
+  --accent-strong: #0284c7;
+  --accent-soft: rgba(16, 185, 129, 0.14);
+  --ring: rgba(2, 132, 199, 0.3);
 }
 
 .dark {
-  --background: #020617;
+  --background: #050d1d;
   --foreground: #e2e8f0;
-  --muted: #94a3b8;
-  --surface: #0b1220;
-  --surface-soft: #111d34;
-  --border: #1e293b;
+  --muted: #9fb0c8;
+  --surface: #0e172a;
+  --surface-soft: #14233f;
+  --border: #233351;
+  --accent: #34d399;
+  --accent-strong: #38bdf8;
+  --accent-soft: rgba(52, 211, 153, 0.16);
+  --ring: rgba(56, 189, 248, 0.35);
 }
 
 html,
@@ -27,16 +35,61 @@ body {
 
 body {
   color: var(--foreground);
-  background: var(--background);
+  background:
+    radial-gradient(circle at 14% 16%, rgba(16, 185, 129, 0.12), transparent 42%),
+    radial-gradient(circle at 88% 18%, rgba(2, 132, 199, 0.09), transparent 44%),
+    linear-gradient(180deg, #f4f8ff 0%, var(--background) 52%);
+  background-attachment: fixed;
+}
+
+.dark body {
+  background:
+    radial-gradient(circle at 16% 14%, rgba(52, 211, 153, 0.08), transparent 44%),
+    radial-gradient(circle at 84% 15%, rgba(56, 189, 248, 0.07), transparent 46%),
+    linear-gradient(180deg, #040b19 0%, var(--background) 50%);
 }
 
 .panel {
+  position: relative;
   border: 1px solid var(--border);
-  border-radius: 1rem;
-  background: var(--surface);
+  border-radius: 1.05rem;
+  background:
+    linear-gradient(165deg, rgba(255, 255, 255, 0.98), rgba(247, 251, 255, 0.95)),
+    var(--surface);
   box-shadow:
-    0 8px 24px rgba(15, 23, 42, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    0 16px 34px rgba(15, 23, 42, 0.06),
+    0 2px 8px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease;
+}
+
+.dark .panel {
+  background:
+    linear-gradient(165deg, rgba(15, 23, 42, 0.9), rgba(20, 35, 63, 0.9)),
+    var(--surface);
+  box-shadow:
+    0 16px 34px rgba(2, 6, 23, 0.42),
+    0 2px 8px rgba(15, 23, 42, 0.28),
+    inset 0 1px 0 rgba(148, 163, 184, 0.06);
+}
+
+.panel:hover {
+  transform: translateY(-2px);
+  border-color: var(--ring);
+  box-shadow:
+    0 20px 38px rgba(2, 132, 199, 0.12),
+    0 3px 9px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.76);
+}
+
+.dark .panel:hover {
+  box-shadow:
+    0 20px 38px rgba(14, 165, 233, 0.2),
+    0 3px 10px rgba(2, 6, 23, 0.32),
+    inset 0 1px 0 rgba(148, 163, 184, 0.08);
 }
 
 @keyframes phlowGlow {
@@ -257,6 +310,129 @@ body {
   transform: translateY(-6px) scale(1.01);
   box-shadow: 0 16px 35px rgba(5, 150, 105, 0.18);
   opacity: 0.98;
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translate3d(22px, 10px, 0) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes toastPopIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@layer base {
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  .panel,
+  .fun-card {
+    transition-property:
+      border-color,
+      box-shadow,
+      background-color,
+      color,
+      transform,
+      opacity;
+    transition-duration: 160ms;
+    transition-timing-function: ease;
+  }
+
+  ::selection {
+    background: rgba(2, 132, 199, 0.22);
+    color: #06263a;
+  }
+
+  .dark ::selection {
+    background: rgba(52, 211, 153, 0.24);
+    color: #d1fae5;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  input,
+  select,
+  textarea {
+    border-radius: 0.72rem;
+  }
+
+  table thead th {
+    background: linear-gradient(
+      180deg,
+      rgba(226, 232, 240, 0.6),
+      rgba(241, 245, 249, 0.85)
+    );
+    color: #334155;
+    font-weight: 600;
+  }
+
+  .dark table thead th {
+    background: linear-gradient(
+      180deg,
+      rgba(30, 41, 59, 0.9),
+      rgba(15, 23, 42, 0.92)
+    );
+    color: #cbd5e1;
+  }
+
+  table tbody tr:hover td {
+    background: rgba(2, 132, 199, 0.06);
+  }
+
+  .dark table tbody tr:hover td {
+    background: rgba(56, 189, 248, 0.1);
+  }
+}
+
+@layer components {
+  .status-chip {
+    border: 1px solid transparent;
+    border-radius: 999px;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.1rem;
+  }
+
+  .status-chip--ok {
+    border-color: rgba(16, 185, 129, 0.28);
+    background: rgba(16, 185, 129, 0.15);
+    color: #047857;
+  }
+
+  .status-chip--warn {
+    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(245, 158, 11, 0.16);
+    color: #92400e;
+  }
+
+  .status-chip--danger {
+    border-color: rgba(244, 63, 94, 0.3);
+    background: rgba(244, 63, 94, 0.16);
+    color: #be123c;
+  }
 }
 
 @media print {

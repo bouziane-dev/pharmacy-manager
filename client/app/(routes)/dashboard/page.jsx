@@ -23,6 +23,10 @@ export default function DashboardPage() {
   const t = getCopy(locale)
   const today = getLocalIsoDate()
   const canShowWorkspaceInfo = user?.role === 'admin'
+  const isOwner =
+    user?.accountRole === 'owner' || user?.primaryRole === 'owner'
+  const ownerEmail =
+    currentWorkspace?.ownerEmail || (isOwner ? user?.email : '') || '-'
   const statsValues = {
     finished: orders.filter(order => order.status === 'finished').length,
     due: orders.filter(
@@ -76,7 +80,7 @@ export default function DashboardPage() {
             <p className='text-xs uppercase tracking-[0.16em] text-[var(--muted)]'>
               {t.dashboard.sideInfoTitle}
             </p>
-            <div className='mt-2 grid gap-2 text-sm sm:grid-cols-3'>
+            <div className='mt-2 grid gap-2 text-sm sm:grid-cols-4'>
               <p className='rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-[var(--foreground)]'>
                 <span className='text-xs text-[var(--muted)]'>{t.dashboard.pharmacyName}</span>
                 <br />
@@ -90,6 +94,11 @@ export default function DashboardPage() {
                 <span className='font-semibold'>
                   {currentWorkspace?.subdomain || t.dashboard.noSlug}
                 </span>
+              </p>
+              <p className='rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-[var(--foreground)]'>
+                <span className='text-xs text-[var(--muted)]'>{t.dashboard.ownerEmail}</span>
+                <br />
+                <span className='block min-w-0 break-all font-semibold'>{ownerEmail}</span>
               </p>
               <p className='rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-[var(--foreground)]'>
                 <span className='text-xs text-[var(--muted)]'>{t.dashboard.staffCount}</span>
