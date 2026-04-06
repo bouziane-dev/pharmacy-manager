@@ -101,6 +101,7 @@ export default function InBodyPatientProfile({ patientId }) {
     createPatientTest,
     updatePatientSubscription,
     deletePatientTest,
+    fetchStaffLoginUsers,
     listStaffMembers
   } = useSession()
 
@@ -202,7 +203,12 @@ export default function InBodyPatientProfile({ patientId }) {
     let cancelled = false
     ;(async () => {
       try {
-        const rows = await listStaffMembers()
+        let rows = []
+        try {
+          rows = await fetchStaffLoginUsers()
+        } catch (_error) {
+          rows = await listStaffMembers()
+        }
         if (cancelled) return
         const names = (Array.isArray(rows) ? rows : [])
           .map(item => String(item?.name || '').trim())
@@ -221,7 +227,7 @@ export default function InBodyPatientProfile({ patientId }) {
     return () => {
       cancelled = true
     }
-  }, [listStaffMembers, currentWorkspace?.id])
+  }, [fetchStaffLoginUsers, listStaffMembers, currentWorkspace?.id])
 
   function resetForm() {
     setForm({
