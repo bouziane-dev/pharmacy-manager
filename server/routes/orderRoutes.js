@@ -20,9 +20,17 @@ router.delete(
   "/:orderId",
   orderController.deleteOrder
 );
+router.get(
+  "/:orderId/actions",
+  orderController.listOrderActions
+);
 router.post(
   "/:orderId/comments",
   orderController.addOrderComment
+);
+router.delete(
+  "/:orderId/comments/:commentId",
+  orderController.deleteOrderComment
 );
 
 module.exports = router;

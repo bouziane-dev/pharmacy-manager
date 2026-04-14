@@ -30,7 +30,8 @@ export default function DashboardPage() {
   const statsValues = {
     finished: orders.filter(order => order.status === 'finished').length,
     due: orders.filter(
-      order => order.arrivalDate <= today && order.status !== 'finished'
+      order =>
+        order.status !== 'finished' && (!order.arrivalDate || order.arrivalDate <= today)
     ).length,
     arrived: orders.filter(order => order.status === 'arrived').length,
     ordered: orders.filter(order => order.status === 'ordered').length,

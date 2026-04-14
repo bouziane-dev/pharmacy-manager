@@ -1,4 +1,5 @@
 const Order = require("../models/Order");
+const ActivityLog = require("../models/ActivityLog");
 const {
   cleanPhoneDigits,
   cleanSingleLine,
@@ -16,6 +17,14 @@ const statusAliases = {
   done: "finished",
   finished: "finished",
 };
+const allowedCategories = new Set([
+  "general",
+  "orthopedie",
+  "caba",
+  "medicament",
+  "parapharmacie",
+  "dermo-cosmetique",
+]);
 
 function normalizeProductsInput(productsInput, fallbackProductName = null) {
   if (Array.isArray(productsInput)) {
@@ -47,6 +56,13 @@ function normalizeStatusInput(inputValue) {
   return statusAliases[String(normalized).toLowerCase()] || null;
 }
 
+function normalizeCategoryInput(inputValue) {
+  const normalized = cleanSingleLine(inputValue);
+  if (!normalized) return "general";
+  const slug = String(normalized).toLowerCase();
+  return allowedCategories.has(slug) ? slug : null;
+}
+
 function toClientOrder(orderDoc) {
   const mappedProducts = Array.isArray(orderDoc.products)
     ? orderDoc.products
@@ -63,9 +79,15 @@ function toClientOrder(orderDoc) {
     id: String(orderDoc._id),
     pharmacyId: String(orderDoc.pharmacyId),
     createdBy: orderDoc.createdBy ? String(orderDoc.createdBy) : null,
+    createdByName:
+      orderDoc.createdBy?.displayName ||
+      orderDoc.createdBy?.name ||
+      orderDoc.createdBy?.email ||
+      null,
     patientName: orderDoc.patientName,
     phone: orderDoc.phone,
     products,
+    category: normalizeCategoryInput(orderDoc.category) || "general",
     status: normalizeStatusInput(orderDoc.status) || "pending",
     versement: Number(orderDoc.versement || 0),
     arrivalDate: orderDoc.arrivalDate,
@@ -73,6 +95,7 @@ function toClientOrder(orderDoc) {
     comments: (orderDoc.comments || []).map((item) => ({
       id: String(item._id),
       author: item.authorName,
+      authorUserId: item.authorUserId ? String(item.authorUserId) : null,
       text: item.text,
       createdAt: item.createdAt,
     })),
@@ -81,9 +104,11 @@ function toClientOrder(orderDoc) {
 
 async function listOrders(req, res) {
   try {
-    const orders = await Order.find({ pharmacyId: req.pharmacyId }).sort({
-      createdAt: -1,
-    });
+    const orders = await Order.find({ pharmacyId: req.pharmacyId })
+      .populate("createdBy", "name displayName email")
+      .sort({
+        createdAt: -1,
+      });
 
     return res.status(200).json({
       orders: orders.map(toClientOrder),
@@ -95,13 +120,23 @@ async function listOrders(req, res) {
 
 async function createOrder(req, res) {
   try {
-    const { patientName, phone, products, productName, arrivalDate, versement, comment } =
+    const {
+      patientName,
+      phone,
+      products,
+      productName,
+      arrivalDate,
+      versement,
+      comment,
+      category,
+    } =
       req.body;
     const normalizedPatientName = cleanSingleLine(patientName);
     const normalizedPhone = cleanPhoneDigits(phone);
     const normalizedProducts = normalizeProductsInput(products, productName);
     const normalizedArrivalDate = cleanString(arrivalDate);
     const normalizedVersement = normalizeVersementInput(versement);
+    const normalizedCategory = normalizeCategoryInput(category);
 
     if (!normalizedPatientName) {
       return res.status(400).json({ error: "Patient name is required" });
@@ -115,16 +150,16 @@ async function createOrder(req, res) {
     if (normalizedProducts.length === 0) {
       return res.status(400).json({ error: "At least one product is required" });
     }
-    if (!normalizedArrivalDate) {
-      return res.status(400).json({ error: "Arrival date is required" });
-    }
-    if (!arrivalDatePattern.test(normalizedArrivalDate)) {
+    if (normalizedArrivalDate && !arrivalDatePattern.test(normalizedArrivalDate)) {
       return res.status(400).json({ error: "Arrival date must be YYYY-MM-DD" });
     }
     if (normalizedVersement === null) {
       return res
         .status(400)
         .json({ error: "Versement must be a valid non-negative number" });
+    }
+    if (!normalizedCategory) {
+      return res.status(400).json({ error: "Invalid category value" });
     }
 
     const comments = [];
@@ -142,11 +177,13 @@ async function createOrder(req, res) {
       patientName: normalizedPatientName,
       phone: normalizedPhone,
       products: normalizedProducts,
-      arrivalDate: normalizedArrivalDate,
+      category: normalizedCategory,
+      arrivalDate: normalizedArrivalDate || "",
       versement: normalizedVersement,
       status: "pending",
       comments,
     });
+    await order.populate("createdBy", "name displayName email");
 
     await logActivity({
       action: "CREATE_ORDER",
@@ -156,6 +193,7 @@ async function createOrder(req, res) {
       metadata: {
         orderId: String(order._id),
         patientName: order.patientName,
+        category: normalizedCategory,
         status: normalizeStatusInput(order.status) || "pending",
       },
     });
@@ -179,7 +217,7 @@ async function updateOrder(req, res) {
     const order = await Order.findOne({
       _id: orderId,
       pharmacyId: req.pharmacyId,
-    });
+    }).populate("createdBy", "name displayName email");
 
     if (!order) {
       return res.status(404).json({ error: "Order not found" });
@@ -191,6 +229,7 @@ async function updateOrder(req, res) {
       "patientName",
       "phone",
       "products",
+      "category",
       "arrivalDate",
       "versement",
       "status",
@@ -222,13 +261,10 @@ async function updateOrder(req, res) {
 
       if (field === "arrivalDate") {
         const value = cleanString(req.body.arrivalDate);
-        if (!value) {
-          return res.status(400).json({ error: "arrivalDate cannot be empty" });
-        }
-        if (!arrivalDatePattern.test(value)) {
+        if (value && !arrivalDatePattern.test(value)) {
           return res.status(400).json({ error: "Arrival date must be YYYY-MM-DD" });
         }
-        order.arrivalDate = value;
+        order.arrivalDate = value || "";
         continue;
       }
 
@@ -240,6 +276,15 @@ async function updateOrder(req, res) {
             .json({ error: "At least one product is required" });
         }
         order.products = value;
+        continue;
+      }
+
+      if (field === "category") {
+        const value = normalizeCategoryInput(req.body.category);
+        if (!value) {
+          return res.status(400).json({ error: "Invalid category value" });
+        }
+        order.category = value;
         continue;
       }
 
@@ -307,7 +352,7 @@ async function addOrderComment(req, res) {
     const order = await Order.findOne({
       _id: orderId,
       pharmacyId: req.pharmacyId,
-    });
+    }).populate("createdBy", "name displayName email");
 
     if (!order) {
       return res.status(404).json({ error: "Order not found" });
@@ -328,12 +373,111 @@ async function addOrderComment(req, res) {
       pharmacyId: req.pharmacyId,
       metadata: {
         orderId,
+        commentId: String(order.comments[order.comments.length - 1]?._id || ""),
       },
     });
 
     return res.status(200).json({
       message: "Comment added successfully",
       order: toClientOrder(order),
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+}
+
+async function deleteOrderComment(req, res) {
+  try {
+    const orderId = cleanString(req.params.orderId);
+    const commentId = cleanString(req.params.commentId);
+
+    if (!orderId || !isValidObjectId(orderId)) {
+      return res.status(400).json({ error: "Valid orderId is required" });
+    }
+    if (!commentId || !isValidObjectId(commentId)) {
+      return res.status(400).json({ error: "Valid commentId is required" });
+    }
+
+    const order = await Order.findOne({
+      _id: orderId,
+      pharmacyId: req.pharmacyId,
+    }).populate("createdBy", "name displayName email");
+
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    const comment = order.comments.id(commentId);
+    if (!comment) {
+      return res.status(404).json({ error: "Comment not found" });
+    }
+
+    if (String(comment.authorUserId) !== String(req.user._id)) {
+      return res.status(403).json({ error: "You can only delete your own comments" });
+    }
+
+    comment.deleteOne();
+    await order.save();
+
+    await logActivity({
+      action: "DELETE_ORDER_COMMENT",
+      description: `Deleted comment on order ${orderId}`,
+      userId: req.user._id,
+      pharmacyId: req.pharmacyId,
+      metadata: {
+        orderId,
+        commentId,
+      },
+    });
+
+    return res.status(200).json({
+      message: "Comment deleted successfully",
+      order: toClientOrder(order),
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+}
+
+async function listOrderActions(req, res) {
+  try {
+    const orderId = cleanString(req.params.orderId);
+    if (!orderId || !isValidObjectId(orderId)) {
+      return res.status(400).json({ error: "Valid orderId is required" });
+    }
+
+    const order = await Order.exists({
+      _id: orderId,
+      pharmacyId: req.pharmacyId,
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    const items = await ActivityLog.find({
+      pharmacyId: req.pharmacyId,
+      "metadata.orderId": orderId,
+    })
+      .populate("userId", "name displayName email")
+      .sort({ createdAt: -1 })
+      .limit(100);
+
+    return res.status(200).json({
+      actions: items.map((item) => ({
+        id: String(item._id),
+        action: item.action,
+        description: item.description || "",
+        user: {
+          id: item.userId?._id ? String(item.userId._id) : null,
+          name:
+            item.userId?.displayName ||
+            item.userId?.name ||
+            item.userId?.email ||
+            "Unknown",
+        },
+        createdAt: item.createdAt,
+      })),
     });
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -381,5 +525,7 @@ module.exports = {
   createOrder,
   updateOrder,
   addOrderComment,
+  deleteOrderComment,
   deleteOrder,
+  listOrderActions,
 };

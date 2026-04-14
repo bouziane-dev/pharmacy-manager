@@ -148,6 +148,7 @@ export const i18n = {
         phone: 'Phone',
         products: 'Products',
         comment: 'Comment',
+        category: 'Category',
         arrivalDate: 'Approximate Arrival Date',
         versement: 'Versement'
       },
@@ -162,9 +163,17 @@ export const i18n = {
         patientNameRequired: 'Patient name is required.',
         phoneRequired: 'Phone is required.',
         productsRequired: 'At least one product is required.',
-        arrivalDateRequired: 'Approximate arrival date is required.',
         versementInvalid: 'Versement must be a non-negative number.'
       },
+      addArrivalDate: 'Add arrival date',
+      removeArrivalDate: 'Remove arrival date',
+      categoryFilterLabel: 'Filter by category',
+      allCategories: 'All categories',
+      requiredFieldsTitle: 'Mandatory fields',
+      requiredFieldsText: 'Patient, product/medication, and phone number are required.',
+      optionalFieldsTitle: 'Optional fields',
+      optionalFieldsText: 'Arrival date, deposit, and note can be added if needed.',
+      noArrivalDate: 'To be scheduled',
       addButton: 'Add Order',
       searchLabel: 'Search Orders',
       searchPlaceholder:
@@ -189,10 +198,13 @@ export const i18n = {
         patient: 'Patient',
         phone: 'Phone',
         products: 'Products',
+        category: 'Category',
+        addedBy: 'Added by',
         arrivalDate: 'Approx. Arrival',
         versement: 'Versement',
         status: 'Status',
-        comments: 'Comments'
+        comments: 'Comments',
+        actions: 'Actions'
       },
       statusLabel: 'Set status',
       status: {
@@ -201,13 +213,41 @@ export const i18n = {
         arrived: 'Arrived',
         finished: 'Finished'
       },
+      categories: {
+        general: 'General',
+        orthopedie: 'Orthopedie',
+        caba: 'Caba',
+        medicament: 'Medicament',
+        parapharmacie: 'Parapharmacie',
+        'dermo-cosmetique': 'Dermo-cosmetique'
+      },
       commentPlaceholder: 'Add a comment',
       addComment: 'Post',
+      actionHistory: 'Order Activity',
+      noActions: 'No order activity yet.',
+      createdByLabel: 'Added by',
+      createdAtLabel: 'Created',
+      deleteOrderLabel: 'Delete order',
+      deleteCommentLabel: 'Delete comment',
+      confirmDeleteOrderTitle: 'Delete this order?',
+      confirmDeleteOrderMessage: 'This order and its comments will be removed permanently.',
+      confirmDeleteCommentTitle: 'Delete this comment?',
+      confirmDeleteCommentMessage: 'This comment will be removed permanently.',
+      confirmDelete: 'Delete',
+      cancelDelete: 'Cancel',
       noComments: 'No comments yet.',
       detailsTitle: 'Order Details',
       backToOrders: 'Back to Orders',
       saveChanges: 'Save Changes',
-      notFound: 'Order not found.'
+      notFound: 'Order not found.',
+      actionLabels: {
+        CREATE_ORDER: 'Order created',
+        UPDATE_ORDER: 'Order updated',
+        UPDATE_STATUS: 'Status updated',
+        ADD_ORDER_COMMENT: 'Comment added',
+        DELETE_ORDER_COMMENT: 'Comment deleted',
+        DELETE_ORDER: 'Order deleted'
+      }
     },
     preparations: {
       addTitle: 'Create Preparation',
@@ -490,6 +530,7 @@ export const i18n = {
         phone: 'Téléphone',
         products: 'Produits',
         comment: 'Commentaire',
+        category: 'Categorie',
         arrivalDate: 'Date d’arrivée estimée',
         versement: 'Versement'
       },
@@ -504,9 +545,18 @@ export const i18n = {
         patientNameRequired: 'Le nom du patient est requis.',
         phoneRequired: 'Le telephone est requis.',
         productsRequired: 'Au moins un produit est requis.',
-        arrivalDateRequired: "La date d'arrivée estimée est requise.",
         versementInvalid: 'Le versement doit etre un nombre positif ou zero.'
       },
+      addArrivalDate: "Ajouter une date d'arrivee",
+      removeArrivalDate: "Retirer la date d'arrivee",
+      categoryFilterLabel: 'Filtrer par categorie',
+      allCategories: 'Toutes les categories',
+      requiredFieldsTitle: 'Champs obligatoires',
+      requiredFieldsText: 'Patient, produit/medicament et numero de telephone sont obligatoires.',
+      optionalFieldsTitle: 'Champs facultatifs',
+      optionalFieldsText:
+        "La date d'arrivee, le versement et la note peuvent etre ajoutes si besoin.",
+      noArrivalDate: 'A planifier',
       addButton: 'Ajouter',
       searchLabel: 'Rechercher des commandes',
       searchPlaceholder:
@@ -531,10 +581,13 @@ export const i18n = {
         patient: 'Patient',
         phone: 'Téléphone',
         products: 'Produits',
+        category: 'Categorie',
+        addedBy: 'Ajoutée par',
         arrivalDate: 'Arrivée estimée',
         versement: 'Versement',
         status: 'Statut',
-        comments: 'Commentaires'
+        comments: 'Commentaires',
+        actions: 'Actions'
       },
       statusLabel: 'Définir le statut',
       status: {
@@ -543,13 +596,42 @@ export const i18n = {
         arrived: 'Arrivée',
         finished: 'Terminée'
       },
+      categories: {
+        general: 'General',
+        orthopedie: 'Orthopedie',
+        caba: 'Caba',
+        medicament: 'Medicament',
+        parapharmacie: 'Parapharmacie',
+        'dermo-cosmetique': 'Dermo-cosmetique'
+      },
       commentPlaceholder: 'Ajouter un commentaire',
       addComment: 'Publier',
+      actionHistory: 'Activité de la commande',
+      noActions: "Aucune activité pour cette commande.",
+      createdByLabel: 'Ajoutée par',
+      createdAtLabel: 'Créée le',
+      deleteOrderLabel: 'Supprimer la commande',
+      deleteCommentLabel: 'Supprimer le commentaire',
+      confirmDeleteOrderTitle: 'Supprimer cette commande ?',
+      confirmDeleteOrderMessage:
+        'Cette commande et ses commentaires seront supprimés définitivement.',
+      confirmDeleteCommentTitle: 'Supprimer ce commentaire ?',
+      confirmDeleteCommentMessage: 'Ce commentaire sera supprimé définitivement.',
+      confirmDelete: 'Supprimer',
+      cancelDelete: 'Annuler',
       noComments: 'Aucun commentaire.',
       detailsTitle: 'Détails de la commande',
       backToOrders: 'Retour aux commandes',
       saveChanges: 'Enregistrer',
-      notFound: 'Commande introuvable.'
+      notFound: 'Commande introuvable.',
+      actionLabels: {
+        CREATE_ORDER: 'Commande créée',
+        UPDATE_ORDER: 'Commande modifiée',
+        UPDATE_STATUS: 'Statut modifié',
+        ADD_ORDER_COMMENT: 'Commentaire ajouté',
+        DELETE_ORDER_COMMENT: 'Commentaire supprimé',
+        DELETE_ORDER: 'Commande supprimée'
+      }
     },
     preparations: {
       addTitle: 'Creer une preparation',

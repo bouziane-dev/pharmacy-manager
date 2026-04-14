@@ -65,9 +65,24 @@ const orderSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    category: {
+      type: String,
+      enum: [
+        "general",
+        "orthopedie",
+        "caba",
+        "medicament",
+        "parapharmacie",
+        "dermo-cosmetique",
+      ],
+      default: "general",
+      required: true,
+      trim: true,
+    },
     arrivalDate: {
       type: String,
-      required: true,
+      required: false,
+      default: "",
       trim: true,
     },
     status: {

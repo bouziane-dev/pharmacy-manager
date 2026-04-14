@@ -37,6 +37,7 @@ export default function AgendaBoard() {
 
   const ordersByDate = useMemo(() => {
     return orders.reduce((acc, order) => {
+      if (!order.arrivalDate) return acc
       if (!acc[order.arrivalDate]) acc[order.arrivalDate] = []
       acc[order.arrivalDate].push(order)
       return acc

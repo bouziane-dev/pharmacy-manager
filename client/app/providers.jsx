@@ -70,6 +70,8 @@ const toastCopy = {
     invitationDeclined: 'Invitation declined.',
     orderSaved: 'Order saved successfully.',
     commentAdded: 'Comment added successfully.',
+    commentDeleted: 'Comment deleted successfully.',
+    orderDeleted: 'Order deleted successfully.',
     orderStatusUpdated: 'Order status updated.',
     orderDateUpdated: 'Order arrival date updated.',
     preparationSaved: 'Preparation saved successfully.',
@@ -89,6 +91,8 @@ const toastCopy = {
     invitationDeclined: 'Invitation refusee.',
     orderSaved: 'Commande enregistree avec succes.',
     commentAdded: 'Commentaire ajoute avec succes.',
+    commentDeleted: 'Commentaire supprime avec succes.',
+    orderDeleted: 'Commande supprimee avec succes.',
     orderStatusUpdated: 'Statut de la commande mis a jour.',
     orderDateUpdated: "Date d'arrivée mise à jour.",
     preparationSaved: 'Preparation enregistree avec succes.',
@@ -752,7 +756,7 @@ export function AppProviders({ children }) {
   }
 
   async function createOrder(
-    { patientName, phone, products, comment, arrivalDate, versement },
+    { patientName, phone, products, comment, category, arrivalDate, versement },
     tokenOverride = null
   ) {
     const sessionToken = tokenOverride || authToken
@@ -768,6 +772,7 @@ export function AppProviders({ children }) {
           patientName,
           phone,
           products,
+          category,
           arrivalDate,
           versement,
           comment
@@ -818,6 +823,31 @@ export function AppProviders({ children }) {
     }
   }
 
+  async function deleteOrderComment(orderId, commentId) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    try {
+      const params = new URLSearchParams()
+      params.set('pharmacyId', currentWorkspace.id)
+      const result = await apiRequest(
+        `/api/orders/${orderId}/comments/${commentId}?${params.toString()}`,
+        {
+          method: 'DELETE',
+          token: authToken
+        }
+      )
+      setOrders(prev =>
+        prev.map(order => (order.id === orderId ? result.order : order))
+      )
+      showActionToast('commentDeleted')
+      return result.order
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
+  }
+
   async function updateOrder(orderId, updates) {
     if (!authToken || !currentWorkspace) {
       throw new Error('Active workspace is required')
@@ -848,6 +878,40 @@ export function AppProviders({ children }) {
   async function updateOrderArrivalDate(orderId, arrivalDate) {
     await updateOrder(orderId, { arrivalDate })
     showActionToast('orderDateUpdated')
+  }
+
+  async function deleteOrder(orderId) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    try {
+      const params = new URLSearchParams()
+      params.set('pharmacyId', currentWorkspace.id)
+      await apiRequest(`/api/orders/${orderId}?${params.toString()}`, {
+        method: 'DELETE',
+        token: authToken
+      })
+      setOrders(prev => prev.filter(order => order.id !== orderId))
+      showActionToast('orderDeleted')
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
+  }
+
+  async function fetchOrderActions(orderId) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    const params = new URLSearchParams()
+    params.set('pharmacyId', currentWorkspace.id)
+    const result = await apiRequest(
+      `/api/orders/${orderId}/actions?${params.toString()}`,
+      {
+        token: authToken
+      }
+    )
+    return result.actions || []
   }
 
   async function refreshPendingInvitations(
@@ -1500,9 +1564,12 @@ export function AppProviders({ children }) {
       createOrder,
       resolveStaffByPin,
       addOrderComment,
+      deleteOrderComment,
       updateOrderStatus,
       updateOrderArrivalDate,
       updateOrder,
+      deleteOrder,
+      fetchOrderActions,
       createPreparation,
       updatePreparation,
       deletePreparation,
@@ -1569,7 +1636,10 @@ export function AppProviders({ children }) {
       deletePatientTest,
       createPharmacy,
       resolveStaffByPin,
+      deleteOrder,
+      deleteOrderComment,
       checkPharmacySlug,
+      fetchOrderActions,
       fetchStaffLoginUsers,
       listStaffMembers,
       addStaffMember,
