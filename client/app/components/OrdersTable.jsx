@@ -10,6 +10,7 @@ const statusStyles = {
   pending:
     'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300',
   ordered: 'bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300',
+  called: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-500/20 dark:text-cyan-300',
   arrived: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300',
   finished: 'bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300'
 }
@@ -207,7 +208,7 @@ export default function OrdersTable({ showControls = false }) {
             className='absolute right-0 top-full z-30 mt-1 min-w-[8.5rem] rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-[0_14px_28px_rgba(15,23,42,0.14)]'
             onClick={event => event.stopPropagation()}
           >
-            {['pending', 'ordered', 'arrived', 'finished'].map(status => (
+            {['pending', 'ordered', 'called', 'arrived', 'finished'].map(status => (
               <button
                 key={status}
                 type='button'
@@ -626,6 +627,12 @@ export default function OrdersTable({ showControls = false }) {
                       {t.reminderActions.arrived}
                     </button>
                     <button
+                      onClick={() => void updateOrderStatus(order.id, 'called')}
+                      className='rounded-md bg-cyan-600 px-2 py-1 text-xs font-semibold text-white'
+                    >
+                      {t.reminderActions.called}
+                    </button>
+                    <button
                       onClick={() => void updateOrderStatus(order.id, 'finished')}
                       className='rounded-md bg-violet-600 px-2 py-1 text-xs font-semibold text-white'
                     >
@@ -682,7 +689,12 @@ export default function OrdersTable({ showControls = false }) {
                     <p className='break-words text-sm font-semibold text-[var(--foreground)]'>
                       {order.patientName}
                     </p>
-                    <p className='mt-1 break-all text-xs text-[var(--muted)]'>{order.phone}</p>
+                    <div className='mt-2 inline-flex max-w-full items-center rounded-xl border border-sky-300/70 bg-sky-50 px-3 py-2 text-sm font-semibold tracking-[0.08em] text-sky-800 shadow-sm dark:border-sky-500/35 dark:bg-sky-500/10 dark:text-sky-100'>
+                      <span className='mr-2 text-[10px] uppercase tracking-[0.16em] text-sky-600 dark:text-sky-200'>
+                        {t.columns.phone}
+                      </span>
+                      <span className='break-all'>{order.phone}</span>
+                    </div>
                   </div>
                   <button
                     type='button'
@@ -732,16 +744,6 @@ export default function OrdersTable({ showControls = false }) {
                   </div>
                   <div className='rounded-xl border border-[var(--border)]/70 bg-[var(--surface)]/70 p-2.5'>
                     <p className='text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]'>
-                      {t.columns.arrivalDate}
-                    </p>
-                    <p className='mt-1 text-[var(--foreground)]'>
-                      {order.arrivalDate
-                        ? formatShortDate(order.arrivalDate, locale)
-                        : t.noArrivalDate}
-                    </p>
-                  </div>
-                  <div className='rounded-xl border border-[var(--border)]/70 bg-[var(--surface)]/70 p-2.5'>
-                    <p className='text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]'>
                       {t.columns.versement}
                     </p>
                     <p className='mt-1 text-[var(--foreground)]'>
@@ -772,7 +774,6 @@ export default function OrdersTable({ showControls = false }) {
                 <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.products}</th>
                 <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.category}</th>
                 <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.addedBy}</th>
-                <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.arrivalDate}</th>
                 <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.versement}</th>
                 <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.status}</th>
                 <th className='px-3 py-3 text-right font-medium sm:px-5'>{t.columns.comments}</th>
@@ -817,11 +818,6 @@ export default function OrdersTable({ showControls = false }) {
                     </td>
                     <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
                       <p className='break-words'>{getOrderCreatorLabel(order)}</p>
-                    </td>
-                    <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
-                      {order.arrivalDate
-                        ? formatShortDate(order.arrivalDate, locale)
-                        : t.noArrivalDate}
                     </td>
                     <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
                       <span>{Number(order.versement || 0).toFixed(2)}</span>
@@ -902,6 +898,12 @@ export default function OrdersTable({ showControls = false }) {
                         <p className='break-words text-sm font-semibold text-[var(--foreground)]'>
                           {order.patientName}
                         </p>
+                        <div className='mt-2 inline-flex max-w-full items-center rounded-xl border border-emerald-300/80 bg-white/85 px-3 py-2 text-sm font-semibold tracking-[0.08em] text-emerald-800 shadow-sm dark:border-emerald-500/35 dark:bg-emerald-950/30 dark:text-emerald-100'>
+                          <span className='mr-2 text-[10px] uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-200'>
+                            {t.columns.phone}
+                          </span>
+                          <span className='break-all'>{order.phone}</span>
+                        </div>
                         <p className='mt-1 break-words text-xs text-[var(--muted)]'>
                           {compactProductsText(order.products)}
                         </p>
@@ -921,11 +923,6 @@ export default function OrdersTable({ showControls = false }) {
                         className={`rounded-full border px-2 py-1 font-semibold ${getCategoryClass(order.category)}`}
                       >
                         {getCategoryLabel(order.category)}
-                      </span>
-                      <span className='rounded-full border border-emerald-300/80 bg-white/80 px-2 py-1 font-semibold text-emerald-800 dark:border-emerald-500/35 dark:bg-emerald-950/30 dark:text-emerald-100'>
-                        {order.arrivalDate
-                          ? formatShortDate(order.arrivalDate, locale)
-                          : t.noArrivalDate}
                       </span>
                       <span className='rounded-full border border-emerald-300/80 bg-white/80 px-2 py-1 font-semibold text-emerald-800 dark:border-emerald-500/35 dark:bg-emerald-950/30 dark:text-emerald-100'>
                         {Number(order.versement || 0).toFixed(2)}
@@ -953,7 +950,6 @@ export default function OrdersTable({ showControls = false }) {
                     <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.products}</th>
                     <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.category}</th>
                     <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.addedBy}</th>
-                    <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.arrivalDate}</th>
                     <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.versement}</th>
                     <th className='px-3 py-3 font-medium sm:px-5'>{t.columns.status}</th>
                     <th className='px-3 py-3 text-right font-medium sm:px-5'>
@@ -1002,11 +998,6 @@ export default function OrdersTable({ showControls = false }) {
                         </td>
                         <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
                           <p className='break-words'>{getOrderCreatorLabel(order)}</p>
-                        </td>
-                        <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
-                          {order.arrivalDate
-                            ? formatShortDate(order.arrivalDate, locale)
-                            : t.noArrivalDate}
                         </td>
                         <td className='px-3 py-3 text-[var(--muted)] sm:px-5'>
                           <span>{Number(order.versement || 0).toFixed(2)}</span>

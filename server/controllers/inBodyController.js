@@ -1,5 +1,6 @@
 const Patient = require("../models/Patient");
 const InBodyTest = require("../models/InBodyTest");
+const User = require("../models/User");
 const {
   cleanEmail,
   cleanPhoneDigits,
@@ -141,9 +142,21 @@ async function getOverviewStats(req, res) {
       0,
       0,
     );
+    const startOfWeek = new Date(startOfToday);
+    const dayOfWeek = startOfWeek.getDay();
+    const daysSinceMonday = (dayOfWeek + 6) % 7;
+    startOfWeek.setDate(startOfWeek.getDate() - daysSinceMonday);
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const startOfYear = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
 
-    const [totalPatients, testsToday, testsThisMonth, activeSubscriptions] =
+    const [
+      totalPatients,
+      testsToday,
+      testsThisMonth,
+      activeSubscriptions,
+      staffUsers,
+      staffTestCounts,
+    ] =
       await Promise.all([
         Patient.countDocuments({ pharmacyId: req.pharmacyId }),
         InBodyTest.countDocuments({
@@ -158,7 +171,78 @@ async function getOverviewStats(req, res) {
           pharmacyId: req.pharmacyId,
           "subscription.remainingSessions": { $gt: 0 },
         }),
+        User.find({
+          pharmacyId: req.pharmacyId,
+          role: "staff",
+        })
+          .select("_id name displayName staffRole isActive")
+          .sort({ name: 1, displayName: 1 }),
+        InBodyTest.aggregate([
+          {
+            $match: {
+              pharmacyId: req.pharmacyId,
+              createdBy: { $ne: null },
+            },
+          },
+          {
+            $group: {
+              _id: "$createdBy",
+              testsToday: {
+                $sum: {
+                  $cond: [{ $gte: ["$testedAt", startOfToday] }, 1, 0],
+                },
+              },
+              testsThisWeek: {
+                $sum: {
+                  $cond: [{ $gte: ["$testedAt", startOfWeek] }, 1, 0],
+                },
+              },
+              testsThisMonth: {
+                $sum: {
+                  $cond: [{ $gte: ["$testedAt", startOfMonth] }, 1, 0],
+                },
+              },
+              testsThisYear: {
+                $sum: {
+                  $cond: [{ $gte: ["$testedAt", startOfYear] }, 1, 0],
+                },
+              },
+              totalTests: { $sum: 1 },
+            },
+          },
+        ]),
       ]);
+
+    const countsByUserId = new Map(
+      staffTestCounts.map((item) => [
+        String(item._id),
+        {
+          testsToday: item.testsToday || 0,
+          testsThisWeek: item.testsThisWeek || 0,
+          testsThisMonth: item.testsThisMonth || 0,
+          testsThisYear: item.testsThisYear || 0,
+          totalTests: item.totalTests || 0,
+        },
+      ]),
+    );
+
+    const staffPerformance = staffUsers.map((staffUser) => {
+      const counts = countsByUserId.get(String(staffUser._id)) || {
+        testsToday: 0,
+        testsThisWeek: 0,
+        testsThisMonth: 0,
+        testsThisYear: 0,
+        totalTests: 0,
+      };
+
+      return {
+        id: String(staffUser._id),
+        name: cleanSingleLine(staffUser.displayName || staffUser.name) || "Unknown",
+        role: cleanSingleLine(staffUser.staffRole || "staff") || "staff",
+        isActive: staffUser.isActive !== false,
+        ...counts,
+      };
+    });
 
     return res.status(200).json({
       stats: {
@@ -166,6 +250,7 @@ async function getOverviewStats(req, res) {
         testsToday,
         testsThisMonth,
         activeSubscriptions,
+        staffPerformance,
       },
     });
   } catch (error) {

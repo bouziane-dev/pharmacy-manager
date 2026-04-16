@@ -86,7 +86,18 @@ const listCopy = {
       totalPatients: 'Total Patients',
       testsToday: "Tests Aujourd'hui",
       testsMonth: 'Tests ce Mois',
-      activeSubscriptions: 'Abonnements Actifs'
+      activeSubscriptions: 'Abonnements Actifs',
+      staffPerformanceTitle: 'Performance du staff InBody',
+      staffPerformanceSubtitle:
+        'Nombre de tests realises par membre du staff sur chaque periode.',
+      staffName: 'Membre',
+      staffRole: 'Role',
+      testsWeek: 'Semaine',
+      testsYear: 'Annee',
+      total: 'Total',
+      inactive: 'Inactif',
+      noStaffPerformance:
+        "Aucun test InBody attribue au staff pour le moment."
     },
     fields: {
       patientId: 'ID Patient (telephone)',
@@ -137,7 +148,17 @@ const listCopy = {
       totalPatients: 'Total Patients',
       testsToday: 'Tests Today',
       testsMonth: 'Tests This Month',
-      activeSubscriptions: 'Active Subscriptions'
+      activeSubscriptions: 'Active Subscriptions',
+      staffPerformanceTitle: 'InBody Staff Performance',
+      staffPerformanceSubtitle:
+        'How many tests each staff member completed for each period.',
+      staffName: 'Staff member',
+      staffRole: 'Role',
+      testsWeek: 'This Week',
+      testsYear: 'This Year',
+      total: 'Total',
+      inactive: 'Inactive',
+      noStaffPerformance: 'No staff-linked InBody tests yet.'
     },
     fields: {
       patientId: 'Patient ID (phone)',
@@ -229,6 +250,11 @@ export default function InBodyManager() {
         patient => Number(patient?.subscription?.remainingSessions || 0) > 0
       ).length,
     [patients]
+  )
+
+  const staffPerformance = useMemo(
+    () => (Array.isArray(stats?.staffPerformance) ? stats.staffPerformance : []),
+    [stats]
   )
 
   const statCards = [
@@ -510,6 +536,135 @@ export default function InBodyManager() {
                       </tr>
                     )
                   })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </section>
+
+      <section className='panel p-5 sm:p-6'>
+        <div className='flex flex-col gap-1'>
+          <h3 className='text-lg font-semibold text-[var(--foreground)]'>
+            {t.stats.staffPerformanceTitle}
+          </h3>
+          <p className='text-sm text-[var(--muted)]'>
+            {t.stats.staffPerformanceSubtitle}
+          </p>
+        </div>
+
+        {isLoadingStats ? (
+          <p className='mt-5 text-sm text-[var(--muted)]'>{t.loading}</p>
+        ) : staffPerformance.length === 0 ? (
+          <p className='mt-5 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-soft)] px-4 py-6 text-sm text-[var(--muted)]'>
+            {t.stats.noStaffPerformance}
+          </p>
+        ) : (
+          <>
+            <div className='mt-5 grid gap-3 lg:hidden'>
+              {staffPerformance.map(member => (
+                <article
+                  key={member.id}
+                  className='rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4'
+                >
+                  <div className='flex items-start justify-between gap-3'>
+                    <div>
+                      <p className='text-sm font-semibold text-[var(--foreground)]'>
+                        {member.name}
+                      </p>
+                      <p className='text-xs uppercase tracking-[0.12em] text-[var(--muted)]'>
+                        {member.role}
+                      </p>
+                    </div>
+                    {!member.isActive && (
+                      <span className='rounded-full bg-slate-200 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-700 dark:bg-slate-700 dark:text-slate-100'>
+                        {t.stats.inactive}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className='mt-4 grid grid-cols-2 gap-2 text-sm'>
+                    <div className='rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3'>
+                      <p className='text-xs text-[var(--muted)]'>{t.stats.testsToday}</p>
+                      <p className='mt-1 text-lg font-semibold text-[var(--foreground)]'>
+                        {member.testsToday || 0}
+                      </p>
+                    </div>
+                    <div className='rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3'>
+                      <p className='text-xs text-[var(--muted)]'>{t.stats.testsWeek}</p>
+                      <p className='mt-1 text-lg font-semibold text-[var(--foreground)]'>
+                        {member.testsThisWeek || 0}
+                      </p>
+                    </div>
+                    <div className='rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3'>
+                      <p className='text-xs text-[var(--muted)]'>{t.stats.testsMonth}</p>
+                      <p className='mt-1 text-lg font-semibold text-[var(--foreground)]'>
+                        {member.testsThisMonth || 0}
+                      </p>
+                    </div>
+                    <div className='rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3'>
+                      <p className='text-xs text-[var(--muted)]'>{t.stats.testsYear}</p>
+                      <p className='mt-1 text-lg font-semibold text-[var(--foreground)]'>
+                        {member.testsThisYear || 0}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className='mt-3 flex items-center justify-between rounded-xl border border-dashed border-[var(--border)] px-3 py-2 text-sm'>
+                    <span className='text-[var(--muted)]'>{t.stats.total}</span>
+                    <span className='font-semibold text-[var(--foreground)]'>
+                      {member.totalTests || 0}
+                    </span>
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            <div className='mt-5 hidden overflow-x-auto lg:block'>
+              <table className='w-full min-w-[860px] table-fixed text-left text-sm'>
+                <thead>
+                  <tr className='border-b border-[var(--border)] text-[var(--muted)]'>
+                    <th className='px-4 py-3 font-medium'>{t.stats.staffName}</th>
+                    <th className='px-4 py-3 font-medium'>{t.stats.staffRole}</th>
+                    <th className='px-4 py-3 font-medium'>{t.stats.testsToday}</th>
+                    <th className='px-4 py-3 font-medium'>{t.stats.testsWeek}</th>
+                    <th className='px-4 py-3 font-medium'>{t.stats.testsMonth}</th>
+                    <th className='px-4 py-3 font-medium'>{t.stats.testsYear}</th>
+                    <th className='px-4 py-3 font-medium'>{t.stats.total}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {staffPerformance.map(member => (
+                    <tr
+                      key={member.id}
+                      className='border-b border-[var(--border)]/70 transition hover:bg-[var(--surface-soft)]/70'
+                    >
+                      <td className='px-4 py-3'>
+                        <p className='font-medium text-[var(--foreground)]'>{member.name}</p>
+                        {!member.isActive && (
+                          <p className='text-xs text-[var(--muted)]'>
+                            {t.stats.inactive}
+                          </p>
+                        )}
+                      </td>
+                      <td className='px-4 py-3 text-[var(--muted)]'>{member.role}</td>
+                      <td className='px-4 py-3 font-semibold text-[var(--foreground)]'>
+                        {member.testsToday || 0}
+                      </td>
+                      <td className='px-4 py-3 font-semibold text-[var(--foreground)]'>
+                        {member.testsThisWeek || 0}
+                      </td>
+                      <td className='px-4 py-3 font-semibold text-[var(--foreground)]'>
+                        {member.testsThisMonth || 0}
+                      </td>
+                      <td className='px-4 py-3 font-semibold text-[var(--foreground)]'>
+                        {member.testsThisYear || 0}
+                      </td>
+                      <td className='px-4 py-3 font-semibold text-[var(--foreground)]'>
+                        {member.totalTests || 0}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

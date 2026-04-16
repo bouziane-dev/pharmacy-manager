@@ -12,6 +12,7 @@ const arrivalDatePattern = /^\d{4}-\d{2}-\d{2}$/;
 const statusAliases = {
   "not yet": "pending",
   ordered: "ordered",
+  called: "called",
   arrived: "arrived",
   pending: "pending",
   done: "finished",

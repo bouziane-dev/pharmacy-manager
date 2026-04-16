@@ -297,6 +297,7 @@ export default function OrderDetailsPage() {
               >
                 <option value='pending'>{orderText.status.pending}</option>
                 <option value='ordered'>{orderText.status.ordered}</option>
+                <option value='called'>{orderText.status.called}</option>
                 <option value='arrived'>{orderText.status.arrived}</option>
                 <option value='finished'>{orderText.status.finished}</option>
               </select>

@@ -91,11 +91,13 @@ const orderSchema = new mongoose.Schema(
       enum: [
         "pending",
         "ordered",
+        "called",
         "arrived",
         "done",
         "finished",
         "Not Yet",
         "Ordered",
+        "Called",
         "Arrived",
       ],
       default: "pending",
