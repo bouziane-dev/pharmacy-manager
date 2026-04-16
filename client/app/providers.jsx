@@ -16,6 +16,7 @@ const RESERVED_PATH_SEGMENTS = new Set([
   'auth',
   'dashboard',
   'orders',
+  'taches',
   'preparations',
   'inbody',
   'agenda',
@@ -69,6 +70,11 @@ const toastCopy = {
     invitationAccepted: 'Invitation accepted successfully.',
     invitationDeclined: 'Invitation declined.',
     orderSaved: 'Order saved successfully.',
+    taskSaved: 'Task saved successfully.',
+    taskUpdated: 'Task updated successfully.',
+    taskDeleted: 'Task deleted successfully.',
+    taskStatusUpdated: 'Task status updated.',
+    taskCommentAdded: 'Task comment added successfully.',
     commentAdded: 'Comment added successfully.',
     commentDeleted: 'Comment deleted successfully.',
     orderDeleted: 'Order deleted successfully.',
@@ -90,6 +96,11 @@ const toastCopy = {
     invitationAccepted: 'Invitation acceptee avec succes.',
     invitationDeclined: 'Invitation refusee.',
     orderSaved: 'Commande enregistree avec succes.',
+    taskSaved: 'Tâche enregistrée avec succès.',
+    taskUpdated: 'Tâche mise à jour avec succès.',
+    taskDeleted: 'Tâche supprimée avec succès.',
+    taskStatusUpdated: 'Statut de la tâche mis à jour.',
+    taskCommentAdded: 'Commentaire de tâche ajouté avec succès.',
     commentAdded: 'Commentaire ajoute avec succes.',
     commentDeleted: 'Commentaire supprime avec succes.',
     orderDeleted: 'Commande supprimee avec succes.',
@@ -177,6 +188,7 @@ export function AppProviders({ children }) {
   const [authToken, setAuthToken] = useState(null)
   const [locale, setLocale] = useState('fr')
   const [orders, setOrders] = useState([])
+  const [tasks, setTasks] = useState([])
   const [preparations, setPreparations] = useState([])
   const [patients, setPatients] = useState([])
   const [workspaces, setWorkspaces] = useState([])
@@ -491,6 +503,23 @@ export function AppProviders({ children }) {
     }
   }
 
+  async function refreshWorkspaceTasks(
+    tokenOverride = null,
+    workspaceOverride = null
+  ) {
+    const sessionToken = tokenOverride || authToken
+    const workspaceId = workspaceOverride || currentWorkspace?.id
+    if (!sessionToken || !workspaceId) {
+      setTasks([])
+      return
+    }
+
+    const result = await apiRequest(`/api/tasks?pharmacyId=${workspaceId}`, {
+      token: sessionToken
+    })
+    setTasks(result.tasks || [])
+  }
+
   async function refreshWorkspacePreparations(
     tokenOverride = null,
     workspaceOverride = null
@@ -786,6 +815,38 @@ export function AppProviders({ children }) {
     }
   }
 
+  async function createTask({
+    type,
+    customTypeLabel,
+    comment,
+    patientName,
+    phone
+  }) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    try {
+      const result = await apiRequest('/api/tasks', {
+        method: 'POST',
+        token: authToken,
+        body: {
+          pharmacyId: currentWorkspace.id,
+          type,
+          customTypeLabel,
+          comment,
+          patientName,
+          phone
+        }
+      })
+      setTasks(prev => [result.task, ...prev])
+      showActionToast('taskSaved')
+      return result.task
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
+  }
+
   async function resolveStaffByPin(pin) {
     if (!authToken || !currentWorkspace) {
       throw new Error('Active workspace is required')
@@ -796,6 +857,30 @@ export function AppProviders({ children }) {
       body: { pin, pharmacyId: currentWorkspace.id }
     })
     return result.staff
+  }
+
+  async function addTaskComment(taskId, text) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    const cleanText = text.trim()
+    if (!cleanText) return null
+    try {
+      const result = await apiRequest(`/api/tasks/${taskId}/comments`, {
+        method: 'POST',
+        token: authToken,
+        body: {
+          pharmacyId: currentWorkspace.id,
+          text: cleanText
+        }
+      })
+      setTasks(prev => prev.map(task => (task.id === taskId ? result.task : task)))
+      showActionToast('taskCommentAdded')
+      return result.task
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
   }
 
   async function addOrderComment(orderId, text) {
@@ -893,6 +978,55 @@ export function AppProviders({ children }) {
       })
       setOrders(prev => prev.filter(order => order.id !== orderId))
       showActionToast('orderDeleted')
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
+  }
+
+  async function updateTask(taskId, updates, { silent = false } = {}) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    try {
+      const result = await apiRequest(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        token: authToken,
+        body: {
+          pharmacyId: currentWorkspace.id,
+          ...updates
+        }
+      })
+      setTasks(prev => prev.map(task => (task.id === taskId ? result.task : task)))
+      if (!silent) {
+        showActionToast('taskUpdated')
+      }
+      return result.task
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
+  }
+
+  async function updateTaskStatus(taskId, status) {
+    const result = await updateTask(taskId, { status }, { silent: true })
+    showActionToast('taskStatusUpdated')
+    return result
+  }
+
+  async function deleteTask(taskId) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    try {
+      const params = new URLSearchParams()
+      params.set('pharmacyId', currentWorkspace.id)
+      await apiRequest(`/api/tasks/${taskId}?${params.toString()}`, {
+        method: 'DELETE',
+        token: authToken
+      })
+      setTasks(prev => prev.filter(task => task.id !== taskId))
+      showActionToast('taskDeleted')
     } catch (error) {
       showToast(error.message, 'error')
       throw error
@@ -1478,6 +1612,7 @@ export function AppProviders({ children }) {
   useEffect(() => {
     if (!authToken || !currentWorkspace?.id) {
       setOrders([])
+      setTasks([])
       setPreparations([])
       setPatients([])
       setWorkspaceInvitations([])
@@ -1485,6 +1620,9 @@ export function AppProviders({ children }) {
     }
     refreshWorkspaceOrders(authToken, currentWorkspace.id).catch(() => {
       setOrders([])
+    })
+    refreshWorkspaceTasks(authToken, currentWorkspace.id).catch(() => {
+      setTasks([])
     })
     refreshWorkspaceInvitations(authToken, currentWorkspace.id).catch(() => {
       setWorkspaceInvitations([])
@@ -1499,6 +1637,9 @@ export function AppProviders({ children }) {
 
   const sortedOrders = [...orders].sort(
     (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+  )
+  const sortedTasks = [...tasks].sort(
+    (a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)
   )
   const sortedPreparations = [...preparations].sort(
     (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
@@ -1548,6 +1689,7 @@ export function AppProviders({ children }) {
       locale,
       setLocale,
       orders: sortedOrders,
+      tasks: sortedTasks,
       preparations: sortedPreparations,
       patients: sortedPatients,
       currentWorkspace,
@@ -1562,13 +1704,18 @@ export function AppProviders({ children }) {
       chooseRole,
       logout,
       createOrder,
+      createTask,
       resolveStaffByPin,
+      addTaskComment,
       addOrderComment,
       deleteOrderComment,
       updateOrderStatus,
       updateOrderArrivalDate,
       updateOrder,
       deleteOrder,
+      updateTask,
+      updateTaskStatus,
+      deleteTask,
       fetchOrderActions,
       createPreparation,
       updatePreparation,
@@ -1612,6 +1759,7 @@ export function AppProviders({ children }) {
       pendingInvitations,
       pendingWorkspaceInvitations,
       sortedOrders,
+      sortedTasks,
       sortedPreparations,
       sortedPatients,
       theme,
@@ -1635,8 +1783,11 @@ export function AppProviders({ children }) {
       createPatientTest,
       deletePatientTest,
       createPharmacy,
+      createTask,
+      addTaskComment,
       resolveStaffByPin,
       deleteOrder,
+      deleteTask,
       deleteOrderComment,
       checkPharmacySlug,
       fetchOrderActions,
@@ -1653,6 +1804,8 @@ export function AppProviders({ children }) {
       fetchSuperAdminUsers,
       fetchSuperAdminActivityLogs,
       loginWithPin,
+      updateTask,
+      updateTaskStatus,
       workspaceInvitations
     ]
   )

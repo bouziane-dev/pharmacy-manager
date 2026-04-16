@@ -20,6 +20,7 @@ import { getCopy } from '@/app/lib/i18n'
 const tenantNavItems = [
   { key: 'dashboard', href: '/dashboard', icon: LayoutDashboard, adminOnly: false },
   { key: 'orders', href: '/orders', icon: ClipboardList, adminOnly: false },
+  { key: 'tasks', href: '/taches', icon: FileClock, adminOnly: false },
   { key: 'preparations', href: '/preparations', icon: FlaskConical, adminOnly: false },
   { key: 'inbody', href: '/inbody', icon: HeartPulse, adminOnly: false },
   { key: 'agenda', href: '/agenda', icon: CalendarDays, adminOnly: false },

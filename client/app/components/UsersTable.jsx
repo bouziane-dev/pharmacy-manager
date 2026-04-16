@@ -16,6 +16,11 @@ function getReadableActionLabel(action, locale) {
           UPDATE_STATUS: 'Mise a jour statut',
           DELETE_ORDER: 'Suppression commande',
           ADD_ORDER_COMMENT: 'Ajout commentaire',
+          CREATE_TASK: 'Création de tâche',
+          UPDATE_TASK: 'Modification de tâche',
+          UPDATE_TASK_STATUS: 'Mise à jour du statut de tâche',
+          DELETE_TASK: 'Suppression de tâche',
+          ADD_TASK_COMMENT: 'Ajout d’un commentaire de tâche',
           PIN_LOGIN: 'Connexion PIN',
           UPDATE_STAFF_ROLE: 'Role staff modifie'
         }
@@ -28,6 +33,11 @@ function getReadableActionLabel(action, locale) {
           UPDATE_STATUS: 'Status updated',
           DELETE_ORDER: 'Order deleted',
           ADD_ORDER_COMMENT: 'Comment added',
+          CREATE_TASK: 'Task created',
+          UPDATE_TASK: 'Task updated',
+          UPDATE_TASK_STATUS: 'Task status updated',
+          DELETE_TASK: 'Task deleted',
+          ADD_TASK_COMMENT: 'Task comment added',
           PIN_LOGIN: 'PIN login',
           UPDATE_STAFF_ROLE: 'Staff role updated'
         }

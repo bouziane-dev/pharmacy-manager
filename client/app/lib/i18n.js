@@ -36,6 +36,7 @@ export const i18n = {
     pages: {
       dashboard: 'Dashboard',
       orders: 'Orders',
+      tasks: 'Tasks',
       preparations: 'Preparations',
       inbody: 'InBody',
       agenda: 'Agenda',
@@ -48,6 +49,7 @@ export const i18n = {
     sidebar: {
       dashboard: 'Dashboard',
       orders: 'Orders',
+      tasks: 'Tasks',
       preparations: 'Preparations',
       inbody: 'InBody',
       agenda: 'Agenda',
@@ -184,6 +186,7 @@ export const i18n = {
         'This order reached its planned date. Update the current status.',
       reminderActions: {
         arrived: 'Arrived',
+        called: 'Called',
         finished: 'Finished',
         ordered: 'Ordered',
         pending: 'Pending'
@@ -210,6 +213,7 @@ export const i18n = {
       status: {
         pending: 'Pending',
         ordered: 'Ordered',
+        called: 'Called',
         arrived: 'Arrived',
         finished: 'Finished'
       },
@@ -248,6 +252,87 @@ export const i18n = {
         DELETE_ORDER_COMMENT: 'Comment deleted',
         DELETE_ORDER: 'Order deleted'
       }
+    },
+    tasks: {
+      addTitle: 'Create a task',
+      addDescription:
+        'Capture pending pharmacy actions for the team and keep follow-up visible.',
+      fields: {
+        type: 'Task type',
+        customTypeLabel: 'Custom task label',
+        comment: 'Comment / Details',
+        patientName: 'Patient name',
+        phone: 'Phone',
+        createdBy: 'Created by'
+      },
+      placeholders: {
+        customTypeLabel: 'Example: Return supplier call',
+        comment: 'Useful context for the next team member',
+        patientName: 'Patient full name',
+        phone: '0550 00 00 00',
+        search: 'Search by task, details, patient, or phone',
+        commentInput: 'Add a follow-up comment'
+      },
+      validation: {
+        typeRequired: 'Task type is required.',
+        customTypeLabelRequired: 'Custom task label is required.',
+        phoneInvalid: 'Phone must contain digits only.'
+      },
+      recommendedHint: 'Optional but useful for smoother handoffs.',
+      addButton: 'Add task',
+      tabs: {
+        all: 'All',
+        pending: 'Pending',
+        done: 'Completed'
+      },
+      filters: {
+        searchLabel: 'Search',
+        typeLabel: 'Filter by type',
+        statusLabel: 'Filter by status',
+        allTypes: 'All types',
+        allStatuses: 'All statuses'
+      },
+      status: {
+        pending: 'Pending',
+        done: 'Completed'
+      },
+      typeLabels: {
+        ordonnance: 'Ordonnance à faire passer',
+        instance: 'Instance',
+        patient_appel: 'Patient à appeler',
+        autres: 'Autres'
+      },
+      meta: {
+        createdAt: 'Created',
+        updatedAt: 'Updated',
+        completedAt: 'Completed',
+        completedBy: 'Completed by',
+        patient: 'Patient',
+        phone: 'Phone',
+        comments: 'Comments'
+      },
+      actions: {
+        edit: 'Edit',
+        save: 'Save',
+        cancel: 'Cancel',
+        delete: 'Delete',
+        addComment: 'Post',
+        comments: 'Comments',
+        hideComments: 'Hide comments'
+      },
+      empty: {
+        pending: 'No pending tasks.',
+        done: 'No completed tasks.',
+        all: 'No tasks yet.',
+        filtered: 'No tasks match the current filters.',
+        helper: 'Create the first task to help your team stay aligned.'
+      },
+      confirmDeleteTitle: 'Delete this task?',
+      confirmDeleteMessage: 'This task and its follow-up comments will be removed permanently.',
+      confirmDelete: 'Delete',
+      cancelDelete: 'Cancel',
+      noMainComment: 'No details provided yet.',
+      noTaskComments: 'No follow-up comments yet.'
     },
     preparations: {
       addTitle: 'Create Preparation',
@@ -418,6 +503,7 @@ export const i18n = {
     pages: {
       dashboard: 'Tableau de bord',
       orders: 'Commandes',
+      tasks: 'Tâches',
       preparations: 'Preparations',
       inbody: 'InBody',
       agenda: 'Agenda',
@@ -430,6 +516,7 @@ export const i18n = {
     sidebar: {
       dashboard: 'Tableau de bord',
       orders: 'Commandes',
+      tasks: 'Tâches',
       preparations: 'Preparations',
       inbody: 'InBody',
       agenda: 'Agenda',
@@ -567,6 +654,7 @@ export const i18n = {
         'Cette commande a atteint sa date prévue. Mettez à jour son statut.',
       reminderActions: {
         arrived: 'Arrivée',
+        called: 'Appelée',
         finished: 'Terminée',
         ordered: 'Commandée',
         pending: 'En attente'
@@ -593,6 +681,7 @@ export const i18n = {
       status: {
         pending: 'En attente',
         ordered: 'Commandée',
+        called: 'Appelée',
         arrived: 'Arrivée',
         finished: 'Terminée'
       },
@@ -632,6 +721,88 @@ export const i18n = {
         DELETE_ORDER_COMMENT: 'Commentaire supprimé',
         DELETE_ORDER: 'Commande supprimée'
       }
+    },
+    tasks: {
+      addTitle: 'Créer une tâche',
+      addDescription:
+        "Centralisez les actions en attente de la pharmacie et facilitez les transmissions d'équipe.",
+      fields: {
+        type: 'Type de tâche',
+        customTypeLabel: 'Nom de la tâche personnalisée',
+        comment: 'Commentaire / Détails',
+        patientName: 'Nom du patient',
+        phone: 'Téléphone',
+        createdBy: 'Créée par'
+      },
+      placeholders: {
+        customTypeLabel: 'Exemple : Rappeler le grossiste',
+        comment: "Contexte utile pour le prochain membre de l'équipe",
+        patientName: 'Nom complet du patient',
+        phone: '0550 00 00 00',
+        search: 'Rechercher par tâche, détails, patient ou téléphone',
+        commentInput: 'Ajouter un commentaire de suivi'
+      },
+      validation: {
+        typeRequired: 'Le type de tâche est requis.',
+        customTypeLabelRequired: 'Le nom personnalisé est requis.',
+        phoneInvalid: 'Le téléphone doit contenir uniquement des chiffres.'
+      },
+      recommendedHint: 'Facultatif, mais utile pour une meilleure passation.',
+      addButton: 'Ajouter la tâche',
+      tabs: {
+        all: 'Toutes',
+        pending: 'En attente',
+        done: 'Terminées'
+      },
+      filters: {
+        searchLabel: 'Recherche',
+        typeLabel: 'Filtrer par type',
+        statusLabel: 'Filtrer par statut',
+        allTypes: 'Tous les types',
+        allStatuses: 'Tous les statuts'
+      },
+      status: {
+        pending: 'En attente',
+        done: 'Terminée'
+      },
+      typeLabels: {
+        ordonnance: 'Ordonnance à faire passer',
+        instance: 'Instance',
+        patient_appel: 'Patient à appeler',
+        autres: 'Autres'
+      },
+      meta: {
+        createdAt: 'Créée',
+        updatedAt: 'Mise à jour',
+        completedAt: 'Terminée',
+        completedBy: 'Terminée par',
+        patient: 'Patient',
+        phone: 'Téléphone',
+        comments: 'Commentaires'
+      },
+      actions: {
+        edit: 'Modifier',
+        save: 'Enregistrer',
+        cancel: 'Annuler',
+        delete: 'Supprimer',
+        addComment: 'Publier',
+        comments: 'Commentaires',
+        hideComments: 'Masquer'
+      },
+      empty: {
+        pending: 'Aucune tâche en attente.',
+        done: 'Aucune tâche terminée.',
+        all: 'Aucune tâche pour le moment.',
+        filtered: 'Aucune tâche ne correspond aux filtres.',
+        helper: "Ajoutez la première tâche pour aider l'équipe à rester alignée."
+      },
+      confirmDeleteTitle: 'Supprimer cette tâche ?',
+      confirmDeleteMessage:
+        'Cette tâche et ses commentaires de suivi seront supprimés définitivement.',
+      confirmDelete: 'Supprimer',
+      cancelDelete: 'Annuler',
+      noMainComment: 'Aucun détail pour le moment.',
+      noTaskComments: 'Aucun commentaire de suivi.'
     },
     preparations: {
       addTitle: 'Creer une preparation',

@@ -11,12 +11,54 @@ const defaultActions = [
   'UPDATE_ORDER',
   'UPDATE_STATUS',
   'DELETE_ORDER',
+  'CREATE_TASK',
+  'UPDATE_TASK',
+  'UPDATE_TASK_STATUS',
+  'DELETE_TASK',
+  'ADD_TASK_COMMENT',
   'PIN_LOGIN',
   'CREATE_STAFF',
   'RESET_STAFF_PIN',
   'DISABLE_STAFF',
   'DELETE_STAFF'
 ]
+
+function getActionLabel(action, locale) {
+  const labels =
+    locale === 'fr'
+      ? {
+          CREATE_ORDER: 'Creation commande',
+          UPDATE_ORDER: 'Modification commande',
+          UPDATE_STATUS: 'Mise a jour statut',
+          DELETE_ORDER: 'Suppression commande',
+          CREATE_TASK: 'Création de tâche',
+          UPDATE_TASK: 'Modification de tâche',
+          UPDATE_TASK_STATUS: 'Mise à jour du statut de tâche',
+          DELETE_TASK: 'Suppression de tâche',
+          ADD_TASK_COMMENT: 'Ajout d’un commentaire de tâche',
+          PIN_LOGIN: 'Connexion PIN',
+          CREATE_STAFF: 'Ajout membre',
+          RESET_STAFF_PIN: 'Reinitialisation PIN',
+          DELETE_STAFF: 'Suppression membre'
+        }
+      : {
+          CREATE_ORDER: 'Order created',
+          UPDATE_ORDER: 'Order updated',
+          UPDATE_STATUS: 'Status updated',
+          DELETE_ORDER: 'Order deleted',
+          CREATE_TASK: 'Task created',
+          UPDATE_TASK: 'Task updated',
+          UPDATE_TASK_STATUS: 'Task status updated',
+          DELETE_TASK: 'Task deleted',
+          ADD_TASK_COMMENT: 'Task comment added',
+          PIN_LOGIN: 'PIN login',
+          CREATE_STAFF: 'Staff created',
+          RESET_STAFF_PIN: 'PIN reset',
+          DELETE_STAFF: 'Staff deleted'
+        }
+
+  return labels[action] || action
+}
 
 function formatDateTime(value, locale) {
   if (!value) return '-'
@@ -196,7 +238,7 @@ export default function SuperAdminActivityPage() {
               <option value=''>All actions</option>
               {actionOptions.map(action => (
                 <option key={action} value={action}>
-                  {action}
+                  {getActionLabel(action, locale)}
                 </option>
               ))}
             </select>
@@ -246,7 +288,7 @@ export default function SuperAdminActivityPage() {
                     <td className='px-4 py-3 text-[var(--foreground)]'>{item.pharmacy?.name}</td>
                     <td className='px-4 py-3'>
                       <span className='rounded-full bg-cyan-500/10 px-2.5 py-1 text-xs font-semibold text-cyan-700 dark:bg-cyan-400/20 dark:text-cyan-300'>
-                        {item.action}
+                        {getActionLabel(item.action, locale)}
                       </span>
                     </td>
                     <td className='px-4 py-3 text-[var(--foreground)]'>{item.description}</td>
