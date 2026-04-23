@@ -95,14 +95,47 @@ export const i18n = {
       noWorkspace: 'Dashboard',
       noSlug: 'No slug',
       stats: [
-        { id: 'finished', label: 'Finished Orders', delta: 'Archived' },
-        { id: 'due', label: 'Due Today', delta: 'Need review' },
-        { id: 'arrived', label: 'Arrived', delta: 'At pharmacy' },
-        { id: 'ordered', label: 'Ordered', delta: 'In progress' },
-        { id: 'waiting', label: 'Waiting', delta: 'Pending' },
-        { id: 'completed', label: 'Completed', delta: 'Arrived + finished' },
-        { id: 'total', label: 'Total', delta: 'All orders' }
-      ]
+        { id: 'pendingOrders', label: 'Pending Orders', delta: 'Not processed yet' },
+        { id: 'calledOrders', label: 'Called Orders', delta: 'Patient notified' },
+        { id: 'arrivedOrders', label: 'Arrived Orders', delta: 'At pharmacy' },
+        { id: 'pendingTasks', label: 'Pending Tasks', delta: 'Team follow-up' }
+      ],
+      advanced: {
+        show: 'Show advanced params',
+        hide: 'Hide advanced params',
+        totalOrders: 'Total Orders',
+        filteredOrders: 'Filtered Orders',
+        allTime: 'All time',
+        statusBreakdown: 'Current filter',
+        statusFilter: 'Order status',
+        periodFilter: 'Period',
+        allStatuses: 'All statuses',
+        periodLabels: {
+          day: 'Today',
+          month: 'This month',
+          year: 'This year'
+        }
+      },
+      workTable: {
+        title: 'Orders and Tasks',
+        searchLabel: 'General search',
+        searchPlaceholder: 'Search orders, tasks, patients, phones, products, or comments',
+        userFilterLabel: 'Filter by user',
+        allUsers: 'All users',
+        resultCount: '{count} items',
+        empty: 'No orders or tasks match this search.',
+        orderType: 'Order',
+        taskType: 'Task',
+        columns: {
+          type: 'Type',
+          item: 'Item',
+          patient: 'Patient / Detail',
+          phone: 'Phone',
+          addedBy: 'Added by',
+          status: 'Status',
+          date: 'Updated'
+        }
+      }
     },
     invitations: {
       title: 'Workspace Invitations',
@@ -171,6 +204,8 @@ export const i18n = {
       removeArrivalDate: 'Remove arrival date',
       categoryFilterLabel: 'Filter by category',
       allCategories: 'All categories',
+      userFilterLabel: 'Filter by user',
+      allUsers: 'All users',
       requiredFieldsTitle: 'Mandatory fields',
       requiredFieldsText: 'Patient, product/medication, and phone number are required.',
       optionalFieldsTitle: 'Optional fields',
@@ -289,8 +324,10 @@ export const i18n = {
         searchLabel: 'Search',
         typeLabel: 'Filter by type',
         statusLabel: 'Filter by status',
+        userLabel: 'Filter by user',
         allTypes: 'All types',
-        allStatuses: 'All statuses'
+        allStatuses: 'All statuses',
+        allUsers: 'All users'
       },
       status: {
         pending: 'Pending',
@@ -408,7 +445,12 @@ export const i18n = {
       monthHint:
         'Monthly view. Drag an order card to another day to update arrival date.',
       today: 'Today',
-      noOrders: 'No orders'
+      noOrders: 'No orders',
+      noItems: 'No orders or tasks',
+      orderLabel: 'Order',
+      taskLabel: 'Task',
+      previousMonth: 'Previous month',
+      nextMonth: 'Next month'
     },
     users: {
       inviteWorker: 'Invite Worker',
@@ -562,14 +604,47 @@ export const i18n = {
       noWorkspace: 'Tableau de bord',
       noSlug: 'Aucun slug',
       stats: [
-        { id: 'finished', label: 'Commandes terminées', delta: 'Archivées' },
-        { id: 'due', label: 'À traiter aujourd’hui', delta: 'À vérifier' },
-        { id: 'arrived', label: 'Arrivées', delta: 'En pharmacie' },
-        { id: 'ordered', label: 'Commandées', delta: 'En cours' },
-        { id: 'waiting', label: 'En attente', delta: 'À traiter' },
-        { id: 'completed', label: 'Complétées', delta: 'Arrivées + terminées' },
-        { id: 'total', label: 'Total', delta: 'Toutes les commandes' }
-      ]
+        { id: 'pendingOrders', label: 'Commandes en attente', delta: 'Pas encore traitees' },
+        { id: 'calledOrders', label: 'Commandes avisées', delta: 'Patients avisés' },
+        { id: 'arrivedOrders', label: 'Commandes arrivees', delta: 'En pharmacie' },
+        { id: 'pendingTasks', label: 'Tâches en attente', delta: 'Suivi equipe' }
+      ],
+      advanced: {
+        show: 'Afficher les paramètres avancés',
+        hide: 'Masquer les paramètres avancés',
+        totalOrders: 'Total commandes',
+        filteredOrders: 'Commandes filtrees',
+        allTime: 'Toutes periodes',
+        statusBreakdown: 'Filtre actuel',
+        statusFilter: 'Statut commande',
+        periodFilter: 'Période',
+        allStatuses: 'Tous les statuts',
+        periodLabels: {
+          day: "Aujourd'hui",
+          month: 'Ce mois',
+          year: 'Cette année'
+        }
+      },
+      workTable: {
+        title: 'Commandes et tâches',
+        searchLabel: 'Recherche générale',
+        searchPlaceholder: 'Rechercher commandes, tâches, patients, téléphones, produits ou commentaires',
+        userFilterLabel: 'Filtrer par utilisateur',
+        allUsers: 'Tous les utilisateurs',
+        resultCount: '{count} elements',
+        empty: 'Aucune commande ou tâche ne correspond à cette recherche.',
+        orderType: 'Commande',
+        taskType: 'Tâche',
+        columns: {
+          type: 'Type',
+          item: 'Element',
+          patient: 'Patient / Detail',
+          phone: 'Téléphone',
+          addedBy: 'Ajoutée par',
+          status: 'Statut',
+          date: 'Mise à jour'
+        }
+      }
     },
     invitations: {
       title: 'Invitations de l’espace',
@@ -638,6 +713,8 @@ export const i18n = {
       removeArrivalDate: "Retirer la date d'arrivee",
       categoryFilterLabel: 'Filtrer par categorie',
       allCategories: 'Toutes les categories',
+      userFilterLabel: 'Filtrer par utilisateur',
+      allUsers: 'Tous les utilisateurs',
       requiredFieldsTitle: 'Champs obligatoires',
       requiredFieldsText: 'Patient, produit/medicament et numero de telephone sont obligatoires.',
       optionalFieldsTitle: 'Champs facultatifs',
@@ -654,7 +731,7 @@ export const i18n = {
         'Cette commande a atteint sa date prévue. Mettez à jour son statut.',
       reminderActions: {
         arrived: 'Arrivée',
-        called: 'Appelée',
+        called: 'Avisé',
         finished: 'Terminée',
         ordered: 'Commandée',
         pending: 'En attente'
@@ -681,7 +758,7 @@ export const i18n = {
       status: {
         pending: 'En attente',
         ordered: 'Commandée',
-        called: 'Appelée',
+        called: 'Avisé',
         arrived: 'Arrivée',
         finished: 'Terminée'
       },
@@ -758,8 +835,10 @@ export const i18n = {
         searchLabel: 'Recherche',
         typeLabel: 'Filtrer par type',
         statusLabel: 'Filtrer par statut',
+        userLabel: 'Filtrer par utilisateur',
         allTypes: 'Tous les types',
-        allStatuses: 'Tous les statuts'
+        allStatuses: 'Tous les statuts',
+        allUsers: 'Tous les utilisateurs'
       },
       status: {
         pending: 'En attente',
@@ -881,7 +960,12 @@ export const i18n = {
       monthHint:
         'Vue mensuelle. Glissez une commande vers un autre jour pour modifier la date d’arrivée.',
       today: 'Aujourd’hui',
-      noOrders: 'Aucune commande'
+      noOrders: 'Aucune commande',
+      noItems: 'Aucune commande ou tâche',
+      orderLabel: 'Commande',
+      taskLabel: 'Tâche',
+      previousMonth: 'Mois précédent',
+      nextMonth: 'Mois suivant'
     },
     users: {
       inviteWorker: 'Inviter un membre',

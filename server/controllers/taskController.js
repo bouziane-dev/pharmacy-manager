@@ -8,6 +8,7 @@ const {
 const { logActivity } = require("../services/activityLogger");
 
 const phonePattern = /^\d+$/;
+const agendaDatePattern = /^\d{4}-\d{2}-\d{2}$/;
 const taskTypeLabels = {
   ordonnance: "Ordonnance à faire passer",
   instance: "Instance",
@@ -86,6 +87,7 @@ function toClientTask(taskDoc) {
     comment: cleanString(taskDoc.comment),
     patientName: cleanSingleLine(taskDoc.patientName),
     phone: cleanPhoneDigits(taskDoc.phone),
+    agendaDate: cleanSingleLine(taskDoc.agendaDate),
     status: normalizeTaskStatusInput(taskDoc.status) || "pending",
     createdAt: taskDoc.createdAt,
     updatedAt: taskDoc.updatedAt,
@@ -140,6 +142,7 @@ async function createTask(req, res) {
     const normalizedComment = cleanString(req.body.comment);
     const normalizedPatientName = cleanSingleLine(req.body.patientName);
     const normalizedPhone = cleanPhoneDigits(req.body.phone);
+    const normalizedAgendaDate = cleanSingleLine(req.body.agendaDate);
 
     if (!normalizedType) {
       return res.status(400).json({ error: "A valid task type is required" });
@@ -154,6 +157,9 @@ async function createTask(req, res) {
     if (normalizedPhone && !phonePattern.test(normalizedPhone)) {
       return res.status(400).json({ error: "Phone must contain digits only" });
     }
+    if (normalizedAgendaDate && !agendaDatePattern.test(normalizedAgendaDate)) {
+      return res.status(400).json({ error: "Agenda date must be YYYY-MM-DD" });
+    }
 
     const task = await Task.create({
       pharmacyId: req.pharmacyId,
@@ -164,6 +170,7 @@ async function createTask(req, res) {
       comment: normalizedComment,
       patientName: normalizedPatientName,
       phone: normalizedPhone,
+      agendaDate: normalizedAgendaDate,
       status: "pending",
       comments: [],
     });
@@ -248,6 +255,14 @@ async function updateTask(req, res) {
         return res.status(400).json({ error: "Phone must contain digits only" });
       }
       task.phone = normalizedPhone;
+    }
+
+    if (req.body.agendaDate !== undefined) {
+      const normalizedAgendaDate = cleanSingleLine(req.body.agendaDate);
+      if (normalizedAgendaDate && !agendaDatePattern.test(normalizedAgendaDate)) {
+        return res.status(400).json({ error: "Agenda date must be YYYY-MM-DD" });
+      }
+      task.agendaDate = normalizedAgendaDate;
     }
 
     task.type = nextType;

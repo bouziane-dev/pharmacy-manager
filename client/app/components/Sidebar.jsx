@@ -82,7 +82,7 @@ export default function Sidebar({ open, collapsed, setOpen }) {
       />
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-72 border-r border-[var(--border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.97),rgba(246,250,255,0.96))] px-4 py-6 shadow-[8px_0_28px_rgba(15,23,42,0.08)] transition-all dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(20,35,63,0.94))] md:static md:translate-x-0 ${collapsed ? 'md:w-20 md:px-2' : 'md:w-72'} ${open ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`fixed inset-y-0 left-0 z-40 w-72 overflow-y-auto border-r border-[var(--border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.97),rgba(246,250,255,0.96))] px-4 py-6 shadow-[8px_0_28px_rgba(15,23,42,0.08)] transition-all dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(20,35,63,0.94))] md:sticky md:top-0 md:h-screen md:translate-x-0 md:shrink-0 ${collapsed ? 'md:w-20 md:px-2' : 'md:w-72'} ${open ? 'translate-x-0' : '-translate-x-full'}`}
       >
         <p className='px-3 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]'>
           {collapsed ? 'PM' : <span className='brand-glow'>{t.appName}</span>}

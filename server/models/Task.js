@@ -71,6 +71,12 @@ const taskSchema = new mongoose.Schema(
       default: "",
       match: [/^\d*$/, "Phone must contain digits only"],
     },
+    agendaDate: {
+      type: String,
+      trim: true,
+      default: "",
+      match: [/^\d{4}-\d{2}-\d{2}$|^$/, "Agenda date must be YYYY-MM-DD"],
+    },
     status: {
       type: String,
       enum: ["pending", "done"],

@@ -90,6 +90,7 @@ export default function OrdersTable({ showControls = false }) {
   const [openStatusMenuId, setOpenStatusMenuId] = useState('')
   const [showArrivalDateInput, setShowArrivalDateInput] = useState(false)
   const [categoryFilter, setCategoryFilter] = useState('all')
+  const [userFilter, setUserFilter] = useState('all')
   const [form, setForm] = useState({
     patientName: '',
     phone: '',
@@ -137,14 +138,33 @@ export default function OrdersTable({ showControls = false }) {
     return orders.filter(order => {
       const matchesCategory =
         categoryFilter === 'all' ? true : order.category === categoryFilter
-      if (!matchesCategory) return false
+      const matchesUser =
+        userFilter === 'all'
+          ? true
+          : order.createdBy === userFilter || order.createdByName === userFilter
+      if (!matchesCategory || !matchesUser) return false
       if (!q) return true
       return [productsToText(order.products), order.patientName, order.phone, order.category]
         .join(' ')
         .toLowerCase()
         .includes(q)
     })
-  }, [orders, search, categoryFilter])
+  }, [orders, search, categoryFilter, userFilter])
+
+  const userOptions = useMemo(() => {
+    const optionsByKey = new Map()
+    orders.forEach(order => {
+      const label = String(order.createdByName || '').trim()
+      if (!label) return
+      const key = order.createdBy || label
+      if (!optionsByKey.has(key)) {
+        optionsByKey.set(key, { key, label })
+      }
+    })
+    return [...optionsByKey.values()].sort((a, b) =>
+      a.label.localeCompare(b.label)
+    )
+  }, [orders])
 
   const activeOrders = filteredOrders.filter(order => order.status !== 'finished')
   const finishedOrders = filteredOrders.filter(order => order.status === 'finished')
@@ -208,7 +228,7 @@ export default function OrdersTable({ showControls = false }) {
             className='absolute right-0 top-full z-30 mt-1 min-w-[8.5rem] rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-[0_14px_28px_rgba(15,23,42,0.14)]'
             onClick={event => event.stopPropagation()}
           >
-            {['pending', 'ordered', 'called', 'arrived', 'finished'].map(status => (
+            {['pending', 'ordered', 'arrived', 'called', 'finished'].map(status => (
               <button
                 key={status}
                 type='button'
@@ -563,7 +583,7 @@ export default function OrdersTable({ showControls = false }) {
 
       {showControls && (
         <article className='panel p-5'>
-          <div className='grid gap-3 md:grid-cols-[minmax(0,1fr)_15rem]'>
+          <div className='grid gap-3 md:grid-cols-[minmax(0,1fr)_15rem_15rem]'>
             <div>
               <h2 className='text-base font-semibold text-[var(--foreground)]'>
                 {t.searchLabel}
@@ -586,6 +606,21 @@ export default function OrdersTable({ showControls = false }) {
                 {orderCategoryOptions.map(category => (
                   <option key={category} value={category}>
                     {getCategoryLabel(category)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className='text-sm text-[var(--muted)]'>
+              {t.userFilterLabel}
+              <select
+                value={userFilter}
+                onChange={e => setUserFilter(e.target.value)}
+                className='mt-2 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
+              >
+                <option value='all'>{t.allUsers}</option>
+                {userOptions.map(option => (
+                  <option key={option.key} value={option.key}>
+                    {option.label}
                   </option>
                 ))}
               </select>

@@ -60,6 +60,7 @@ export default function TasksBoard() {
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [userFilter, setUserFilter] = useState('all')
   const [fieldErrors, setFieldErrors] = useState({})
   const [editingTaskId, setEditingTaskId] = useState('')
   const [editingDraft, setEditingDraft] = useState(null)
@@ -91,7 +92,11 @@ export default function TasksBoard() {
       const matchesTab = activeTab === 'all' ? true : task.status === activeTab
       const matchesType = typeFilter === 'all' ? true : task.type === typeFilter
       const matchesStatus = statusFilter === 'all' ? true : task.status === statusFilter
-      if (!matchesTab || !matchesType || !matchesStatus) return false
+      const matchesUser =
+        userFilter === 'all'
+          ? true
+          : task.createdBy === userFilter || task.createdByName === userFilter
+      if (!matchesTab || !matchesType || !matchesStatus || !matchesUser) return false
       if (!query) return true
 
       return [
@@ -105,10 +110,28 @@ export default function TasksBoard() {
         .toLowerCase()
         .includes(query)
     })
-  }, [activeTab, search, statusFilter, tasks, typeFilter])
+  }, [activeTab, search, statusFilter, tasks, typeFilter, userFilter])
 
   const hasSecondaryFilters =
-    search.trim().length > 0 || typeFilter !== 'all' || statusFilter !== 'all'
+    search.trim().length > 0 ||
+    typeFilter !== 'all' ||
+    statusFilter !== 'all' ||
+    userFilter !== 'all'
+
+  const userOptions = useMemo(() => {
+    const optionsByKey = new Map()
+    tasks.forEach(task => {
+      const label = String(task.createdByName || '').trim()
+      if (!label) return
+      const key = task.createdBy || label
+      if (!optionsByKey.has(key)) {
+        optionsByKey.set(key, { key, label })
+      }
+    })
+    return [...optionsByKey.values()].sort((a, b) =>
+      a.label.localeCompare(b.label)
+    )
+  }, [tasks])
 
   function getTabLabel(statusKey) {
     return t.tabs?.[statusKey] || statusKey
@@ -412,7 +435,7 @@ export default function TasksBoard() {
             ))}
           </div>
 
-          <div className='grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_220px_220px]'>
+          <div className='grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_190px_190px_190px]'>
             <label className='relative block'>
               <span className='sr-only'>{t.filters.searchLabel}</span>
               <Search
@@ -454,6 +477,22 @@ export default function TasksBoard() {
                 {taskStatusOptions.map(status => (
                   <option key={status} value={status}>
                     {getStatusLabel(status)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className='text-sm text-[var(--muted)]'>
+              {t.filters.userLabel}
+              <select
+                value={userFilter}
+                onChange={event => setUserFilter(event.target.value)}
+                className='mt-1 w-full rounded-xl border border-[var(--border)] bg-transparent px-3 py-2.5 text-sm text-[var(--foreground)]'
+              >
+                <option value='all'>{t.filters.allUsers}</option>
+                {userOptions.map(option => (
+                  <option key={option.key} value={option.key}>
+                    {option.label}
                   </option>
                 ))}
               </select>
