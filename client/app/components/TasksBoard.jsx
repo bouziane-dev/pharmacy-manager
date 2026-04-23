@@ -5,7 +5,7 @@ import { MessageSquare, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { getCopy, getIntlLocale } from '@/app/lib/i18n'
 import { useSession } from '@/app/providers'
 
-const taskTypeOptions = ['ordonnance', 'instance', 'patient_appel', 'autres']
+const taskTypeOptions = ['ordonnance', 'patient_convoque', 'autres']
 const taskStatusOptions = ['pending', 'done']
 const taskTabOptions = ['pending', 'done', 'all']
 const statusStyles = {

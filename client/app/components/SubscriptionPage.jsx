@@ -18,6 +18,8 @@ export default function SubscriptionPage() {
   const router = useRouter()
   const {
     user,
+    authToken,
+    isReady,
     locale,
     currentWorkspace,
     createPharmacy,
@@ -52,6 +54,11 @@ export default function SubscriptionPage() {
   const ownerEmailLabel = locale === 'fr' ? 'Email proprietaire' : 'Owner email'
 
   useEffect(() => {
+    if (!isReady || !authToken) {
+      setSlugState('idle')
+      return
+    }
+
     if (!normalizedSubdomain) {
       setSlugState('idle')
       return
@@ -81,9 +88,14 @@ export default function SubscriptionPage() {
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [checkPharmacySlug, normalizedSubdomain])
+  }, [authToken, checkPharmacySlug, isReady, normalizedSubdomain])
 
   async function verifySlugAvailability(subdomain) {
+    if (!isReady || !authToken) {
+      setSlugState('idle')
+      return { isAvailable: false, reason: 'auth' }
+    }
+
     if (!SUBDOMAIN_PATTERN.test(subdomain)) {
       setSlugState('invalid')
       return { isAvailable: false, reason: 'invalid' }
@@ -111,6 +123,11 @@ export default function SubscriptionPage() {
     const trimmedName = pharmacyName.trim()
     if (!trimmedName) {
       setErrorMessage(t.dashboardNameRequired)
+      return
+    }
+
+    if (!isReady || !authToken) {
+      setErrorMessage(t.sessionNotReady)
       return
     }
 

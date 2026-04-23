@@ -43,7 +43,7 @@ const taskSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["ordonnance", "instance", "patient_appel", "autres"],
+      enum: ["ordonnance", "patient_convoque", "autres", "instance", "patient_appel"],
       required: true,
       trim: true,
     },

@@ -335,9 +335,8 @@ export const i18n = {
       },
       typeLabels: {
         ordonnance: 'Ordonnance à faire passer',
-        instance: 'Instance',
-        patient_appel: 'Patient à appeler',
-        autres: 'Autres'
+        patient_convoque: 'Patient convoqué',
+        autres: 'Autre'
       },
       meta: {
         createdAt: 'Created',
@@ -529,6 +528,7 @@ export const i18n = {
       slugTaken: 'Slug is already used.',
       slugCheckError: 'Could not verify slug right now. Please retry.',
       slugTakenError: 'Please choose an available slug before continuing.',
+      sessionNotReady: 'Session is still loading. Please retry in a moment.',
       creating: 'Creating...',
       createPharmacy: 'Create Dashboard'
     },
@@ -846,9 +846,8 @@ export const i18n = {
       },
       typeLabels: {
         ordonnance: 'Ordonnance à faire passer',
-        instance: 'Instance',
-        patient_appel: 'Patient à appeler',
-        autres: 'Autres'
+        patient_convoque: 'Patient convoqué',
+        autres: 'Autre'
       },
       meta: {
         createdAt: 'Créée',
@@ -1044,6 +1043,7 @@ export const i18n = {
       slugTaken: 'Slug déjà utilisé.',
       slugCheckError: 'Vérification impossible pour le moment. Réessayez.',
       slugTakenError: 'Choisissez un slug disponible avant de continuer.',
+      sessionNotReady: 'La session est en cours de chargement. Réessayez dans un instant.',
       creating: 'Creation...',
       createPharmacy: 'Créer le tableau de bord'
     },
