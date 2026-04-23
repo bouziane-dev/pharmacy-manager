@@ -22,6 +22,8 @@ const superadminRoutes = require("./routes/superadmin");
 const User = require("./models/User");
 
 const app = express();
+const serverPort = Number.parseInt(process.env.PORT || "5000", 10);
+let isDatabaseReady = false;
 
 function isAuthDebugEnabled() {
   return String(process.env.AUTH_DEBUG_LOGS || "").toLowerCase() === "true";
@@ -147,6 +149,27 @@ app.get("/", (req, res) => {
   res.send("Pharmacy Manager API");
 });
 
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    ok: true,
+    databaseReady: isDatabaseReady,
+  });
+});
+
+app.get("/ready", (req, res) => {
+  if (!isDatabaseReady) {
+    return res.status(503).json({
+      ok: false,
+      databaseReady: false,
+    });
+  }
+
+  return res.status(200).json({
+    ok: true,
+    databaseReady: true,
+  });
+});
+
 app.use((error, req, res, next) => {
   if (error?.message === "Not allowed by CORS") {
     if (isAuthDebugEnabled()) {
@@ -213,17 +236,29 @@ async function ensureUniqueStringIndex(indexName, fieldName) {
   );
 }
 
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(async () => {
+const server = app.listen(serverPort, "0.0.0.0", () => {
+  console.log(`Server listening on port ${serverPort}`);
+  console.log("Connecting to MongoDB...");
+});
+
+async function connectToDatabase() {
+  try {
+    await mongoose.connect(process.env.MONGO_URI, {
+      serverSelectionTimeoutMS: 15000,
+      connectTimeoutMS: 15000,
+      socketTimeoutMS: 20000,
+    });
     await ensureUniqueStringIndex("googleId_1", "googleId");
     await ensureUniqueStringIndex("email_1", "email");
-    app.listen(process.env.PORT, () => {
-      console.log(`Server listening on port ${process.env.PORT}`);
-    });
-  })
-  .catch((error) => {
+    isDatabaseReady = true;
+    console.log("MongoDB connected successfully");
+  } catch (error) {
     console.error("MongoDB connection failed:", error.message);
-    process.exit(1);
-  });
+    server.close(() => {
+      process.exit(1);
+    });
+  }
+}
+
+connectToDatabase();
 
