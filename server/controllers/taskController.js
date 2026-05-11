@@ -12,6 +12,7 @@ const agendaDatePattern = /^\d{4}-\d{2}-\d{2}$/;
 const taskTypeLabels = {
   ordonnance: "Ordonnance a faire passer",
   patient_convoque: "Patient convoque",
+  patient_appel: "Patient a appeler",
   autres: "Autre",
 };
 const typeAliases = {
@@ -25,11 +26,11 @@ const typeAliases = {
   patientconvoque: "patient_convoque",
   patient_convoquee: "patient_convoque",
   patientconvoquee: "patient_convoque",
-  patient_appel: "patient_convoque",
-  patientappel: "patient_convoque",
-  patient_a_appeler: "patient_convoque",
-  "patient a appeler": "patient_convoque",
-  "patient \u00e0 appeler": "patient_convoque",
+  patient_appel: "patient_appel",
+  patientappel: "patient_appel",
+  patient_a_appeler: "patient_appel",
+  "patient a appeler": "patient_appel",
+  "patient \u00e0 appeler": "patient_appel",
   "patient convoque": "patient_convoque",
   "patient convoqu\u00e9": "patient_convoque",
   "patient convoquee": "patient_convoque",
@@ -97,6 +98,9 @@ function toClientTask(taskDoc) {
     comment: cleanString(taskDoc.comment),
     patientName: cleanSingleLine(taskDoc.patientName),
     phone: cleanPhoneDigits(taskDoc.phone),
+    linkedChronicPatientId: taskDoc.linkedChronicPatientId
+      ? String(taskDoc.linkedChronicPatientId)
+      : null,
     agendaDate: cleanSingleLine(taskDoc.agendaDate),
     status: normalizeTaskStatusInput(taskDoc.status) || "pending",
     createdAt: taskDoc.createdAt,
@@ -153,6 +157,7 @@ async function createTask(req, res) {
     const normalizedPatientName = cleanSingleLine(req.body.patientName);
     const normalizedPhone = cleanPhoneDigits(req.body.phone);
     const normalizedAgendaDate = cleanSingleLine(req.body.agendaDate);
+    const linkedChronicPatientId = cleanString(req.body.linkedChronicPatientId);
 
     if (!normalizedType) {
       return res.status(400).json({ error: "A valid task type is required" });
@@ -170,6 +175,9 @@ async function createTask(req, res) {
     if (normalizedAgendaDate && !agendaDatePattern.test(normalizedAgendaDate)) {
       return res.status(400).json({ error: "Agenda date must be YYYY-MM-DD" });
     }
+    if (linkedChronicPatientId && !isValidObjectId(linkedChronicPatientId)) {
+      return res.status(400).json({ error: "linkedChronicPatientId is invalid" });
+    }
 
     const task = await Task.create({
       pharmacyId: req.pharmacyId,
@@ -180,6 +188,7 @@ async function createTask(req, res) {
       comment: normalizedComment,
       patientName: normalizedPatientName,
       phone: normalizedPhone,
+      linkedChronicPatientId: linkedChronicPatientId || null,
       agendaDate: normalizedAgendaDate,
       status: "pending",
       comments: [],
@@ -198,6 +207,7 @@ async function createTask(req, res) {
       metadata: {
         taskId: String(task._id),
         type: normalizedType,
+        linkedChronicPatientId: linkedChronicPatientId || null,
         status: "pending",
       },
     });
@@ -265,6 +275,14 @@ async function updateTask(req, res) {
         return res.status(400).json({ error: "Phone must contain digits only" });
       }
       task.phone = normalizedPhone;
+    }
+
+    if (req.body.linkedChronicPatientId !== undefined) {
+      const linkedChronicPatientId = cleanString(req.body.linkedChronicPatientId);
+      if (linkedChronicPatientId && !isValidObjectId(linkedChronicPatientId)) {
+        return res.status(400).json({ error: "linkedChronicPatientId is invalid" });
+      }
+      task.linkedChronicPatientId = linkedChronicPatientId || null;
     }
 
     if (req.body.agendaDate !== undefined) {

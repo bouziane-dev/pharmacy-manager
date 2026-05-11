@@ -17,6 +17,7 @@ const RESERVED_PATH_SEGMENTS = new Set([
   'dashboard',
   'orders',
   'taches',
+  'malades-chroniques',
   'preparations',
   'inbody',
   'agenda',
@@ -84,6 +85,14 @@ const toastCopy = {
     preparationUpdated: 'Preparation updated successfully.',
     preparationDeleted: 'Preparation deleted successfully.',
     patientSaved: 'Patient added successfully.',
+    chronicPatientSaved: 'Chronic patient saved successfully.',
+    chronicPatientUpdated: 'Chronic patient updated successfully.',
+    chronicPatientArchived: 'Chronic patient archived.',
+    chronicPatientDeleted: 'Chronic patient deleted.',
+    chronicTreatmentSaved: 'Treatment saved successfully.',
+    chronicTreatmentDeleted: 'Treatment deleted successfully.',
+    chronicDeliveryRecorded: 'Renewal recorded successfully.',
+    chronicPatientContacted: 'Contact recorded successfully.',
     inBodyTestSaved: 'InBody test added successfully.',
     inBodySubscriptionSaved: 'InBody sessions updated successfully.',
     inBodyTestDeleted: 'InBody test deleted successfully.',
@@ -110,6 +119,14 @@ const toastCopy = {
     preparationUpdated: 'Preparation mise a jour avec succes.',
     preparationDeleted: 'Preparation supprimee avec succes.',
     patientSaved: 'Patient ajoute avec succes.',
+    chronicPatientSaved: 'Malade chronique enregistré avec succès.',
+    chronicPatientUpdated: 'Malade chronique mis à jour avec succès.',
+    chronicPatientArchived: 'Patient archivé.',
+    chronicPatientDeleted: 'Patient chronique supprimé.',
+    chronicTreatmentSaved: 'Traitement enregistré avec succès.',
+    chronicTreatmentDeleted: 'Traitement supprimé avec succès.',
+    chronicDeliveryRecorded: 'Renouvellement enregistré avec succès.',
+    chronicPatientContacted: 'Contact enregistré avec succès.',
     inBodyTestSaved: 'Test InBody ajoute avec succes.',
     inBodySubscriptionSaved: 'Seances InBody mises a jour avec succes.',
     inBodyTestDeleted: 'Test InBody supprime avec succes.',
@@ -189,6 +206,7 @@ export function AppProviders({ children }) {
   const [locale, setLocale] = useState('fr')
   const [orders, setOrders] = useState([])
   const [tasks, setTasks] = useState([])
+  const [chronicPatients, setChronicPatients] = useState([])
   const [preparations, setPreparations] = useState([])
   const [patients, setPatients] = useState([])
   const [workspaces, setWorkspaces] = useState([])
@@ -815,12 +833,247 @@ export function AppProviders({ children }) {
     }
   }
 
+  async function refreshWorkspaceChronicPatients(
+    tokenOverride = null,
+    workspaceOverride = null
+  ) {
+    const sessionToken = tokenOverride || authToken
+    const workspaceId = workspaceOverride || currentWorkspace?.id
+    if (!sessionToken || !workspaceId) {
+      setChronicPatients([])
+      return null
+    }
+
+    const result = await apiRequest(
+      `/api/chronic-patients?pharmacyId=${workspaceId}`,
+      { token: sessionToken }
+    )
+    setChronicPatients(result.patients || [])
+    return result.stats || null
+  }
+
+  function upsertChronicPatientInState(nextPatient) {
+    if (!nextPatient?.id) return
+    setChronicPatients(prev =>
+      prev.some(item => item.id === nextPatient.id)
+        ? prev.map(item => (item.id === nextPatient.id ? nextPatient : item))
+        : [nextPatient, ...prev]
+    )
+  }
+
+  async function fetchChronicPatients() {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    return refreshWorkspaceChronicPatients(authToken, currentWorkspace.id)
+  }
+
+  async function createChronicPatient(payload) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    try {
+      const result = await apiRequest('/api/chronic-patients', {
+        method: 'POST',
+        token: authToken,
+        body: {
+          pharmacyId: currentWorkspace.id,
+          ...payload
+        }
+      })
+      upsertChronicPatientInState(result.patient)
+      showActionToast('chronicPatientSaved')
+      return result.patient
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
+  }
+
+  async function updateChronicPatient(patientId, updates) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    try {
+      const result = await apiRequest(`/api/chronic-patients/${patientId}`, {
+        method: 'PATCH',
+        token: authToken,
+        body: {
+          pharmacyId: currentWorkspace.id,
+          ...updates
+        }
+      })
+      upsertChronicPatientInState(result.patient)
+      showActionToast('chronicPatientUpdated')
+      return result.patient
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
+  }
+
+  async function archiveChronicPatient(patientId) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    try {
+      const result = await apiRequest(`/api/chronic-patients/${patientId}/archive`, {
+        method: 'PATCH',
+        token: authToken,
+        body: { pharmacyId: currentWorkspace.id }
+      })
+      upsertChronicPatientInState(result.patient)
+      showActionToast('chronicPatientArchived')
+      return result.patient
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
+  }
+
+  async function deleteChronicPatient(patientId) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    try {
+      const params = new URLSearchParams({ pharmacyId: currentWorkspace.id })
+      await apiRequest(`/api/chronic-patients/${patientId}?${params.toString()}`, {
+        method: 'DELETE',
+        token: authToken
+      })
+      setChronicPatients(prev => prev.filter(item => item.id !== patientId))
+      showActionToast('chronicPatientDeleted')
+      return true
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
+  }
+
+  async function addChronicTreatment(patientId, payload) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    try {
+      const result = await apiRequest(`/api/chronic-patients/${patientId}/treatments`, {
+        method: 'POST',
+        token: authToken,
+        body: {
+          pharmacyId: currentWorkspace.id,
+          ...payload
+        }
+      })
+      upsertChronicPatientInState(result.patient)
+      showActionToast('chronicTreatmentSaved')
+      return result.patient
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
+  }
+
+  async function updateChronicTreatment(patientId, treatmentId, updates) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    try {
+      const result = await apiRequest(
+        `/api/chronic-patients/${patientId}/treatments/${treatmentId}`,
+        {
+          method: 'PATCH',
+          token: authToken,
+          body: {
+            pharmacyId: currentWorkspace.id,
+            ...updates
+          }
+        }
+      )
+      upsertChronicPatientInState(result.patient)
+      showActionToast('chronicTreatmentSaved')
+      return result.patient
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
+  }
+
+  async function deleteChronicTreatment(patientId, treatmentId) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    try {
+      const params = new URLSearchParams()
+      params.set('pharmacyId', currentWorkspace.id)
+      const result = await apiRequest(
+        `/api/chronic-patients/${patientId}/treatments/${treatmentId}?${params.toString()}`,
+        {
+          method: 'DELETE',
+          token: authToken
+        }
+      )
+      upsertChronicPatientInState(result.patient)
+      showActionToast('chronicTreatmentDeleted')
+      return result.patient
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
+  }
+
+  async function recordChronicDelivery(patientId, treatmentId, payload) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    try {
+      const result = await apiRequest(
+        `/api/chronic-patients/${patientId}/treatments/${treatmentId}/deliveries`,
+        {
+          method: 'POST',
+          token: authToken,
+          body: {
+            pharmacyId: currentWorkspace.id,
+            ...payload
+          }
+        }
+      )
+      upsertChronicPatientInState(result.patient)
+      showActionToast('chronicDeliveryRecorded')
+      return result.patient
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
+  }
+
+  async function markChronicPatientContacted(patientId, payload = {}) {
+    if (!authToken || !currentWorkspace) {
+      throw new Error('Active workspace is required')
+    }
+    try {
+      const result = await apiRequest(`/api/chronic-patients/${patientId}/contact`, {
+        method: 'POST',
+        token: authToken,
+        body: {
+          pharmacyId: currentWorkspace.id,
+          ...payload
+        }
+      })
+      upsertChronicPatientInState(result.patient)
+      showActionToast('chronicPatientContacted')
+      return result.patient
+    } catch (error) {
+      showToast(error.message, 'error')
+      throw error
+    }
+  }
+
   async function createTask({
     type,
     customTypeLabel,
     comment,
     patientName,
-    phone
+    phone,
+    linkedChronicPatientId
   }) {
     if (!authToken || !currentWorkspace) {
       throw new Error('Active workspace is required')
@@ -835,7 +1088,8 @@ export function AppProviders({ children }) {
           customTypeLabel,
           comment,
           patientName,
-          phone
+          phone,
+          linkedChronicPatientId
         }
       })
       setTasks(prev => [result.task, ...prev])
@@ -1613,6 +1867,7 @@ export function AppProviders({ children }) {
     if (!authToken || !currentWorkspace?.id) {
       setOrders([])
       setTasks([])
+      setChronicPatients([])
       setPreparations([])
       setPatients([])
       setWorkspaceInvitations([])
@@ -1623,6 +1878,9 @@ export function AppProviders({ children }) {
     })
     refreshWorkspaceTasks(authToken, currentWorkspace.id).catch(() => {
       setTasks([])
+    })
+    refreshWorkspaceChronicPatients(authToken, currentWorkspace.id).catch(() => {
+      setChronicPatients([])
     })
     refreshWorkspaceInvitations(authToken, currentWorkspace.id).catch(() => {
       setWorkspaceInvitations([])
@@ -1639,6 +1897,9 @@ export function AppProviders({ children }) {
     (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
   )
   const sortedTasks = [...tasks].sort(
+    (a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)
+  )
+  const sortedChronicPatients = [...chronicPatients].sort(
     (a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)
   )
   const sortedPreparations = [...preparations].sort(
@@ -1690,6 +1951,7 @@ export function AppProviders({ children }) {
       setLocale,
       orders: sortedOrders,
       tasks: sortedTasks,
+      chronicPatients: sortedChronicPatients,
       preparations: sortedPreparations,
       patients: sortedPatients,
       currentWorkspace,
@@ -1705,6 +1967,16 @@ export function AppProviders({ children }) {
       logout,
       createOrder,
       createTask,
+      fetchChronicPatients,
+      createChronicPatient,
+      updateChronicPatient,
+      archiveChronicPatient,
+      deleteChronicPatient,
+      addChronicTreatment,
+      updateChronicTreatment,
+      deleteChronicTreatment,
+      recordChronicDelivery,
+      markChronicPatientContacted,
       resolveStaffByPin,
       addTaskComment,
       addOrderComment,
@@ -1760,6 +2032,7 @@ export function AppProviders({ children }) {
       pendingWorkspaceInvitations,
       sortedOrders,
       sortedTasks,
+      sortedChronicPatients,
       sortedPreparations,
       sortedPatients,
       theme,
@@ -1784,6 +2057,16 @@ export function AppProviders({ children }) {
       deletePatientTest,
       createPharmacy,
       createTask,
+      fetchChronicPatients,
+      createChronicPatient,
+      updateChronicPatient,
+      archiveChronicPatient,
+      deleteChronicPatient,
+      addChronicTreatment,
+      updateChronicTreatment,
+      deleteChronicTreatment,
+      recordChronicDelivery,
+      markChronicPatientContacted,
       addTaskComment,
       resolveStaffByPin,
       deleteOrder,
@@ -1814,7 +2097,7 @@ export function AppProviders({ children }) {
     <SessionContext.Provider value={value}>
       {children}
       {confirmToast && (
-        <div className='fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm'>
+        <div className='fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm'>
           <article className='w-full max-w-xl overflow-hidden rounded-3xl border border-emerald-300/35 bg-[linear-gradient(145deg,rgba(255,255,255,0.96),rgba(236,253,245,0.94),rgba(209,250,229,0.9))] p-0 shadow-[0_28px_70px_rgba(2,132,199,0.2)] dark:border-emerald-400/30 dark:bg-[linear-gradient(145deg,rgba(2,6,23,0.96),rgba(6,78,59,0.35),rgba(2,44,34,0.92))]'>
             <div className='h-1.5 w-full bg-[linear-gradient(90deg,rgba(16,185,129,0.95),rgba(14,165,233,0.92))]' />
             <div className='p-6 sm:p-7'>
@@ -1853,9 +2136,9 @@ export function AppProviders({ children }) {
         </div>
       )}
       {toasts.some(toast => toast.type === 'error' || toast.type === 'critical') && (
-        <div className='fixed inset-0 z-[58] bg-slate-950/35 backdrop-blur-sm transition-opacity duration-200' />
+        <div className='fixed inset-0 z-[128] bg-slate-950/35 backdrop-blur-sm transition-opacity duration-200' />
       )}
-      <div className='pointer-events-none fixed inset-0 z-[60] flex items-end justify-end p-4 sm:p-6'>
+      <div className='pointer-events-none fixed inset-0 z-[130] flex items-end justify-end p-4 sm:p-6'>
         <div className='flex w-full max-w-sm flex-col gap-3'>
           {toasts
             .filter(toast => toast.type !== 'error' && toast.type !== 'critical')
@@ -1884,7 +2167,7 @@ export function AppProviders({ children }) {
             ))}
         </div>
       </div>
-      <div className='pointer-events-none fixed inset-0 z-[62] flex items-center justify-center px-4'>
+      <div className='pointer-events-none fixed inset-0 z-[132] flex items-center justify-center px-4'>
         <div className='flex w-full max-w-md flex-col gap-3'>
           {toasts
             .filter(toast => toast.type === 'error' || toast.type === 'critical')

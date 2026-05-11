@@ -71,6 +71,12 @@ const taskSchema = new mongoose.Schema(
       default: "",
       match: [/^\d*$/, "Phone must contain digits only"],
     },
+    linkedChronicPatientId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ChronicPatient",
+      default: null,
+      index: true,
+    },
     agendaDate: {
       type: String,
       trim: true,

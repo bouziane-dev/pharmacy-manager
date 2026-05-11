@@ -12,6 +12,7 @@ import {
   FlaskConical,
   HeartPulse,
   LayoutDashboard,
+  Pill,
   Users
 } from 'lucide-react'
 import { useSession } from '@/app/providers'
@@ -21,6 +22,7 @@ const tenantNavItems = [
   { key: 'dashboard', href: '/dashboard', icon: LayoutDashboard, adminOnly: false },
   { key: 'orders', href: '/orders', icon: ClipboardList, adminOnly: false },
   { key: 'tasks', href: '/taches', icon: FileClock, adminOnly: false },
+  { key: 'chronicPatients', href: '/malades-chroniques', icon: Pill, adminOnly: true },
   { key: 'preparations', href: '/preparations', icon: FlaskConical, adminOnly: false },
   { key: 'inbody', href: '/inbody', icon: HeartPulse, adminOnly: false },
   { key: 'agenda', href: '/agenda', icon: CalendarDays, adminOnly: false },

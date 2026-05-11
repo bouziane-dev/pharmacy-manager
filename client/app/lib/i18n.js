@@ -37,6 +37,7 @@ export const i18n = {
       dashboard: 'Dashboard',
       orders: 'Orders',
       tasks: 'Tasks',
+      chronicPatients: 'Chronic patients',
       preparations: 'Preparations',
       inbody: 'InBody',
       agenda: 'Agenda',
@@ -50,6 +51,7 @@ export const i18n = {
       dashboard: 'Dashboard',
       orders: 'Orders',
       tasks: 'Tasks',
+      chronicPatients: 'Chronic patients',
       preparations: 'Preparations',
       inbody: 'InBody',
       agenda: 'Agenda',
@@ -336,6 +338,7 @@ export const i18n = {
       typeLabels: {
         ordonnance: 'Ordonnance à faire passer',
         patient_convoque: 'Patient convoqué',
+        patient_appel: 'Patient to call',
         autres: 'Autre'
       },
       meta: {
@@ -369,6 +372,225 @@ export const i18n = {
       cancelDelete: 'Cancel',
       noMainComment: 'No details provided yet.',
       noTaskComments: 'No follow-up comments yet.'
+    },
+    chronicPatientsView: {
+      taskTypes: {
+        patient_appel: 'Patient to call',
+        patient_convoque: 'Patient summoned',
+        ordonnance: 'Prescription to process',
+        autres: 'Other'
+      },
+      status: {
+        active: 'Active',
+        inactive: 'Inactive'
+      },
+      renewalStatus: {
+        a_jour: 'Up to date',
+        renouvellement_possible: 'Renewal available',
+        renouvellement_possible_contact: 'Renewal available - contact patient',
+        a_contacter: 'Contact patient',
+        en_retard: 'Overdue'
+      },
+      history: {
+        created: 'Created',
+        updated: 'Updated',
+        contact: 'Contact',
+        renewal: 'Renewal',
+        treatment_added: 'Treatment added',
+        treatment_updated: 'Treatment updated',
+        treatment_deleted: 'Treatment deleted',
+        note: 'Note'
+      },
+      periods: {
+        day: 'day',
+        week: 'week',
+        month: 'month'
+      },
+      stats: {
+        total: 'Total chronic patients',
+        contact: 'To contact',
+        possible: 'Renewal available',
+        late: 'Overdue'
+      },
+      title: 'Chronic Patients',
+      description: 'Track renewals, regular treatments, and handoffs between staff.',
+      addPatient: 'Add Patient',
+      searchSr: 'Patient search',
+      searchPlaceholder: 'Search by name, phone, or insured number',
+      listCount: (shown, total) => `${shown} of ${total} patients`,
+      filters: {
+        status: 'Status',
+        insuranceFund: 'Insurance fund',
+        all: 'All',
+        active: 'Active',
+        inactive: 'Inactive',
+        reset: 'Reset',
+        archivedPatients: 'Archived patients',
+        activePatients: 'Active patients'
+      },
+      empty: {
+        noContactToday: 'No patients to contact today',
+        noPatientsTitle: 'No chronic patients added',
+        noPatientsDescription: 'Add a patient to track their renewals',
+        noFilteredPatients: 'No patients match the filters.',
+        clearFilters: 'Clear filters',
+        noTreatments: 'No regular treatments added.'
+      },
+      table: {
+        patient: 'Patient',
+        insuranceFund: 'Insurance fund',
+        renewalStatus: 'Renewal status',
+        treatments: 'Treatments',
+        status: 'Status',
+        actions: 'Actions',
+        insuredNo: 'Insured No.'
+      },
+      actions: {
+        details: 'Details',
+        createTask: 'Create task',
+        editPatient: 'Edit patient',
+        markContacted: 'Mark contacted',
+        archive: 'Archive',
+        deletePatient: 'Delete patient',
+        addTreatment: 'Add treatment',
+        edit: 'Edit',
+        delete: 'Delete',
+        delivered: 'Delivered',
+        save: 'Save',
+        cancel: 'Cancel'
+      },
+      panel: {
+        record: 'Follow-up record',
+        renewal: 'Renewal',
+        status: 'Status',
+        birthAge: 'Birth / age',
+        years: 'years',
+        address: 'Address',
+        quickContactNote: 'Quick contact note',
+        quickContactPlaceholder: 'Example: called, patient will come tomorrow',
+        regularTreatments: 'Regular treatments',
+        noDetails: 'No details provided',
+        posology: 'Posology',
+        dosage: 'Dosage',
+        doseQuantity: 'Dose',
+        schedule: 'Schedule',
+        usualQuantity: 'Usual quantity',
+        notSet: 'Not set',
+        lastDelivery: 'Last delivery',
+        next: 'Next',
+        daysRemaining: days => `${days} days remaining`,
+        dueToday: 'Due today',
+        overdueBy: days => `${days} days overdue`,
+        noRenewalDate: 'No renewal date',
+        optionalDeliveryNote: 'Optional delivery note',
+        notesTitle: 'Notes',
+        addNote: 'Add note',
+        noteListTitle: 'Saved notes',
+        noNotes: 'No notes yet.',
+        notesPlaceholder: 'Write a new note for this patient'
+      },
+      patientForm: {
+        editTitle: 'Edit patient',
+        addTitle: 'Add chronic patient',
+        description: 'The insurance fund defaults to CNAS when left empty.',
+        fullName: 'Full name',
+        phone: 'Phone',
+        insuranceFund: 'Insurance fund',
+        insuredNumber: 'Insured number',
+        birthYear: 'Birth year',
+        addFullDate: 'Add full date',
+        dateOfBirth: 'Date of birth',
+        address: 'Address',
+        notes: 'Notes'
+      },
+      bulkImport: {
+        openButton: 'Import patients',
+        title: 'Import chronic patients',
+        description:
+          'Paste a list or upload an Excel, JSON, CSV, TSV, or text file. Supported fields: name, phone, insurance fund, insured number, birth year, address, notes.',
+        fileLabel: 'Import file',
+        fileHint: 'Excel (.xlsx, .xls), JSON, CSV, TSV, or TXT',
+        pasteLabel: 'Paste patient list',
+        pastePlaceholder:
+          'One patient per line: Full name, phone, CNAS, insured number, birth year, address, notes',
+        acceptedHeaders:
+          'Accepted headers: name, phone, caisse, numero_assurance, insured_number, birth_year, address, notes.',
+        parseButton: 'Preview list',
+        importButton: 'Import patients',
+        previewTitle: 'Preview',
+        previewCount: count => `${count} patients ready`,
+        noPreview: 'No valid patients to preview yet.',
+        columns: {
+          name: 'Name',
+          phone: 'Phone',
+          insuranceFund: 'Fund',
+          insuredNumber: 'Insured No.',
+          birthYear: 'Birth year'
+        },
+        errorsTitle: 'Rows skipped',
+        rowError: (row, reason) => `Row ${row}: ${reason}`,
+        fileReadError: 'Could not read this file.',
+        unsupportedFile: 'Unsupported file type.',
+        noRows: 'No patients found. Add at least a name and phone.',
+        missingName: 'missing name',
+        missingPhone: 'missing phone',
+        imported: (created, total) => `${created}/${total} patients imported.`,
+        failedImport: 'Some patients could not be imported.'
+      },
+      taskModal: {
+        title: 'Add related task',
+        description: 'Choose the type of task to create for this patient.',
+        type: 'Task type',
+        customName: 'Custom name',
+        comment: 'Comment'
+      },
+      treatmentForm: {
+        editTitle: 'Edit treatment',
+        addTitle: 'Add treatment',
+        product: 'Product / medication',
+        dosage: 'Dosage',
+        quantityPerDose: 'Quantity per dose',
+        quantityPerDosePlaceholder: 'Example: 1 tablet',
+        times: 'Times',
+        per: 'Per',
+        usualQuantity: 'Usual delivered quantity',
+        renewal: 'Renewal',
+        custom: 'Custom',
+        numberOfDays: 'Number of days',
+        lastDoseDelivery: 'Last dose / delivery',
+        estimatedNext: 'Estimated next',
+        notes: 'Notes'
+      },
+      validation: {
+        fullNameRequired: 'Full name is required.',
+        phoneRequired: 'Phone number is required.',
+        birthYearInvalid: 'Birth year must be between 1900 and 2200.',
+        productRequired: 'Product is required.',
+        lastDeliveryRequired: 'Last dose/delivery is required.',
+        customDaysRequired: 'Enter the number of days.',
+        customNameRequired: 'Custom name is required.'
+      },
+      confirm: {
+        deleteTreatmentTitle: 'Delete this treatment?',
+        deleteTreatmentMessage: 'This will remove the treatment from chronic patient tracking.',
+        delete: 'Delete',
+        archivePatientTitle: 'Archive this patient?',
+        archivePatientMessage:
+          'The patient will become inactive and remain visible with the Inactive filter.',
+        archive: 'Archive',
+        deletePatientTitle: 'Delete this patient?',
+        deletePatientMessage:
+          'This will permanently delete the patient, treatments, renewal history, and notes.',
+        deletePatientSecondTitle: 'Confirm permanent deletion',
+        deletePatientSecondMessage: patientName =>
+          `This cannot be undone. Delete ${patientName} permanently?`,
+        deletePatientFinal: 'Delete permanently',
+        cancel: 'Cancel'
+      },
+      taskComment: patientName => `Call ${patientName} about chronic treatment renewal`,
+      days: days => `${days} days`,
+      timesPer: (times, period) => `${times} times / ${period}`,
+      posologySchedule: (qty, times, period) => `${qty} x ${times} per ${period}`
     },
     preparations: {
       addTitle: 'Create Preparation',
@@ -546,6 +768,7 @@ export const i18n = {
       dashboard: 'Tableau de bord',
       orders: 'Commandes',
       tasks: 'Tâches',
+      chronicPatients: 'Malades chroniques',
       preparations: 'Preparations',
       inbody: 'InBody',
       agenda: 'Agenda',
@@ -559,6 +782,7 @@ export const i18n = {
       dashboard: 'Tableau de bord',
       orders: 'Commandes',
       tasks: 'Tâches',
+      chronicPatients: 'Malades chroniques',
       preparations: 'Preparations',
       inbody: 'InBody',
       agenda: 'Agenda',
@@ -847,6 +1071,7 @@ export const i18n = {
       typeLabels: {
         ordonnance: 'Ordonnance à faire passer',
         patient_convoque: 'Patient convoqué',
+        patient_appel: 'Patient à appeler',
         autres: 'Autre'
       },
       meta: {
@@ -881,6 +1106,228 @@ export const i18n = {
       cancelDelete: 'Annuler',
       noMainComment: 'Aucun détail pour le moment.',
       noTaskComments: 'Aucun commentaire de suivi.'
+    },
+    chronicPatientsView: {
+      taskTypes: {
+        patient_appel: 'Patient à appeler',
+        patient_convoque: 'Patient convoqué',
+        ordonnance: 'Ordonnance à faire passer',
+        autres: 'Autre'
+      },
+      status: {
+        active: 'Actif',
+        inactive: 'Inactif'
+      },
+      renewalStatus: {
+        a_jour: 'À jour',
+        renouvellement_possible: 'Renouvellement possible',
+        renouvellement_possible_contact: 'Renouvellement possible - contacter',
+        a_contacter: 'À contacter',
+        en_retard: 'En retard'
+      },
+      history: {
+        created: 'Création',
+        updated: 'Mise à jour',
+        contact: 'Contact',
+        renewal: 'Renouvellement',
+        treatment_added: 'Traitement ajouté',
+        treatment_updated: 'Traitement modifié',
+        treatment_deleted: 'Traitement supprimé',
+        note: 'Note'
+      },
+      periods: {
+        day: 'jour',
+        week: 'semaine',
+        month: 'mois'
+      },
+      stats: {
+        total: 'Total malades chroniques',
+        contact: 'À contacter',
+        possible: 'Renouvellement possible',
+        late: 'En retard'
+      },
+      title: 'Malades chroniques',
+      description:
+        'Suivi des renouvellements, traitements habituels et transmissions entre employés.',
+      addPatient: 'Ajouter patient',
+      searchSr: 'Recherche patient',
+      searchPlaceholder: "Rechercher par nom, téléphone ou numéro d'assuré",
+      listCount: (shown, total) => `${shown} sur ${total} patients`,
+      filters: {
+        status: 'Statut',
+        insuranceFund: 'Caisse',
+        all: 'Tous',
+        active: 'Actifs',
+        inactive: 'Inactifs',
+        reset: 'Réinitialiser',
+        archivedPatients: 'Patients archivés',
+        activePatients: 'Patients actifs'
+      },
+      empty: {
+        noContactToday: "Aucun patient à contacter aujourd'hui",
+        noPatientsTitle: 'Aucun malade chronique ajouté',
+        noPatientsDescription: 'Ajoutez un patient pour suivre ses renouvellements',
+        noFilteredPatients: 'Aucun patient ne correspond aux filtres.',
+        clearFilters: 'Effacer les filtres',
+        noTreatments: 'Aucun traitement régulier ajouté.'
+      },
+      table: {
+        patient: 'Patient',
+        insuranceFund: 'Caisse',
+        renewalStatus: 'Statut renouvellement',
+        treatments: 'Traitements',
+        status: 'Statut',
+        actions: 'Actions',
+        insuredNo: 'Assuré'
+      },
+      actions: {
+        details: 'Détails',
+        createTask: 'Créer tâche',
+        editPatient: 'Modifier patient',
+        markContacted: 'Marquer contacté',
+        archive: 'Archiver',
+        deletePatient: 'Supprimer patient',
+        addTreatment: 'Ajouter traitement',
+        edit: 'Modifier',
+        delete: 'Supprimer',
+        delivered: 'Livré',
+        save: 'Enregistrer',
+        cancel: 'Annuler'
+      },
+      panel: {
+        record: 'Dossier de suivi',
+        renewal: 'Renouvellement',
+        status: 'Statut',
+        birthAge: 'Naissance / âge',
+        years: 'ans',
+        address: 'Adresse',
+        quickContactNote: 'Note contact rapide',
+        quickContactPlaceholder: 'Exemple : appelé, patient passera demain',
+        regularTreatments: 'Traitements réguliers',
+        noDetails: 'Détails non renseignés',
+        posology: 'Posologie',
+        dosage: 'Dosage',
+        doseQuantity: 'Dose',
+        schedule: 'Rythme',
+        usualQuantity: 'Quantité habituelle',
+        notSet: 'Non renseigné',
+        lastDelivery: 'Dernière livraison',
+        next: 'Prochain',
+        daysRemaining: days => `${days} jours restants`,
+        dueToday: "À renouveler aujourd'hui",
+        overdueBy: days => `${days} jours de retard`,
+        noRenewalDate: 'Date de renouvellement non renseignée',
+        optionalDeliveryNote: 'Note livraison optionnelle',
+        notesTitle: 'Notes',
+        addNote: 'Ajouter note',
+        noteListTitle: 'Notes enregistrées',
+        noNotes: 'Aucune note pour le moment.',
+        notesPlaceholder: 'Écrire une nouvelle note pour ce patient'
+      },
+      patientForm: {
+        editTitle: 'Modifier patient',
+        addTitle: 'Ajouter malade chronique',
+        description: "La caisse est CNAS par défaut si elle n'est pas renseignée.",
+        fullName: 'Nom complet',
+        phone: 'Téléphone',
+        insuranceFund: 'Caisse',
+        insuredNumber: "Numéro d'assuré",
+        birthYear: 'Année de naissance',
+        addFullDate: 'Ajouter la date complète',
+        dateOfBirth: 'Date de naissance',
+        address: 'Adresse',
+        notes: 'Notes'
+      },
+      bulkImport: {
+        openButton: 'Importer patients',
+        title: 'Importer des malades chroniques',
+        description:
+          'Collez une liste ou importez un fichier Excel, JSON, CSV, TSV ou texte. Champs supportés : nom, téléphone, caisse, numéro assuré, année de naissance, adresse, notes.',
+        fileLabel: 'Fichier à importer',
+        fileHint: 'Excel (.xlsx, .xls), JSON, CSV, TSV ou TXT',
+        pasteLabel: 'Coller une liste de patients',
+        pastePlaceholder:
+          'Un patient par ligne : Nom complet, téléphone, CNAS, numéro assuré, année de naissance, adresse, notes',
+        acceptedHeaders:
+          'En-têtes acceptés : name, phone, caisse, numero_assurance, insured_number, birth_year, address, notes.',
+        parseButton: 'Prévisualiser',
+        importButton: 'Importer patients',
+        previewTitle: 'Prévisualisation',
+        previewCount: count => `${count} patients prêts`,
+        noPreview: 'Aucun patient valide à prévisualiser pour le moment.',
+        columns: {
+          name: 'Nom',
+          phone: 'Téléphone',
+          insuranceFund: 'Caisse',
+          insuredNumber: 'Assuré',
+          birthYear: 'Année'
+        },
+        errorsTitle: 'Lignes ignorées',
+        rowError: (row, reason) => `Ligne ${row} : ${reason}`,
+        fileReadError: 'Impossible de lire ce fichier.',
+        unsupportedFile: 'Type de fichier non supporté.',
+        noRows: 'Aucun patient trouvé. Ajoutez au moins un nom et un téléphone.',
+        missingName: 'nom manquant',
+        missingPhone: 'téléphone manquant',
+        imported: (created, total) => `${created}/${total} patients importés.`,
+        failedImport: "Certains patients n'ont pas pu être importés."
+      },
+      taskModal: {
+        title: 'Ajouter une tâche liée',
+        description: 'Choisissez le type de tâche à créer pour ce patient.',
+        type: 'Type de tâche',
+        customName: 'Nom personnalisé',
+        comment: 'Commentaire'
+      },
+      treatmentForm: {
+        editTitle: 'Modifier traitement',
+        addTitle: 'Ajouter traitement',
+        product: 'Produit / médicament',
+        dosage: 'Dosage',
+        quantityPerDose: 'Quantité par prise',
+        quantityPerDosePlaceholder: 'Exemple : 1 comprimé',
+        times: 'Fois',
+        per: 'Par',
+        usualQuantity: 'Quantité habituellement délivrée',
+        renewal: 'Renouvellement',
+        custom: 'Personnalisé',
+        numberOfDays: 'Nombre de jours',
+        lastDoseDelivery: 'Dernière prise / livraison',
+        estimatedNext: 'Prochain estimé',
+        notes: 'Notes'
+      },
+      validation: {
+        fullNameRequired: 'Le nom complet est obligatoire.',
+        phoneRequired: 'Le téléphone est obligatoire.',
+        birthYearInvalid: "L'année de naissance doit être entre 1900 et 2200.",
+        productRequired: 'Le produit est obligatoire.',
+        lastDeliveryRequired: 'La dernière prise/livraison est obligatoire.',
+        customDaysRequired: 'Indiquez le nombre de jours.',
+        customNameRequired: 'Le nom personnalisé est obligatoire.'
+      },
+      confirm: {
+        deleteTreatmentTitle: 'Supprimer ce traitement ?',
+        deleteTreatmentMessage:
+          'Cette action retirera ce traitement du suivi chronique.',
+        delete: 'Supprimer',
+        archivePatientTitle: 'Archiver ce patient ?',
+        archivePatientMessage:
+          'Le patient passera en inactif et restera visible dans le filtre Inactif.',
+        archive: 'Archiver',
+        deletePatientTitle: 'Supprimer ce patient ?',
+        deletePatientMessage:
+          "Cette action supprimera définitivement le patient, ses traitements, son historique et ses notes.",
+        deletePatientSecondTitle: 'Confirmer la suppression définitive',
+        deletePatientSecondMessage: patientName =>
+          `Cette action est irréversible. Supprimer ${patientName} définitivement ?`,
+        deletePatientFinal: 'Supprimer définitivement',
+        cancel: 'Annuler'
+      },
+      taskComment: patientName =>
+        `Appeler ${patientName} pour renouvellement traitement chronique`,
+      days: days => `${days} jours`,
+      timesPer: (times, period) => `${times} fois / ${period}`,
+      posologySchedule: (qty, times, period) => `${qty} x ${times} par ${period}`
     },
     preparations: {
       addTitle: 'Creer une preparation',
