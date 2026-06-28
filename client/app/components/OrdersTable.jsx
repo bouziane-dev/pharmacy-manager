@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronDown, Trash2 } from 'lucide-react'
 import { useSession } from '@/app/providers'
-import { formatShortDate, getCopy } from '@/app/lib/i18n'
+import { getCopy } from '@/app/lib/i18n'
 
 const statusStyles = {
   pending:
@@ -57,11 +57,6 @@ function compactProductsText(products) {
   return `${text.slice(0, 69)}...`
 }
 
-function getLocalIsoDate() {
-  const now = new Date()
-  const offsetMs = now.getTimezoneOffset() * 60 * 1000
-  return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10)
-}
 
 export default function OrdersTable({ showControls = false }) {
   const router = useRouter()
@@ -168,12 +163,6 @@ export default function OrdersTable({ showControls = false }) {
 
   const activeOrders = filteredOrders.filter(order => order.status !== 'finished')
   const finishedOrders = filteredOrders.filter(order => order.status === 'finished')
-  const today = getLocalIsoDate()
-  const dueOrders = activeOrders.filter(order => {
-    if (order.status !== 'pending') return false
-    if (!order.arrivalDate) return true
-    return order.arrivalDate <= today
-  })
 
   function navigateToOrder(orderId) {
     router.push(`/orders/${orderId}`)
@@ -626,70 +615,6 @@ export default function OrdersTable({ showControls = false }) {
               </select>
             </label>
           </div>
-        </article>
-      )}
-
-      {showControls && (
-        <article className='panel p-5'>
-          <h2 className='text-base font-semibold text-[var(--foreground)]'>
-            {t.remindersTitle}
-          </h2>
-          {dueOrders.length === 0 ? (
-            <p className='mt-2 text-sm text-[var(--muted)]'>{t.remindersEmpty}</p>
-          ) : (
-            <div className='mt-3 grid gap-3 sm:grid-cols-2'>
-              {dueOrders.map(order => (
-                <div
-                  key={order.id}
-                  className='rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] p-3'
-                >
-                  <p className='text-sm font-semibold text-[var(--foreground)]'>
-                    {productsToText(order.products)}
-                  </p>
-                  <p className='text-xs text-[var(--muted)]'>
-                    {order.patientName} - {order.phone}
-                  </p>
-                  <p className='mt-1 text-xs text-[var(--muted)]'>
-                    {order.arrivalDate
-                      ? `${t.remindersText} (${formatShortDate(order.arrivalDate, locale)})`
-                      : t.noArrivalDate}
-                  </p>
-                  <div className='mt-2 flex flex-wrap gap-2'>
-                    <button
-                      onClick={() => void updateOrderStatus(order.id, 'arrived')}
-                      className='rounded-md bg-emerald-600 px-2 py-1 text-xs font-semibold text-white'
-                    >
-                      {t.reminderActions.arrived}
-                    </button>
-                    <button
-                      onClick={() => void updateOrderStatus(order.id, 'called')}
-                      className='rounded-md bg-cyan-600 px-2 py-1 text-xs font-semibold text-white'
-                    >
-                      {t.reminderActions.called}
-                    </button>
-                    <button
-                      onClick={() => void updateOrderStatus(order.id, 'finished')}
-                      className='rounded-md bg-violet-600 px-2 py-1 text-xs font-semibold text-white'
-                    >
-                      {t.reminderActions.finished}
-                    </button>
-                    <button
-                      onClick={() => void updateOrderStatus(order.id, 'ordered')}
-                      className='rounded-md bg-sky-600 px-2 py-1 text-xs font-semibold text-white'
-                    >
-                      {t.reminderActions.ordered}
-                    </button>
-                    <button
-                      onClick={() => void updateOrderStatus(order.id, 'pending')}
-                      className='rounded-md bg-amber-600 px-2 py-1 text-xs font-semibold text-white'
-                    >
-                      {t.reminderActions.pending}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </article>
       )}
 
