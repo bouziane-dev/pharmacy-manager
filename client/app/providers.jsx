@@ -210,6 +210,7 @@ export function AppProviders({ children }) {
   const [preparations, setPreparations] = useState([])
   const [patients, setPatients] = useState([])
   const [workspaces, setWorkspaces] = useState([])
+  const [prescribers, setPrescribers] = useState([])
   const [memberships, setMemberships] = useState({})
   const [activeWorkspaceByEmail, setActiveWorkspaceByEmail] = useState({})
   const [invitations, setInvitations] = useState([])
@@ -617,6 +618,35 @@ export function AppProviders({ children }) {
     } catch (error) {
       showToast(error.message, 'error')
       throw error
+    }
+  }
+
+  async function fetchPrescribers() {
+    if (!authToken || !currentWorkspace) return
+    try {
+      const result = await apiRequest(`/api/pharmacy/prescribers?pharmacyId=${currentWorkspace.id}`, {
+        method: 'GET',
+        token: authToken
+      })
+      setPrescribers(result.prescribers || [])
+    } catch {
+      setPrescribers([])
+    }
+  }
+
+  async function addPrescriber(name) {
+    if (!authToken || !currentWorkspace) return null
+    try {
+      const result = await apiRequest('/api/pharmacy/prescribers', {
+        method: 'POST',
+        token: authToken,
+        body: { name, pharmacyId: currentWorkspace.id }
+      })
+      setPrescribers(result.prescribers || [])
+      return result
+    } catch (error) {
+      showToast(error.message, 'error')
+      return null
     }
   }
 
@@ -1891,6 +1921,7 @@ export function AppProviders({ children }) {
     refreshWorkspacePatients(authToken, currentWorkspace.id).catch(() => {
       setPatients([])
     })
+    fetchPrescribers()
   }, [authToken, currentWorkspace?.id, user?.role])
 
   const sortedOrders = [...orders].sort(
@@ -1953,6 +1984,7 @@ export function AppProviders({ children }) {
       tasks: sortedTasks,
       chronicPatients: sortedChronicPatients,
       preparations: sortedPreparations,
+      prescribers,
       patients: sortedPatients,
       currentWorkspace,
       userWorkspaces,
@@ -2013,6 +2045,8 @@ export function AppProviders({ children }) {
       fetchStaffLoginUsers,
       loginWithPin,
       listStaffMembers,
+      fetchPrescribers,
+      addPrescriber,
       addStaffMember,
       resetStaffMemberPin,
       updateStaffMemberRole,

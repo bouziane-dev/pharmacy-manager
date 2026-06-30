@@ -594,37 +594,49 @@ export const i18n = {
     },
     preparations: {
       addTitle: 'Create Preparation',
-      addDescription: 'Track compounding preparations and update execution status.',
+      addDescription: 'Record a new compounding preparation.',
       fields: {
-        preparationType: 'Preparation Type',
+        patientFullname: 'Patient Full Name',
+        phone: 'Phone',
         composition: 'Composition',
-        receivedBy: 'Received by',
+        price: 'Price',
+        prescriber: 'Prescriber',
         preparedBy: 'Prepared by',
-        deliveredBy: 'Delivered by',
         status: 'Status',
-        notes: 'Notes'
+        notes: 'Notes',
+        preparationId: 'Prep ID',
+        createdAt: 'Created',
+        createdBy: 'Created by'
       },
       placeholders: {
-        preparationType: 'Example: Ointment, Syrup',
+        patientFullname: 'Patient full name',
+        phone: 'Phone number',
         composition: 'Ingredients or formula details',
-        receivedBy: 'Pharmacist name',
+        price: '0.00',
+        prescriber: 'Doctor name',
         preparedBy: 'Pharmacist name',
-        deliveredBy: 'Pharmacist name',
         notes: 'Optional notes'
       },
-      addButton: 'Add Preparation',
+      addButton: 'Create Preparation',
       searchLabel: 'Search Preparations',
-      searchPlaceholder: 'Search by type, composition, or pharmacist name',
+      searchPlaceholder: 'Search by patient, ID, or composition',
       filterLabel: 'Filter by status',
       listTitle: 'Preparation List',
       empty: 'No preparations found.',
       saveNotes: 'Save notes',
       workflowSave: 'Save workflow',
       delete: 'Delete',
+      confirmPin: 'Enter your PIN to confirm',
+      backToList: 'Back to Preparations',
+      detailsTitle: 'Preparation Details',
+      notFound: 'Preparation not found.',
+      statusUpdated: 'Status updated',
+      deleteConfirm: 'Delete this preparation?',
+      saveChanges: 'Changes are saved automatically.',
       status: {
         en_cours: 'En cours',
         prepared: 'Prepared',
-        delivered: 'Delivered'
+        completed: 'Completed'
       }
     },
     inbody: {
@@ -1331,38 +1343,49 @@ export const i18n = {
     },
     preparations: {
       addTitle: 'Creer une preparation',
-      addDescription:
-        'Suivez les preparations pharmaceutiques et mettez a jour leur statut.',
+      addDescription: 'Enregistrer une nouvelle preparation.',
       fields: {
-        preparationType: 'Type de preparation',
+        patientFullname: 'Nom complet du patient',
+        phone: 'Telephone',
         composition: 'Composition',
-        receivedBy: 'Recu par',
+        price: 'Prix',
+        prescriber: 'Prescripteur',
         preparedBy: 'Prepare par',
-        deliveredBy: 'Livre par',
         status: 'Statut',
-        notes: 'Notes'
+        notes: 'Notes',
+        preparationId: 'ID Prep',
+        createdAt: 'Cree le',
+        createdBy: 'Cree par'
       },
       placeholders: {
-        preparationType: 'Exemple : Pommade, Sirop',
+        patientFullname: 'Nom complet du patient',
+        phone: 'Numero de telephone',
         composition: 'Details des ingredients ou formule',
-        receivedBy: 'Nom du pharmacien',
+        price: '0.00',
+        prescriber: 'Nom du medecin',
         preparedBy: 'Nom du pharmacien',
-        deliveredBy: 'Nom du pharmacien',
         notes: 'Notes optionnelles'
       },
-      addButton: 'Ajouter preparation',
+      addButton: 'Creer la preparation',
       searchLabel: 'Rechercher des preparations',
-      searchPlaceholder: 'Rechercher par type, composition ou pharmacien',
+      searchPlaceholder: 'Rechercher par patient, ID, ou composition',
       filterLabel: 'Filtrer par statut',
       listTitle: 'Liste des preparations',
       empty: 'Aucune preparation trouvee.',
       saveNotes: 'Enregistrer les notes',
       workflowSave: 'Enregistrer workflow',
       delete: 'Supprimer',
+      confirmPin: 'Entrez votre PIN pour confirmer',
+      backToList: 'Retour aux preparations',
+      detailsTitle: 'Details de la preparation',
+      notFound: 'Preparation introuvable.',
+      statusUpdated: 'Statut mis a jour',
+      deleteConfirm: 'Supprimer cette preparation ?',
+      saveChanges: 'Les modifications sont automatiquement enregistrees.',
       status: {
         en_cours: 'En cours',
         prepared: 'Preparee',
-        delivered: 'Livree'
+        completed: 'Terminee'
       }
     },
     inbody: {

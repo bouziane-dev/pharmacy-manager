@@ -1,24 +1,33 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { getCopy } from '@/app/lib/i18n'
 import { useSession } from '@/app/providers'
 
-const statusOrder = ['en_cours', 'prepared', 'delivered']
+const statusOrder = ['en_cours', 'prepared', 'completed']
 const statusStyles = {
   en_cours: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300',
   prepared: 'bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300',
-  delivered: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
+  completed: 'bg-slate-200 text-slate-500 dark:bg-slate-500/20 dark:text-slate-400'
 }
 
 function normalizeInput(value) {
   return String(value || '').trim()
 }
 
-function getAssignmentFieldByStatus(status) {
-  if (status === 'prepared') return 'preparedBy'
-  if (status === 'delivered') return 'deliveredBy'
-  return 'receivedBy'
+function formatDateTime(dateValue, locale) {
+  if (!dateValue) return ''
+  const date = new Date(dateValue)
+  if (Number.isNaN(date.getTime())) return String(dateValue)
+  try {
+    return new Intl.DateTimeFormat(locale === 'fr' ? 'fr-FR' : 'en-US', {
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    }).format(date)
+  } catch {
+    return String(dateValue)
+  }
 }
 
 function isStaffRequiringPin(user) {
@@ -29,50 +38,39 @@ function isStaffRequiringPin(user) {
 }
 
 export default function PreparationsManager() {
+  const router = useRouter()
   const {
     locale,
     user,
     preparations,
+    prescribers,
     createPreparation,
-    updatePreparation,
     deletePreparation,
     showConfirmToast,
-    fetchStaffLoginUsers,
-    resolveStaffByPin
+    resolveStaffByPin,
+    addPrescriber
   } = useSession()
 
   const t = getCopy(locale).preparations
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [staffOptions, setStaffOptions] = useState([])
+  const [prescriberFilter, setPrescriberFilter] = useState('')
+  const [showArchived, setShowArchived] = useState(false)
   const [form, setForm] = useState({
-    preparationType: '',
+    patientFullname: '',
+    phone: '',
     composition: '',
-    receivedBy: '',
-    notes: ''
+    price: '',
+    prescriber: ''
   })
   const [fieldErrors, setFieldErrors] = useState({})
-  const [workflowDraftById, setWorkflowDraftById] = useState({})
-  const [notesDraftById, setNotesDraftById] = useState({})
   const [pinModalOpen, setPinModalOpen] = useState(false)
   const [pinInput, setPinInput] = useState('')
   const [pinError, setPinError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const pinInputRef = useRef(null)
 
-  const requiresReceivedByPin = isStaffRequiringPin(user)
-
-  useEffect(() => {
-    fetchStaffLoginUsers()
-      .then(rows => {
-        const names = (rows || [])
-          .map(item => normalizeInput(item?.name))
-          .filter(Boolean)
-        setStaffOptions(Array.from(new Set(names)).sort((a, b) => a.localeCompare(b)))
-      })
-      .catch(() => {
-        setStaffOptions([])
-      })
-  }, [fetchStaffLoginUsers])
+  const requiresPin = isStaffRequiringPin(user)
 
   useEffect(() => {
     if (!pinModalOpen) return
@@ -85,81 +83,72 @@ export default function PreparationsManager() {
   const filteredPreparations = useMemo(() => {
     const q = search.trim().toLowerCase()
     return preparations.filter(item => {
-      if (statusFilter !== 'all' && item.status !== statusFilter) return false
+      if (statusFilter === 'all') {
+        if (!showArchived && item.status === 'completed') return false
+      } else {
+        if (item.status !== statusFilter) return false
+      }
+      if (prescriberFilter && item.prescriber !== prescriberFilter) return false
       if (!q) return true
       return [
-        item.preparationType,
+        item.preparationId,
+        item.patientFullname,
+        item.phone,
         item.composition,
-        item.receivedBy,
-        item.preparedBy,
-        item.deliveredBy,
-        item.notes
+        item.prescriber
       ]
         .join(' ')
         .toLowerCase()
         .includes(q)
     })
-  }, [preparations, search, statusFilter])
+  }, [preparations, search, statusFilter, showArchived, prescriberFilter])
 
-  function getWorkflowDraft(item) {
-    return (
-      workflowDraftById[item.id] || {
-        status: item.status || 'en_cours',
-        receivedBy: item.receivedBy || '',
-        preparedBy: item.preparedBy || '',
-        deliveredBy: item.deliveredBy || ''
-      }
-    )
-  }
-
-  function updateWorkflowDraft(itemId, updates) {
-    setWorkflowDraftById(prev => ({
-      ...prev,
-      [itemId]: {
-        ...(prev[itemId] || {}),
-        ...updates
-      }
-    }))
-  }
-
-  function validateCreateForm() {
+  function validateForm() {
     const errors = {}
-    if (!normalizeInput(form.preparationType)) {
-      errors.preparationType = 'Required'
+    if (!normalizeInput(form.patientFullname)) {
+      errors.patientFullname = 'Required'
+    }
+    if (!normalizeInput(form.phone)) {
+      errors.phone = 'Required'
     }
     if (!normalizeInput(form.composition)) {
       errors.composition = 'Required'
     }
-    if (!normalizeInput(form.receivedBy)) {
-      errors.receivedBy = 'Required'
-    }
     return errors
   }
 
-  async function submitCreatePreparation() {
-    await createPreparation({
-      preparationType: form.preparationType,
-      composition: form.composition,
-      receivedBy: form.receivedBy,
-      status: 'en_cours',
-      notes: form.notes
-    })
-
-    setForm({
-      preparationType: '',
-      composition: '',
-      receivedBy: '',
-      notes: ''
-    })
+  async function submitCreate(receivedByName) {
+    setIsSubmitting(true)
+    try {
+      await createPreparation({
+        patientFullname: normalizeInput(form.patientFullname),
+        phone: normalizeInput(form.phone),
+        composition: normalizeInput(form.composition),
+        price: Number(form.price) || 0,
+        prescriber: normalizeInput(form.prescriber),
+        receivedBy: receivedByName || user?.name || '',
+        status: 'en_cours'
+      })
+      setForm({
+        patientFullname: '',
+        phone: '',
+        composition: '',
+        price: '',
+        prescriber: ''
+      })
+      setFieldErrors({})
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  async function handleCreatePreparation() {
-    const errors = validateCreateForm()
+  async function handleCreate() {
+    const errors = validateForm()
     setFieldErrors(errors)
     if (Object.keys(errors).length > 0) return
 
-    if (!requiresReceivedByPin) {
-      await submitCreatePreparation()
+    if (!requiresPin) {
+      await submitCreate()
       return
     }
 
@@ -168,7 +157,7 @@ export default function PreparationsManager() {
     setPinModalOpen(true)
   }
 
-  async function handlePinConfirmSubmit() {
+  async function handlePinConfirm() {
     const normalizedPin = pinInput.replace(/\D/g, '').slice(0, 6)
     if (normalizedPin.length < 2 || normalizedPin.length > 6) {
       setPinError(locale === 'fr' ? 'PIN invalide (2-6 chiffres).' : 'Invalid PIN (2-6 digits).')
@@ -178,19 +167,17 @@ export default function PreparationsManager() {
     try {
       setPinError('')
       const matchedStaff = await resolveStaffByPin(normalizedPin)
-      const selectedReceivedBy = normalizeInput(form.receivedBy).toLowerCase()
-      const matchedName = normalizeInput(matchedStaff?.name).toLowerCase()
 
-      if (!matchedName || matchedName !== selectedReceivedBy) {
+      if (!matchedStaff) {
         setPinError(
           locale === 'fr'
-            ? 'Le PIN doit correspondre au pharmacien selectionne dans Recu par.'
-            : 'PIN must match the selected pharmacist in Received by.'
+            ? 'PIN invalide.'
+            : 'Invalid PIN.'
         )
         return
       }
 
-      await submitCreatePreparation()
+      await submitCreate(matchedStaff.name)
       setPinModalOpen(false)
       setPinInput('')
       setPinError('')
@@ -199,18 +186,15 @@ export default function PreparationsManager() {
     }
   }
 
-  async function handleSaveWorkflow(item) {
-    const draft = getWorkflowDraft(item)
-    const assignmentField = getAssignmentFieldByStatus(draft.status)
-    const assignmentName = normalizeInput(draft[assignmentField])
-
-    if (!assignmentName) {
-      return
-    }
-
-    await updatePreparation(item.id, {
-      status: draft.status,
-      [assignmentField]: assignmentName
+  function confirmDelete(item) {
+    showConfirmToast({
+      title: locale === 'fr' ? 'Confirmation' : 'Confirmation',
+      message: t.deleteConfirm,
+      confirmLabel: locale === 'fr' ? 'Supprimer' : 'Delete',
+      cancelLabel: locale === 'fr' ? 'Annuler' : 'Cancel',
+      onConfirm: () => {
+        void deletePreparation(item.id)
+      }
     })
   }
 
@@ -222,46 +206,41 @@ export default function PreparationsManager() {
 
         <div className='mt-4 grid gap-3 md:grid-cols-2'>
           <label className='text-sm text-[var(--muted)]'>
-            {t.fields.preparationType}
+            {t.fields.patientFullname}
             <input
-              value={form.preparationType}
+              value={form.patientFullname}
               onChange={event => {
                 const value = event.target.value
-                setForm(prev => ({ ...prev, preparationType: value }))
+                setForm(prev => ({ ...prev, patientFullname: value }))
                 if (normalizeInput(value)) {
-                  setFieldErrors(prev => ({ ...prev, preparationType: '' }))
+                  setFieldErrors(prev => ({ ...prev, patientFullname: '' }))
                 }
               }}
-              placeholder={t.placeholders.preparationType}
+              placeholder={t.placeholders.patientFullname}
               className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
             />
-            {fieldErrors.preparationType && (
-              <p className='mt-1 text-xs text-red-600'>{fieldErrors.preparationType}</p>
+            {fieldErrors.patientFullname && (
+              <p className='mt-1 text-xs text-red-600'>{fieldErrors.patientFullname}</p>
             )}
           </label>
 
           <label className='text-sm text-[var(--muted)]'>
-            {t.fields.receivedBy}
-            <select
-              value={form.receivedBy}
+            {t.fields.phone}
+            <input
+              value={form.phone}
               onChange={event => {
                 const value = event.target.value
-                setForm(prev => ({ ...prev, receivedBy: value }))
+                setForm(prev => ({ ...prev, phone: value }))
                 if (normalizeInput(value)) {
-                  setFieldErrors(prev => ({ ...prev, receivedBy: '' }))
+                  setFieldErrors(prev => ({ ...prev, phone: '' }))
                 }
               }}
-              className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)]'
-            >
-              <option value=''>{locale === 'fr' ? 'Selectionner un staff' : 'Select staff'}</option>
-              {staffOptions.map(name => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-            {fieldErrors.receivedBy && (
-              <p className='mt-1 text-xs text-red-600'>{fieldErrors.receivedBy}</p>
+              placeholder={t.placeholders.phone}
+              inputMode='numeric'
+              className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
+            />
+            {fieldErrors.phone && (
+              <p className='mt-1 text-xs text-red-600'>{fieldErrors.phone}</p>
             )}
           </label>
 
@@ -276,7 +255,7 @@ export default function PreparationsManager() {
                   setFieldErrors(prev => ({ ...prev, composition: '' }))
                 }
               }}
-              rows={3}
+              rows={2}
               placeholder={t.placeholders.composition}
               className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
             />
@@ -285,49 +264,101 @@ export default function PreparationsManager() {
             )}
           </label>
 
-          <label className='text-sm text-[var(--muted)] md:col-span-2'>
-            {t.fields.notes}
+          <label className='text-sm text-[var(--muted)]'>
+            {t.fields.price}
             <input
-              value={form.notes}
-              onChange={event => setForm(prev => ({ ...prev, notes: event.target.value }))}
-              placeholder={t.placeholders.notes}
+              type='number'
+              min='0'
+              step='0.01'
+              value={form.price}
+              onChange={event =>
+                setForm(prev => ({ ...prev, price: event.target.value }))
+              }
+              placeholder={t.placeholders.price}
               className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
             />
+          </label>
+
+          <label className='text-sm text-[var(--muted)]'>
+            {t.fields.prescriber}
+            <select
+              value={form.prescriber}
+              onChange={event => {
+                const val = event.target.value
+                if (val === '__add__') {
+                  const name = window.prompt(locale === 'fr' ? 'Nom du prescripteur:' : 'Prescriber name:')
+                  if (name?.trim()) {
+                    addPrescriber(name.trim()).then(() => {
+                      setForm(prev => ({ ...prev, prescriber: name.trim() }))
+                    })
+                  }
+                } else {
+                  setForm(prev => ({ ...prev, prescriber: val }))
+                }
+              }}
+              className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
+            >
+              <option value=''>{t.placeholders.prescriber}</option>
+              {prescribers.map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+              <option value='__add__'>{locale === 'fr' ? '+ Ajouter un prescripteur' : '+ Add prescriber'}</option>
+            </select>
           </label>
         </div>
 
         <button
-          onClick={() => void handleCreatePreparation()}
-          className='mt-4 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500'
+          onClick={() => void handleCreate()}
+          disabled={isSubmitting}
+          className='mt-4 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50'
         >
-          {t.addButton}
+          {isSubmitting
+            ? (locale === 'fr' ? 'Enregistrement...' : 'Saving...')
+            : t.addButton}
         </button>
       </article>
 
       <article className='panel p-5'>
-        <h2 className='text-base font-semibold text-[var(--foreground)]'>{t.searchLabel}</h2>
-        <div className='mt-3 grid gap-3 md:grid-cols-2'>
+        <div className='grid gap-3 md:grid-cols-[1fr_auto_auto_auto] items-end'>
           <input
             value={search}
             onChange={event => setSearch(event.target.value)}
             placeholder={t.searchPlaceholder}
             className='w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
           />
-          <label className='text-sm text-[var(--muted)]'>
-            {t.filterLabel}
-            <select
-              value={statusFilter}
-              onChange={event => setStatusFilter(event.target.value)}
-              className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)]'
-            >
-              <option value='all'>All</option>
-              {statusOrder.map(status => (
-                <option key={status} value={status}>
-                  {t.status[status] || status}
-                </option>
-              ))}
-            </select>
-          </label>
+          <select
+            value={prescriberFilter}
+            onChange={event => setPrescriberFilter(event.target.value)}
+            className='w-full md:w-auto rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)]'
+          >
+            <option value=''>{locale === 'fr' ? 'Tous les prescripteurs' : 'All prescribers'}</option>
+            {prescribers.map(name => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+          <select
+            value={statusFilter}
+            onChange={event => setStatusFilter(event.target.value)}
+            className='w-full md:w-auto rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)]'
+          >
+            <option value='all'>{locale === 'fr' ? 'Tous' : 'All'}</option>
+            {statusOrder.map(status => (
+              <option key={status} value={status}>
+                {t.status[status] || status}
+              </option>
+            ))}
+          </select>
+          <button
+            type='button'
+            onClick={() => setShowArchived(prev => !prev)}
+            className={`whitespace-nowrap rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+              showArchived
+                ? 'border-slate-400 bg-slate-100 text-slate-700 dark:border-slate-500 dark:bg-slate-500/20 dark:text-slate-300'
+                : 'border-[var(--border)] text-[var(--muted)] hover:bg-[var(--surface-soft)]'
+            }`}
+          >
+            {locale === 'fr' ? 'Archivées' : 'Archived'}
+          </button>
         </div>
       </article>
 
@@ -339,127 +370,57 @@ export default function PreparationsManager() {
         {filteredPreparations.length === 0 ? (
           <p className='px-5 py-4 text-sm text-[var(--muted)]'>{t.empty}</p>
         ) : (
-          <div className='space-y-3 p-3'>
-            {filteredPreparations.map(item => {
-              const draft = getWorkflowDraft(item)
-              const assignmentField = getAssignmentFieldByStatus(draft.status)
-
-              return (
-                <article
-                  key={item.id}
-                  className='rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] p-4'
-                >
-                  <div className='flex flex-wrap items-start justify-between gap-2'>
-                    <div>
-                      <p className='text-sm font-semibold text-[var(--foreground)]'>
-                        {item.preparationType}
-                      </p>
-                      <p className='mt-1 text-xs text-[var(--muted)]'>{item.composition}</p>
-                    </div>
-                    <span
-                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusStyles[item.status] || ''}`}
-                    >
-                      {t.status[item.status] || item.status}
-                    </span>
-                  </div>
-
-                  <div className='mt-3 grid gap-2 text-xs text-[var(--muted)] md:grid-cols-3'>
-                    <p>
-                      <span className='font-semibold text-[var(--foreground)]'>{t.fields.receivedBy}: </span>
-                      {item.receivedBy || '-'}
+          <div className='space-y-2 p-3'>
+            {filteredPreparations.map(item => (
+              <article
+                key={item.id}
+                role='button'
+                tabIndex={0}
+                onClick={() => router.push(`/preparations/${item.id}`)}
+                onKeyDown={event => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    router.push(`/preparations/${item.id}`)
+                  }
+                }}
+                className='flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] p-3 transition hover:bg-[var(--surface)]'
+              >
+                <div className='flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1'>
+                  <p className='text-xs font-mono font-semibold text-[var(--muted)]'>
+                    {item.preparationId}
+                  </p>
+                  <p className='text-sm font-semibold text-[var(--foreground)] truncate'>
+                    {item.patientFullname}
+                  </p>
+                  <p className='text-xs text-[var(--muted)]'>{item.phone}</p>
+                  {item.price > 0 && (
+                    <p className='text-xs font-semibold text-[var(--foreground)]'>
+                      {Number(item.price).toFixed(2)} DZD
                     </p>
-                    <p>
-                      <span className='font-semibold text-[var(--foreground)]'>{t.fields.preparedBy}: </span>
-                      {item.preparedBy || '-'}
-                    </p>
-                    <p>
-                      <span className='font-semibold text-[var(--foreground)]'>{t.fields.deliveredBy}: </span>
-                      {item.deliveredBy || '-'}
-                    </p>
-                  </div>
-
-                  <div className='mt-3 grid gap-2 md:grid-cols-[180px_1fr_auto_auto_auto]'>
-                    <select
-                      value={draft.status}
-                      onChange={event => {
-                        updateWorkflowDraft(item.id, { status: event.target.value })
-                      }}
-                      className='rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)]'
-                    >
-                      {statusOrder.map(status => (
-                        <option key={status} value={status}>
-                          {t.status[status] || status}
-                        </option>
-                      ))}
-                    </select>
-
-                    <select
-                      value={draft[assignmentField] || ''}
-                      onChange={event =>
-                        updateWorkflowDraft(item.id, { [assignmentField]: event.target.value })
-                      }
-                      className='rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)]'
-                    >
-                      <option value=''>{locale === 'fr' ? 'Selectionner un staff' : 'Select staff'}</option>
-                      {staffOptions.map(name => (
-                        <option key={name} value={name}>
-                          {name}
-                        </option>
-                      ))}
-                    </select>
-
-                    <button
-                      onClick={() => void handleSaveWorkflow(item)}
-                      className='rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface)]'
-                    >
-                      {t.workflowSave || 'Save workflow'}
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        void updatePreparation(item.id, {
-                          notes: notesDraftById[item.id] ?? item.notes ?? ''
-                        })
-                      }
-                      className='rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface)]'
-                    >
-                      {t.saveNotes}
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        showConfirmToast({
-                          title: locale === 'fr' ? 'Confirmation' : 'Confirmation',
-                          message:
-                            locale === 'fr'
-                              ? 'Supprimer cette preparation ?'
-                              : 'Delete this preparation?',
-                          confirmLabel: locale === 'fr' ? 'Supprimer' : 'Delete',
-                          cancelLabel: locale === 'fr' ? 'Annuler' : 'Cancel',
-                          onConfirm: () => {
-                            void deletePreparation(item.id)
-                          }
-                        })
-                      }}
-                      className='rounded-lg border border-red-400/60 px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-500/10'
-                    >
-                      {t.delete}
-                    </button>
-                  </div>
-
-                  <div className='mt-2'>
-                    <input
-                      value={notesDraftById[item.id] ?? item.notes ?? ''}
-                      onChange={event =>
-                        setNotesDraftById(prev => ({ ...prev, [item.id]: event.target.value }))
-                      }
-                      placeholder={t.placeholders.notes}
-                      className='w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)]'
-                    />
-                  </div>
-                </article>
-              )
-            })}
+                  )}
+                </div>
+                <div className='flex shrink-0 items-center gap-3'>
+                  <span className='text-[10px] text-[var(--muted)]'>
+                    {formatDateTime(item.createdAt, locale)}
+                  </span>
+                  <span
+                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusStyles[item.status] || ''}`}
+                  >
+                    {t.status[item.status] || item.status}
+                  </span>
+                  <button
+                    type='button'
+                    onClick={event => {
+                      event.stopPropagation()
+                      confirmDelete(item)
+                    }}
+                    className='rounded-lg border border-red-400/60 px-2 py-1 text-xs font-semibold text-red-600 transition hover:bg-red-500/10'
+                  >
+                    {t.delete}
+                  </button>
+                </div>
+              </article>
+            ))}
           </div>
         )}
       </section>
@@ -470,11 +431,7 @@ export default function PreparationsManager() {
             <h3 className='text-base font-semibold text-[var(--foreground)]'>
               {locale === 'fr' ? 'Confirmation PIN' : 'PIN confirmation'}
             </h3>
-            <p className='mt-1 text-sm text-[var(--muted)]'>
-              {locale === 'fr'
-                ? 'Entrez le PIN du staff selectionne dans Recu par.'
-                : 'Enter the PIN of the staff selected in Received by.'}
-            </p>
+            <p className='mt-1 text-sm text-[var(--muted)]'>{t.confirmPin}</p>
             {pinError && (
               <p className='mt-3 rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-2 text-xs text-red-600'>
                 {pinError}
@@ -491,7 +448,7 @@ export default function PreparationsManager() {
               onKeyDown={event => {
                 if (event.key === 'Enter') {
                   event.preventDefault()
-                  void handlePinConfirmSubmit()
+                  void handlePinConfirm()
                 }
               }}
               placeholder={locale === 'fr' ? 'PIN (2-6 chiffres)' : 'PIN (2-6 digits)'}
@@ -509,7 +466,7 @@ export default function PreparationsManager() {
                 {locale === 'fr' ? 'Annuler' : 'Cancel'}
               </button>
               <button
-                onClick={() => void handlePinConfirmSubmit()}
+                onClick={() => void handlePinConfirm()}
                 disabled={pinInput.length < 2 || pinInput.length > 6}
                 className='rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50'
               >

@@ -6,16 +6,29 @@ const {
 } = require("../utils/input");
 const { logActivity } = require("../services/activityLogger");
 
-const allowedStatus = new Set(["en_cours", "prepared", "delivered"]);
+const allowedStatus = new Set(["en_cours", "prepared", "completed"]);
 
 function normalizeStatus(value) {
   const normalized = cleanSingleLine(value).toLowerCase();
   if (!normalized) return null;
   if (normalized === "en cours") return "en_cours";
   if (normalized === "in progress") return "en_cours";
-  if (normalized === "in_progress" || normalized === "pending") return "en_cours";
-  if (normalized === "completed") return "delivered";
+  if (normalized === "in_progress" || normalized === "pending")
+    return "en_cours";
+  if (normalized === "delivered") return "completed";
+  if (normalized === "completed") return "completed";
   return allowedStatus.has(normalized) ? normalized : null;
+}
+
+async function nextPreparationId(pharmacyId) {
+  const last = await Preparation.findOne({ pharmacyId })
+    .sort({ createdAt: -1 })
+    .select("preparationId")
+    .lean();
+  const lastNum = last?.preparationId
+    ? parseInt(last.preparationId.replace("PREP-", ""), 10) || 0
+    : 0;
+  return `PREP-${String(lastNum + 1).padStart(5, "0")}`;
 }
 
 function toClientPreparation(doc) {
@@ -23,13 +36,16 @@ function toClientPreparation(doc) {
     id: String(doc._id),
     pharmacyId: String(doc.pharmacyId),
     createdBy: doc.createdBy ? String(doc.createdBy) : null,
-    preparationType: doc.preparationType,
+    preparationId: doc.preparationId,
+    patientFullname: doc.patientFullname,
+    phone: doc.phone,
     composition: doc.composition,
+    price: doc.price,
+    prescriber: doc.prescriber || "",
     receivedBy: doc.receivedBy,
     preparedBy: doc.preparedBy,
-    deliveredBy: doc.deliveredBy,
     status: normalizeStatus(doc.status) || "en_cours",
-    notes: doc.notes || "",
+    notes: doc.notes || [],
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   };
@@ -37,29 +53,34 @@ function toClientPreparation(doc) {
 
 function buildPreparationPayload(inputBody) {
   const payload = {
-    preparationType: cleanSingleLine(inputBody?.preparationType),
+    patientFullname: cleanSingleLine(inputBody?.patientFullname),
+    phone: cleanSingleLine(inputBody?.phone),
     composition: cleanString(inputBody?.composition),
+    price: Number(inputBody?.price) || 0,
+    prescriber: cleanSingleLine(inputBody?.prescriber),
     receivedBy: cleanSingleLine(inputBody?.receivedBy),
     preparedBy: cleanSingleLine(inputBody?.preparedBy),
-    deliveredBy: cleanSingleLine(inputBody?.deliveredBy),
-    notes: cleanString(inputBody?.notes),
+    notes: Array.isArray(inputBody?.notes)
+      ? inputBody.notes.map(n => ({
+          text: cleanString(n.text || ''),
+          createdAt: n.createdAt || new Date(),
+          createdBy: cleanSingleLine(n.createdBy || '')
+        }))
+      : [],
     status: normalizeStatus(inputBody?.status) || "en_cours",
   };
 
-  if (!payload.preparationType) {
-    return { error: "Preparation type is required" };
+  if (!payload.patientFullname) {
+    return { error: "Patient fullname is required" };
+  }
+  if (!payload.phone) {
+    return { error: "Phone is required" };
   }
   if (!payload.composition) {
     return { error: "Composition is required" };
   }
-  if (payload.status === "en_cours" && !payload.receivedBy) {
-    return { error: "Received by is required when status is en cours" };
-  }
   if (payload.status === "prepared" && !payload.preparedBy) {
     return { error: "Prepared by is required when status is prepared" };
-  }
-  if (payload.status === "delivered" && !payload.deliveredBy) {
-    return { error: "Delivered by is required when status is delivered" };
   }
 
   return { payload };
@@ -83,22 +104,51 @@ async function listPreparations(req, res) {
   }
 }
 
+async function getPreparation(req, res) {
+  try {
+    const preparationId = cleanString(req.params.preparationId);
+    if (!preparationId || !isValidObjectId(preparationId)) {
+      return res.status(400).json({ error: "Valid preparationId is required" });
+    }
+
+    const preparation = await Preparation.findOne({
+      _id: preparationId,
+      pharmacyId: req.pharmacyId,
+    });
+
+    if (!preparation) {
+      return res.status(404).json({ error: "Preparation not found" });
+    }
+
+    return res.status(200).json({
+      preparation: toClientPreparation(preparation),
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+}
+
 async function createPreparation(req, res) {
   try {
     const { payload, error } = buildPreparationPayload(req.body);
     if (error) {
       return res.status(400).json({ error });
     }
+    console.log(
+      "inside create prep, req is ============ :",
+      req.body.pharmacyId,
+    );
 
     const preparation = await Preparation.create({
       ...payload,
+      preparationId: await nextPreparationId(req.pharmacyId),
       pharmacyId: req.pharmacyId,
       createdBy: req.user?._id || null,
     });
 
     await logActivity({
       action: "CREATE_PREPARATION",
-      description: `Created preparation: ${payload.preparationType}`,
+      description: `Created preparation: ${preparation.preparationId}`,
       userId: req.user._id,
       pharmacyId: req.pharmacyId,
       metadata: {
@@ -133,11 +183,12 @@ async function updatePreparation(req, res) {
     }
 
     const updatableFields = [
-      "preparationType",
+      "patientFullname",
+      "phone",
       "composition",
-      "receivedBy",
+      "price",
+      "prescriber",
       "preparedBy",
-      "deliveredBy",
       "notes",
       "status",
     ];
@@ -155,7 +206,18 @@ async function updatePreparation(req, res) {
       }
 
       if (field === "notes") {
-        preparation.notes = cleanString(req.body.notes);
+        preparation.notes = Array.isArray(req.body.notes)
+          ? req.body.notes.map(n => ({
+              text: cleanString(n.text || ''),
+              createdAt: n.createdAt || new Date(),
+              createdBy: cleanSingleLine(n.createdBy || '')
+            }))
+          : [];
+        continue;
+      }
+
+      if (field === "price") {
+        preparation.price = Number(req.body.price) || 0;
         continue;
       }
 
@@ -164,7 +226,10 @@ async function updatePreparation(req, res) {
           ? cleanString(req.body[field])
           : cleanSingleLine(req.body[field]);
 
-      const isRequiredCoreField = field === "preparationType" || field === "composition";
+      const isRequiredCoreField =
+        field === "patientFullname" ||
+        field === "phone" ||
+        field === "composition";
       if (isRequiredCoreField && !value) {
         return res.status(400).json({ error: `${field} cannot be empty` });
       }
@@ -172,14 +237,10 @@ async function updatePreparation(req, res) {
     }
 
     const nextStatus = normalizeStatus(preparation.status) || "en_cours";
-    if (nextStatus === "en_cours" && !cleanSingleLine(preparation.receivedBy)) {
-      return res.status(400).json({ error: "Received by is required for en cours status" });
-    }
     if (nextStatus === "prepared" && !cleanSingleLine(preparation.preparedBy)) {
-      return res.status(400).json({ error: "Prepared by is required for prepared status" });
-    }
-    if (nextStatus === "delivered" && !cleanSingleLine(preparation.deliveredBy)) {
-      return res.status(400).json({ error: "Delivered by is required for delivered status" });
+      return res
+        .status(400)
+        .json({ error: "Prepared by is required for prepared status" });
     }
 
     await preparation.save();
@@ -241,6 +302,7 @@ async function deletePreparation(req, res) {
 
 module.exports = {
   listPreparations,
+  getPreparation,
   createPreparation,
   updatePreparation,
   deletePreparation,

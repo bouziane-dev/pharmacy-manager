@@ -38,6 +38,10 @@ const pharmacySchema = new mongoose.Schema(
       default: true,
       index: true,
     },
+    prescribers: {
+      type: [String],
+      default: [],
+    },
   },
   { timestamps: true }
 );

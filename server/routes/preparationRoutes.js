@@ -11,6 +11,7 @@ router.use(resolvePharmacyFromSlug);
 router.use(requirePharmacyAccess(["owner", "staff"]));
 
 router.get("/", preparationController.listPreparations);
+router.get("/:preparationId", preparationController.getPreparation);
 router.post("/", preparationController.createPreparation);
 router.patch("/:preparationId", preparationController.updatePreparation);
 router.delete("/:preparationId", preparationController.deletePreparation);

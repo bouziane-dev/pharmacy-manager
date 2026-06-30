@@ -129,7 +129,60 @@ async function checkSlugAvailability(req, res) {
   }
 }
 
+async function listPrescribers(req, res) {
+  try {
+    const pharmacy = await Pharmacy.findById(req.pharmacyId).select("prescribers");
+    if (!pharmacy) {
+      return res.status(404).json({ error: "Pharmacy not found" });
+    }
+    return res.status(200).json({ prescribers: pharmacy.prescribers || [] });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+}
+
+async function addPrescriber(req, res) {
+  try {
+    const name = cleanSingleLine(req.body.name);
+    if (!name) {
+      return res.status(400).json({ error: "Prescriber name is required" });
+    }
+
+    const pharmacy = await Pharmacy.findById(req.pharmacyId);
+    if (!pharmacy) {
+      return res.status(404).json({ error: "Pharmacy not found" });
+    }
+
+    const exists = (pharmacy.prescribers || []).some(
+      p => p.toLowerCase() === name.toLowerCase()
+    );
+    if (exists) {
+      return res.status(409).json({ error: "Prescriber already exists" });
+    }
+
+    pharmacy.prescribers.push(name);
+    await pharmacy.save();
+
+    await logActivity({
+      action: "ADD_PRESCRIBER",
+      description: `Added prescriber: ${name}`,
+      userId: req.user._id,
+      pharmacyId: req.pharmacyId,
+      metadata: { prescriberName: name },
+    });
+
+    return res.status(201).json({
+      message: "Prescriber added successfully",
+      prescribers: pharmacy.prescribers,
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+}
+
 module.exports = {
   createPharmacy,
   checkSlugAvailability,
+  listPrescribers,
+  addPrescriber,
 };
