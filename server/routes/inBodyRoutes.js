@@ -11,6 +11,8 @@ router.use(resolvePharmacyFromSlug);
 router.use(requirePharmacyAccess(["owner", "staff"]));
 
 router.get("/overview", inBodyController.getOverviewStats);
+router.get("/settings", inBodyController.getSettings);
+router.patch("/settings", inBodyController.updateSettings);
 router.get("/patients", inBodyController.listPatients);
 router.post("/patients", inBodyController.createPatient);
 router.get("/patients/:patientId", inBodyController.getPatientProfile);

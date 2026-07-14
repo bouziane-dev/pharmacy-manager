@@ -1404,15 +1404,14 @@ export default function ChronicPatientsManager() {
                 <Archive size={15} />
                 {t.actions.archive}
               </button>
-              <button
-                type='button'
-                disabled={busyKey === `delete-${selectedPatient.id}`}
-                onClick={() => confirmDeletePatient(selectedPatient)}
-                className='inline-flex items-center gap-2 rounded-xl border border-red-300/80 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-60 dark:border-red-500/35 dark:bg-red-500/10 dark:text-red-200'
-              >
-                <Trash2 size={15} />
-                {t.actions.deletePatient}
-              </button>
+                <button
+                  type='button'
+                  disabled={busyKey === `delete-${selectedPatient.id}`}
+                  onClick={() => confirmDeletePatient(selectedPatient)}
+                  className='inline-flex items-center justify-center rounded-xl border border-red-300/80 bg-red-50 p-2 text-red-700 transition hover:bg-red-100 disabled:opacity-60 dark:border-red-500/35 dark:bg-red-500/10 dark:text-red-200'
+                >
+                  <Trash2 size={15} />
+                </button>
             </div>
 
             <label className='mt-4 block text-sm text-[var(--muted)]'>

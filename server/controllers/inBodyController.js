@@ -1,5 +1,7 @@
+const mongoose = require("mongoose");
 const Patient = require("../models/Patient");
 const InBodyTest = require("../models/InBodyTest");
+const Pharmacy = require("../models/Pharmacy");
 const User = require("../models/User");
 const {
   cleanEmail,
@@ -31,10 +33,13 @@ function normalizeSubscription(subscription) {
     0,
     Math.round(Number(subscription?.remainingSessions || 0)),
   );
+  const price = Math.max(0, Number(subscription?.price || 0));
 
   return {
     totalSessions,
     remainingSessions: Math.min(totalSessions, remainingSessions),
+    price,
+    lifetimeRevenue: subscription?.lifetimeRevenue || 0,
     updatedAt: subscription?.updatedAt || null,
   };
 }
@@ -92,6 +97,7 @@ function toClientTest(doc, patient) {
     notes: doc.notes || "",
     testedAt: doc.testedAt,
     consumedSession: !!doc.consumedSession,
+    revenue: doc.revenue || 0,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   };
@@ -102,7 +108,7 @@ async function listPatients(req, res) {
     const [rows, latestTests] = await Promise.all([
       Patient.find({ pharmacyId: req.pharmacyId }).sort({ createdAt: -1 }),
       InBodyTest.aggregate([
-        { $match: { pharmacyId: req.pharmacyId } },
+        { $match: { pharmacyId: new mongoose.Types.ObjectId(req.pharmacyId) } },
         { $sort: { testedAt: -1, createdAt: -1 } },
         {
           $group: {
@@ -156,6 +162,7 @@ async function getOverviewStats(req, res) {
       activeSubscriptions,
       staffUsers,
       staffTestCounts,
+      subscriptionAgg,
     ] =
       await Promise.all([
         Patient.countDocuments({ pharmacyId: req.pharmacyId }),
@@ -180,7 +187,7 @@ async function getOverviewStats(req, res) {
         InBodyTest.aggregate([
           {
             $match: {
-              pharmacyId: req.pharmacyId,
+              pharmacyId: new mongoose.Types.ObjectId(req.pharmacyId),
               createdBy: { $ne: null },
             },
           },
@@ -211,7 +218,22 @@ async function getOverviewStats(req, res) {
             },
           },
         ]),
+        Patient.aggregate([
+          { $match: { pharmacyId: new mongoose.Types.ObjectId(req.pharmacyId), $or: [
+            { "subscription.totalSessions": { $gt: 0 } },
+            { "subscription.remainingSessions": { $gt: 0 } },
+          ] } },
+          {
+            $group: {
+              _id: null,
+              totalPrice: { $sum: { $ifNull: ["$subscription.price", 0] } },
+              totalSessions: { $sum: { $ifNull: ["$subscription.totalSessions", 0] } },
+            },
+          },
+        ]),
       ]);
+
+    console.log('[REVENUE_DEBUG] subscriptionAgg:', JSON.stringify(subscriptionAgg));
 
     const countsByUserId = new Map(
       staffTestCounts.map((item) => [
@@ -225,6 +247,92 @@ async function getOverviewStats(req, res) {
         },
       ]),
     );
+
+    const [subscriptionRevenueAgg, testRevenueAgg] = await Promise.all([
+      Patient.aggregate([
+        {
+          $match: {
+            pharmacyId: new mongoose.Types.ObjectId(req.pharmacyId),
+            $or: [
+              { "subscription.totalSessions": { $gt: 0 } },
+              { "subscription.remainingSessions": { $gt: 0 } },
+            ],
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            revenueToday: {
+              $sum: {
+                $cond: [
+                  { $and: [
+                    { $ne: ["$subscription.updatedAt", null] },
+                    { $gte: ["$subscription.updatedAt", startOfToday] },
+                  ]},
+                  { $ifNull: ["$subscription.price", 0] },
+                  0,
+                ],
+              },
+            },
+            revenueThisMonth: {
+              $sum: {
+                $cond: [
+                  { $and: [
+                    { $ne: ["$subscription.updatedAt", null] },
+                    { $gte: ["$subscription.updatedAt", startOfMonth] },
+                  ]},
+                  { $ifNull: ["$subscription.price", 0] },
+                  0,
+                ],
+              },
+            },
+            lifetimeRevenue: { $sum: { $ifNull: ["$subscription.lifetimeRevenue", 0] } },
+          },
+        },
+      ]),
+       InBodyTest.aggregate([
+        {
+          $match: {
+            pharmacyId: new mongoose.Types.ObjectId(req.pharmacyId),
+            revenue: { $gt: 0 },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            revenueToday: {
+              $sum: {
+                $cond: [{ $gte: ["$testedAt", startOfToday] }, "$revenue", 0],
+              },
+            },
+            revenueThisMonth: {
+              $sum: {
+                $cond: [{ $gte: ["$testedAt", startOfMonth] }, "$revenue", 0],
+              },
+            },
+            revenueAllTime: { $sum: "$revenue" },
+          },
+        },
+      ]),
+    ]);
+
+    console.log('[REVENUE_DEBUG] subscriptionRevenueAgg:', JSON.stringify(subscriptionRevenueAgg));
+    console.log('[REVENUE_DEBUG] testRevenueAgg:', JSON.stringify(testRevenueAgg));
+
+    const subFin = subscriptionRevenueAgg[0] || { revenueToday: 0, revenueThisMonth: 0, lifetimeRevenue: 0 };
+    const testFin = testRevenueAgg[0] || { revenueToday: 0, revenueThisMonth: 0, revenueAllTime: 0 };
+
+    console.log('[REVENUE_DEBUG] subFin:', JSON.stringify(subFin));
+    console.log('[REVENUE_DEBUG] testFin:', JSON.stringify(testFin));
+    console.log('[REVENUE_DEBUG] totalPatients:', totalPatients, 'activeSubscriptions:', activeSubscriptions, 'testsToday:', testsToday, 'testsThisMonth:', testsThisMonth);
+
+    const allTestsToday = testsToday;
+    const allTestsThisMonth = testsThisMonth;
+
+    const totalTestsAllTime = staffTestCounts.reduce((sum, s) => sum + (s.totalTests || 0), 0);
+    const fin = subscriptionAgg[0] || { totalPrice: 0, totalSessions: 0 };
+    const pricePerSession =
+      fin.totalSessions > 0 ? fin.totalPrice / fin.totalSessions : 0;
 
     const staffPerformance = staffUsers.map((staffUser) => {
       const counts = countsByUserId.get(String(staffUser._id)) || {
@@ -241,16 +349,38 @@ async function getOverviewStats(req, res) {
         role: cleanSingleLine(staffUser.staffRole || "staff") || "staff",
         isActive: staffUser.isActive !== false,
         ...counts,
+        estimatedRevenue: Math.round(counts.totalTests * pricePerSession * 100) / 100,
       };
+    });
+
+    console.log('[REVENUE_DEBUG] fin:', JSON.stringify(fin), 'pricePerSession:', pricePerSession);
+    console.log('[REVENUE_DEBUG] response financial:', {
+      revenueToday: Math.round((subFin.revenueToday + testFin.revenueToday) * 100) / 100,
+      revenueThisMonth: Math.round((subFin.revenueThisMonth + testFin.revenueThisMonth) * 100) / 100,
+      revenueAllTime: Math.round((subFin.lifetimeRevenue + testFin.revenueAllTime) * 100) / 100,
     });
 
     return res.status(200).json({
       stats: {
         totalPatients,
-        testsToday,
-        testsThisMonth,
+        testsToday: allTestsToday,
+        testsThisMonth: allTestsThisMonth,
         activeSubscriptions,
         staffPerformance,
+        financial: {
+          totalPrice: fin.totalPrice,
+          totalSessions: fin.totalSessions,
+          pricePerSession: Math.round(pricePerSession * 100) / 100,
+          revenueToday: Math.round((subFin.revenueToday + testFin.revenueToday) * 100) / 100,
+          revenueThisMonth: Math.round((subFin.revenueThisMonth + testFin.revenueThisMonth) * 100) / 100,
+          revenueAllTime: Math.round((subFin.lifetimeRevenue + testFin.revenueAllTime) * 100) / 100,
+          subscriptionRevenueToday: Math.round(subFin.revenueToday * 100) / 100,
+          subscriptionRevenueThisMonth: Math.round(subFin.revenueThisMonth * 100) / 100,
+          subscriptionRevenueAllTime: Math.round(subFin.lifetimeRevenue * 100) / 100,
+          testRevenueToday: Math.round(testFin.revenueToday * 100) / 100,
+          testRevenueThisMonth: Math.round(testFin.revenueThisMonth * 100) / 100,
+          testRevenueAllTime: Math.round(testFin.revenueAllTime * 100) / 100,
+        },
       },
     });
   } catch (error) {
@@ -289,6 +419,8 @@ async function createPatient(req, res) {
       subscription: {
         totalSessions: 0,
         remainingSessions: 0,
+        price: 0,
+        lifetimeRevenue: 0,
         updatedAt: null,
       },
       lastInBodyTestAt: null,
@@ -371,6 +503,8 @@ async function updatePatientSubscription(req, res) {
       });
     }
 
+    const price = Math.max(0, Number(req.body?.price || 0));
+
     // We support two modes so teams can either replace the package or add more sessions.
     const modeRaw = cleanString(req.body?.mode).toLowerCase();
     const mode = SUBSCRIPTION_MODES.has(modeRaw) ? modeRaw : "replace";
@@ -384,17 +518,24 @@ async function updatePatientSubscription(req, res) {
         nextTotal,
         currentSubscription.remainingSessions + totalSessions,
       );
+      const newRevenue = Math.max(0, price);
 
       patient.subscription = {
         totalSessions: nextTotal,
         remainingSessions: nextRemaining,
+        price: price || currentSubscription.price,
         updatedAt,
+        lifetimeRevenue: (currentSubscription.lifetimeRevenue || 0) + newRevenue,
       };
     } else {
+      const newRevenue = Math.max(0, price);
+
       patient.subscription = {
         totalSessions,
         remainingSessions: totalSessions,
+        price,
         updatedAt,
+        lifetimeRevenue: (currentSubscription.lifetimeRevenue || 0) + newRevenue,
       };
     }
 
@@ -482,12 +623,6 @@ async function createPatientTest(req, res) {
       req.body?.bodyWater ?? rawTestData.bodyWater ?? rawTestData.eauCorporelle,
     );
 
-    if ([weight, bodyFat, muscleMass, bmi, bodyWater].every((value) => value === null)) {
-      return res.status(400).json({
-        error: "At least one body composition metric is required",
-      });
-    }
-
     let testedAt = null;
     if (testedAtRaw) {
       const parsedDate = new Date(testedAtRaw);
@@ -501,11 +636,33 @@ async function createPatientTest(req, res) {
     // Tests are always allowed. We only consume a session when one is available.
     const consumedSession = subscription.remainingSessions > 0;
     if (consumedSession) {
-      patient.subscription = {
-        totalSessions: subscription.totalSessions,
-        remainingSessions: Math.max(0, subscription.remainingSessions - 1),
-        updatedAt: new Date(),
-      };
+      const newRemaining = Math.max(0, subscription.remainingSessions - 1);
+      if (newRemaining === 0) {
+        patient.subscription = {
+          totalSessions: 0,
+          remainingSessions: 0,
+          price: 0,
+          lifetimeRevenue: subscription.lifetimeRevenue || 0,
+          updatedAt: null,
+        };
+      } else {
+        patient.subscription = {
+          totalSessions: subscription.totalSessions,
+          remainingSessions: newRemaining,
+          price: subscription.price,
+          lifetimeRevenue: subscription.lifetimeRevenue || 0,
+          updatedAt: subscription.updatedAt || null,
+        };
+      }
+    }
+
+    // Revenue: subscription test = 0 (already paid at purchase), single test = testPrice
+    let revenue = 0;
+    if (!consumedSession) {
+      try {
+        const pharmacy = await Pharmacy.findById(req.pharmacyId).select("inbodyTestPrice").lean();
+        revenue = pharmacy?.inbodyTestPrice || 0;
+      } catch (_) { /* fallback to 0 */ }
     }
 
     const normalizedTestData = {
@@ -532,6 +689,7 @@ async function createPatientTest(req, res) {
       testedAt: testedAt || new Date(),
       createdBy: req.user?._id || null,
       consumedSession,
+      revenue,
     });
 
     patient.lastInBodyTestAt = test.testedAt;
@@ -587,18 +745,6 @@ async function deletePatientTest(req, res) {
     }
 
     await InBodyTest.deleteOne({ _id: test._id });
-
-    const subscription = normalizeSubscription(patient.subscription);
-    if (test.consumedSession && subscription.totalSessions > 0) {
-      patient.subscription = {
-        totalSessions: subscription.totalSessions,
-        remainingSessions: Math.min(
-          subscription.totalSessions,
-          subscription.remainingSessions + 1,
-        ),
-        updatedAt: new Date(),
-      };
-    }
 
     const latestTest = await InBodyTest.findOne({
       pharmacyId: req.pharmacyId,
@@ -666,6 +812,33 @@ async function deletePatient(req, res) {
   }
 }
 
+async function getSettings(req, res) {
+  try {
+    const pharmacy = await Pharmacy.findById(req.pharmacyId).select("inbodyTestPrice").lean();
+    return res.status(200).json({
+      testPrice: pharmacy?.inbodyTestPrice || 0,
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+}
+
+async function updateSettings(req, res) {
+  try {
+    const testPrice = Math.max(0, Number(req.body?.testPrice || 0));
+    await Pharmacy.updateOne(
+      { _id: req.pharmacyId },
+      { $set: { inbodyTestPrice: testPrice } },
+    );
+    return res.status(200).json({
+      message: "Settings updated",
+      testPrice,
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+}
+
 module.exports = {
   listPatients,
   getOverviewStats,
@@ -676,5 +849,7 @@ module.exports = {
   createPatientTest,
   deletePatientTest,
   deletePatient,
+  getSettings,
+  updateSettings,
 };
 

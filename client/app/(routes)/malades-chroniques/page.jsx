@@ -8,7 +8,7 @@ import { useSession } from '@/app/providers'
 
 export default function MaladesChroniquesPage() {
   const { user, isLoading, isBlocked } = useRouteGuard({
-    requireAdmin: true
+    requireAdmin: false
   })
   const { locale } = useSession()
   const t = getCopy(locale)

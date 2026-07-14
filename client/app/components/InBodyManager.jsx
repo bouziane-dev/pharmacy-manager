@@ -1,14 +1,17 @@
 'use client'
 
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import {
   Activity,
+  BarChart3,
   CalendarDays,
-  Eye,
-  Plus,
+  ChevronDown,
+  ChevronUp,
+  DollarSign,
+  Play,
   Search,
-  Trash2,
+  TrendingUp,
   Users
 } from 'lucide-react'
 import { getIntlLocale } from '@/app/lib/i18n'
@@ -29,37 +32,37 @@ function formatDate(value, locale) {
   }).format(parsed)
 }
 
-function getSubscriptionLabel(totalSessions, locale) {
-  if (!totalSessions) {
+function getSubscriptionLabel(remainingSessions, locale) {
+  if (!remainingSessions) {
     return locale === 'fr' ? 'Aucun abonnement' : 'No package'
   }
   if (locale === 'fr') {
-    return `${totalSessions} seance${totalSessions > 1 ? 's' : ''}`
+    return `${remainingSessions} restante${remainingSessions > 1 ? 's' : ''}`
   }
-  return `${totalSessions} session${totalSessions > 1 ? 's' : ''}`
+  return `${remainingSessions} left`
 }
 
-function getRemainingChipClass(remainingSessions) {
-  if (remainingSessions <= 0) {
-    return 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-200'
-  }
-  if (remainingSessions <= 2) {
-    return 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200'
-  }
-  return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200'
+function formatCurrency(value) {
+  const num = Number(value) || 0
+  return new Intl.NumberFormat('fr-DZ', {
+    style: 'currency',
+    currency: 'DZD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(num)
 }
 
-function normalizePatientForm(form) {
-  const patientId = digitsOnly(form.patientId || form.phone)
-  const phone = digitsOnly(form.phone || form.patientId)
+function nowLocalDateTime() {
+  const now = new Date()
+  const offsetMs = now.getTimezoneOffset() * 60 * 1000
+  return new Date(now.getTime() - offsetMs).toISOString().slice(0, 16)
+}
 
-  return {
-    patientId,
-    fullName: String(form.fullName || '').trim(),
-    phone,
-    email: String(form.email || '').trim(),
-    dateOfBirth: String(form.dateOfBirth || '').trim()
-  }
+function n(value) {
+  const raw = String(value ?? '').trim()
+  if (!raw) return undefined
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) ? parsed : undefined
 }
 
 const listCopy = {
@@ -78,15 +81,19 @@ const listCopy = {
       patientId: 'ID Patient',
       name: 'Nom',
       subscription: 'Abonnement',
-      remaining: 'Sessions restantes',
       lastTest: 'Dernier test',
-      actions: 'Actions'
     },
     stats: {
       totalPatients: 'Total Patients',
       testsToday: "Tests Aujourd'hui",
       testsMonth: 'Tests ce Mois',
       activeSubscriptions: 'Abonnements Actifs',
+      totalPrice: 'Prix Total',
+      revenueToday: 'Revenu Aujourd\'hui',
+      revenueMonth: 'Revenu ce Mois',
+      revenueAllTime: 'Revenu Total',
+
+      testPriceLabel: 'Prix test (sans abo.)',
       staffPerformanceTitle: 'Performance du staff InBody',
       staffPerformanceSubtitle:
         'Nombre de tests realises par membre du staff sur chaque periode.',
@@ -95,9 +102,9 @@ const listCopy = {
       testsWeek: 'Semaine',
       testsYear: 'Annee',
       total: 'Total',
+      revenueLabel: 'Rev. est.',
       inactive: 'Inactif',
-      noStaffPerformance:
-        "Aucun test InBody attribue au staff pour le moment."
+      noStaffPerformance: 'Aucun test InBody attribue au staff pour le moment.'
     },
     fields: {
       patientId: 'ID Patient (telephone)',
@@ -112,18 +119,10 @@ const listCopy = {
       phone: '0550000000',
       email: 'patient@email.com'
     },
-    actions: {
-      viewProfile: 'Voir le profil',
-      delete: 'Supprimer'
-    },
     errors: {
       patientId: "L'identifiant patient est obligatoire.",
       fullName: 'Le nom complet est obligatoire.'
     },
-    deleteConfirmTitle: 'Supprimer ce patient ?',
-    deleteConfirmText:
-      'Cette action supprimera aussi tout son historique InBody.',
-    deleteConfirmButton: 'Supprimer',
     loading: 'Chargement...'
   },
   en: {
@@ -140,15 +139,18 @@ const listCopy = {
       patientId: 'Patient ID',
       name: 'Name',
       subscription: 'Package',
-      remaining: 'Remaining sessions',
       lastTest: 'Last test',
-      actions: 'Actions'
     },
     stats: {
       totalPatients: 'Total Patients',
       testsToday: 'Tests Today',
       testsMonth: 'Tests This Month',
       activeSubscriptions: 'Active Subscriptions',
+      totalPrice: 'Total Price',
+      revenueToday: 'Revenue Today',
+      revenueMonth: 'Revenue This Month',
+      revenueAllTime: 'Total Revenue',
+      testPriceLabel: 'Single test price',
       staffPerformanceTitle: 'InBody Staff Performance',
       staffPerformanceSubtitle:
         'How many tests each staff member completed for each period.',
@@ -157,6 +159,7 @@ const listCopy = {
       testsWeek: 'This Week',
       testsYear: 'This Year',
       total: 'Total',
+      revenueLabel: 'Est. rev.',
       inactive: 'Inactive',
       noStaffPerformance: 'No staff-linked InBody tests yet.'
     },
@@ -173,47 +176,57 @@ const listCopy = {
       phone: '0550000000',
       email: 'patient@email.com'
     },
-    actions: {
-      viewProfile: 'View profile',
-      delete: 'Delete'
-    },
     errors: {
       patientId: 'Patient identifier is required.',
       fullName: 'Full name is required.'
     },
-    deleteConfirmTitle: 'Delete this patient?',
-    deleteConfirmText: 'This will also remove all linked InBody tests.',
-    deleteConfirmButton: 'Delete',
     loading: 'Loading...'
   }
 }
 
 export default function InBodyManager() {
+  const router = useRouter()
   const {
     locale,
     patients,
     currentWorkspace,
+    user,
     fetchInBodyOverview,
+    fetchInBodySettings,
+    updateInBodySettings,
     createPatient,
-    deletePatient,
-    showConfirmToast
+    createPatientTest,
+    fetchStaffLoginUsers
   } = useSession()
   const t = listCopy[locale] || listCopy.en
+
+  const isAdmin = user?.role === 'admin'
 
   const [search, setSearch] = useState('')
   const [stats, setStats] = useState(null)
   const [isLoadingStats, setIsLoadingStats] = useState(true)
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-  const [isSubmittingPatient, setIsSubmittingPatient] = useState(false)
-  const [deletingPatientId, setDeletingPatientId] = useState('')
-  const [formErrors, setFormErrors] = useState({})
-  const [patientForm, setPatientForm] = useState({
-    patientId: '',
-    fullName: '',
-    phone: '',
-    email: '',
-    dateOfBirth: ''
+  const [staffMembers, setStaffMembers] = useState([])
+  const [testPrice, setTestPrice] = useState(0)
+  const [savingTestPrice, setSavingTestPrice] = useState(false)
+  const [quickTestOpen, setQuickTestOpen] = useState(false)
+  const [quickTestPhone, setQuickTestPhone] = useState('')
+  const [quickTestName, setQuickTestName] = useState('')
+  const [quickTestStep, setQuickTestStep] = useState('phone')
+  const [quickTestLoading, setQuickTestLoading] = useState(false)
+  const [quickTestPatient, setQuickTestPatient] = useState(null)
+  const [qtForm, setQtForm] = useState({
+    testDate: nowLocalDateTime(),
+    notes: '',
+    weight: '',
+    bodyFat: '',
+    muscleMass: '',
+    bmi: '',
+    bodyWater: ''
   })
+  const [qtShowParams, setQtShowParams] = useState(false)
+  const [qtOperator, setQtOperator] = useState('')
+  const [qtSaving, setQtSaving] = useState(false)
+  const [qtError, setQtError] = useState('')
 
   async function loadOverview() {
     try {
@@ -227,10 +240,39 @@ export default function InBodyManager() {
     }
   }
 
+  async function loadSettings() {
+    try {
+      const result = await fetchInBodySettings()
+      setTestPrice(result?.testPrice ?? 0)
+    } catch (_) {}
+  }
+
   useEffect(() => {
     if (!currentWorkspace?.id) return
     void loadOverview()
+    if (user?.role === 'admin') void loadSettings()
   }, [currentWorkspace?.id])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const rows = await fetchStaffLoginUsers()
+        if (cancelled) return
+        const names = (Array.isArray(rows) ? rows : [])
+          .map(item => String(item?.name || '').trim())
+          .filter(Boolean)
+        setStaffMembers(names)
+        const defaultName = user?.name || names[0] || ''
+        setQtOperator(defaultName)
+      } catch (_error) {
+        if (cancelled) return
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [fetchStaffLoginUsers, currentWorkspace?.id, user?.name])
 
   const filteredPatients = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -253,8 +295,13 @@ export default function InBodyManager() {
   )
 
   const staffPerformance = useMemo(
-    () => (Array.isArray(stats?.staffPerformance) ? stats.staffPerformance : []),
+    () =>
+      Array.isArray(stats?.staffPerformance) ? stats.staffPerformance : [],
     [stats]
+  )
+  const currentStaff = useMemo(
+    () => staffPerformance.find(m => m.name === user?.name) || null,
+    [staffPerformance, user?.name]
   )
 
   const statCards = [
@@ -292,58 +339,25 @@ export default function InBodyManager() {
     }
   ]
 
-  function resetFormState() {
-    setPatientForm({
-      patientId: '',
-      fullName: '',
-      phone: '',
-      email: '',
-      dateOfBirth: ''
+  function resetQuickTest() {
+    setQuickTestPhone('')
+    setQuickTestName('')
+    setQuickTestStep('phone')
+    setQuickTestPatient(null)
+    setQtForm({
+      testDate: nowLocalDateTime(),
+      notes: '',
+      weight: '',
+      bodyFat: '',
+      muscleMass: '',
+      bmi: '',
+      bodyWater: ''
     })
-    setFormErrors({})
-  }
-
-  async function handleCreatePatient() {
-    const payload = normalizePatientForm(patientForm)
-    const nextErrors = {}
-
-    if (!payload.patientId) {
-      nextErrors.patientId = t.errors.patientId
-    }
-    if (!payload.fullName) {
-      nextErrors.fullName = t.errors.fullName
-    }
-
-    setFormErrors(nextErrors)
-    if (Object.keys(nextErrors).length > 0) return
-
-    try {
-      setIsSubmittingPatient(true)
-      await createPatient(payload)
-      await loadOverview()
-      setIsCreateModalOpen(false)
-      resetFormState()
-    } finally {
-      setIsSubmittingPatient(false)
-    }
-  }
-
-  function confirmDeletePatient(patient) {
-    showConfirmToast({
-      title: t.deleteConfirmTitle,
-      message: `${patient.fullName}\n${t.deleteConfirmText}`,
-      confirmLabel: locale === 'fr' ? 'OK, supprimer' : 'OK, delete',
-      cancelLabel: t.cancel,
-      onConfirm: async () => {
-        try {
-          setDeletingPatientId(patient.id)
-          await deletePatient(patient.id)
-          await loadOverview()
-        } finally {
-          setDeletingPatientId('')
-        }
-      }
-    })
+    setQtShowParams(false)
+    setQtOperator(staffMembers[0] || user?.name || '')
+    setQtError('')
+    setQuickTestLoading(false)
+    setQtSaving(false)
   }
 
   return (
@@ -351,7 +365,7 @@ export default function InBodyManager() {
       <header className='panel overflow-hidden p-5 sm:p-6'>
         <div className='relative'>
           <div className='pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-cyan-300/25 blur-3xl dark:bg-cyan-500/15' />
-          <div className='pointer-events-none absolute -left-24 -bottom-24 h-56 w-56 rounded-full bg-emerald-300/25 blur-3xl dark:bg-emerald-500/15' />
+          <div className='pointer-events-none absolute -bottom-24 -left-24 h-56 w-56 rounded-full bg-emerald-300/25 blur-3xl dark:bg-emerald-500/15' />
           <h2 className='text-2xl font-semibold tracking-tight text-[var(--foreground)]'>
             {t.title}
           </h2>
@@ -359,26 +373,120 @@ export default function InBodyManager() {
         </div>
 
         <div className='mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
-          {statCards.map(card => {
-            const Icon = card.icon
-            return (
-              <article
-                key={card.id}
-                className={`rounded-2xl border bg-gradient-to-br p-4 ${card.accent}`}
-              >
+          {isAdmin ? (
+            statCards.map(card => {
+              const Icon = card.icon
+              return (
+                <article
+                  key={card.id}
+                  className={`rounded-2xl border bg-gradient-to-br p-4 ${card.accent}`}
+                >
+                  <div className='flex items-start justify-between gap-2'>
+                    <p className='text-xs font-semibold uppercase tracking-[0.12em]'>
+                      {card.label}
+                    </p>
+                    <span className='rounded-lg bg-white/60 p-2 text-current dark:bg-slate-900/35'>
+                      <Icon size={16} />
+                    </span>
+                  </div>
+                  <p className='mt-3 text-3xl font-semibold'>{card.value}</p>
+                </article>
+              )
+            })
+          ) : (
+            <>
+              <article className='rounded-2xl border bg-gradient-to-br from-sky-500/20 to-cyan-500/20 p-4 text-sky-700 dark:text-sky-200 [border-color:rgb(186_230_253/0.7)] dark:[border-color:rgb(59_130_246/0.3)]'>
                 <div className='flex items-start justify-between gap-2'>
-                  <p className='text-xs font-semibold uppercase tracking-[0.12em]'>
-                    {card.label}
-                  </p>
-                  <span className='rounded-lg bg-white/60 p-2 text-current dark:bg-slate-900/35'>
-                    <Icon size={16} />
-                  </span>
+                  <p className='text-xs font-semibold uppercase tracking-[0.12em]'>{locale === 'fr' ? 'Total Patients' : 'Total Patients'}</p>
+                  <span className='rounded-lg bg-white/60 p-2 text-current dark:bg-slate-900/35'><Users size={16} /></span>
                 </div>
-                <p className='mt-3 text-3xl font-semibold'>{card.value}</p>
+                <p className='mt-3 text-3xl font-semibold'>{stats?.totalPatients ?? patients.length}</p>
               </article>
-            )
-          })}
+              <article className='rounded-2xl border bg-gradient-to-br from-emerald-500/20 to-green-500/20 p-4 text-emerald-700 dark:text-emerald-200 [border-color:rgb(167_243_208/0.7)] dark:[border-color:rgb(52_211_153/0.3)]'>
+                <div className='flex items-start justify-between gap-2'>
+                  <p className='text-xs font-semibold uppercase tracking-[0.12em]'>{locale === 'fr' ? 'Mes tests aujourd\'hui' : 'My tests today'}</p>
+                  <span className='rounded-lg bg-white/60 p-2 text-current dark:bg-slate-900/35'><Activity size={16} /></span>
+                </div>
+                <p className='mt-3 text-3xl font-semibold'>{currentStaff?.testsToday ?? 0}</p>
+              </article>
+              <article className='rounded-2xl border bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 p-4 text-violet-700 dark:text-violet-200 [border-color:rgb(221_214_254/0.7)] dark:[border-color:rgb(139_92_246/0.3)]'>
+                <div className='flex items-start justify-between gap-2'>
+                  <p className='text-xs font-semibold uppercase tracking-[0.12em]'>{locale === 'fr' ? 'Mes tests ce mois' : 'My tests this month'}</p>
+                  <span className='rounded-lg bg-white/60 p-2 text-current dark:bg-slate-900/35'><CalendarDays size={16} /></span>
+                </div>
+                <p className='mt-3 text-3xl font-semibold'>{currentStaff?.testsThisMonth ?? 0}</p>
+              </article>
+              <article className='rounded-2xl border bg-gradient-to-br from-amber-500/20 to-orange-500/20 p-4 text-amber-700 dark:text-amber-200 [border-color:rgb(252_211_187/0.7)] dark:[border-color:rgb(245_158_11/0.3)]'>
+                <div className='flex items-start justify-between gap-2'>
+                  <p className='text-xs font-semibold uppercase tracking-[0.12em]'>{locale === 'fr' ? 'Mes tests cette annee' : 'My tests this year'}</p>
+                  <span className='rounded-lg bg-white/60 p-2 text-current dark:bg-slate-900/35'><Activity size={16} /></span>
+                </div>
+                <p className='mt-3 text-3xl font-semibold'>{currentStaff?.testsThisYear ?? 0}</p>
+              </article>
+            </>
+          )}
         </div>
+
+        {isAdmin && (
+          <div className='mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
+            <article className='rounded-2xl border bg-gradient-to-br from-sky-500/20 to-cyan-500/20 p-4 text-sky-700 dark:text-sky-200 [border-color:rgb(186_230_253/0.7)] dark:[border-color:rgb(59_130_246/0.3)]'>
+              <div className='flex items-start justify-between gap-2'>
+                <p className='text-xs font-semibold uppercase tracking-[0.12em]'>{t.stats.totalPrice}</p>
+                <span className='rounded-lg bg-white/60 p-2 text-current dark:bg-slate-900/35'><DollarSign size={16} /></span>
+              </div>
+              <p className='mt-3 text-3xl font-semibold'>{formatCurrency(stats?.financial?.totalPrice)}</p>
+            </article>
+            <article className='rounded-2xl border bg-gradient-to-br from-emerald-500/20 to-green-500/20 p-4 text-emerald-700 dark:text-emerald-200 [border-color:rgb(167_243_208/0.7)] dark:[border-color:rgb(52_211_153/0.3)]'>
+              <div className='flex items-start justify-between gap-2'>
+                <p className='text-xs font-semibold uppercase tracking-[0.12em]'>{t.stats.revenueToday}</p>
+                <span className='rounded-lg bg-white/60 p-2 text-current dark:bg-slate-900/35'><Activity size={16} /></span>
+              </div>
+              <p className='mt-3 text-3xl font-semibold'>{formatCurrency(stats?.financial?.revenueToday)}</p>
+            </article>
+            <article className='rounded-2xl border bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 p-4 text-violet-700 dark:text-violet-200 [border-color:rgb(221_214_254/0.7)] dark:[border-color:rgb(139_92_246/0.3)]'>
+              <div className='flex items-start justify-between gap-2'>
+                <p className='text-xs font-semibold uppercase tracking-[0.12em]'>{t.stats.revenueMonth}</p>
+                <span className='rounded-lg bg-white/60 p-2 text-current dark:bg-slate-900/35'><TrendingUp size={16} /></span>
+              </div>
+              <p className='mt-3 text-3xl font-semibold'>{formatCurrency(stats?.financial?.revenueThisMonth)}</p>
+            </article>
+            <article className='rounded-2xl border bg-gradient-to-br from-amber-500/20 to-orange-500/20 p-4 text-amber-700 dark:text-amber-200 [border-color:rgb(252_211_187/0.7)] dark:[border-color:rgb(245_158_11/0.3)]'>
+              <div className='flex items-start justify-between gap-2'>
+                <p className='text-xs font-semibold uppercase tracking-[0.12em]'>{t.stats.revenueAllTime}</p>
+                <span className='rounded-lg bg-white/60 p-2 text-current dark:bg-slate-900/35'><BarChart3 size={16} /></span>
+              </div>
+              <p className='mt-3 text-3xl font-semibold'>{formatCurrency(stats?.financial?.revenueAllTime)}</p>
+            </article>
+          </div>
+        )}
+        {isAdmin && (
+          <div className='mt-3 flex items-center gap-2 text-sm'>
+            <span className='text-[var(--muted)]'>{t.stats.testPriceLabel}</span>
+            <input
+              type='number'
+              min='0'
+              step='10'
+              value={testPrice}
+              onChange={e => setTestPrice(Number(e.target.value) || 0)}
+              className='w-24 rounded-lg border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
+            />
+            <button
+              onClick={async () => {
+                setSavingTestPrice(true)
+                try {
+                  await updateInBodySettings({ testPrice })
+                  await loadOverview()
+                } finally {
+                  setSavingTestPrice(false)
+                }
+              }}
+              disabled={savingTestPrice}
+              className='rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60'
+            >
+              {savingTestPrice ? '...' : (locale === 'fr' ? 'Appliquer' : 'Apply')}
+            </button>
+          </div>
+        )}
       </header>
 
       <section className='panel p-5 sm:p-6'>
@@ -396,13 +504,20 @@ export default function InBodyManager() {
             />
           </label>
 
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className='inline-flex items-center justify-center gap-2 rounded-xl bg-[linear-gradient(90deg,#059669,#0284c7)] px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110'
-          >
-            <Plus size={16} />
-            {t.addPatient}
-          </button>
+          <div className='flex flex-wrap gap-2'>
+            <button
+              onClick={() => {
+                setQuickTestPhone('')
+                setQuickTestName('')
+                setQuickTestStep('phone')
+                setQuickTestOpen(true)
+              }}
+              className='inline-flex items-center justify-center gap-2 rounded-xl bg-[linear-gradient(90deg,#059669,#0284c7)] px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110'
+            >
+              <Play size={16} />
+              {locale === 'fr' ? 'Test rapide' : 'Quick test'}
+            </button>
+          </div>
         </div>
 
         {filteredPatients.length === 0 ? (
@@ -412,16 +527,20 @@ export default function InBodyManager() {
         ) : (
           <>
             <div className='mt-5 space-y-3 lg:hidden'>
-              {filteredPatients.map(patient => {
-                const totalSessions = Number(patient?.subscription?.totalSessions || 0)
-                const remainingSessions = Number(
-                  patient?.subscription?.remainingSessions || 0
-                )
+                   {filteredPatients.map(patient => {
+                    const totalSessions = Number(
+                      patient?.subscription?.totalSessions || 0
+                    )
+                    const remainingSessions = Number(
+                      patient?.subscription?.remainingSessions || 0
+                    )
+                    const hasSub = totalSessions > 0 && remainingSessions > 0
 
-                return (
+                    return (
                   <article
                     key={patient.id}
-                    className='rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4'
+                    onClick={() => router.push(`/inbody/${patient.id}`)}
+                    className={`cursor-pointer rounded-2xl border p-4 transition hover:brightness-95 ${hasSub ? 'border-emerald-300/70 bg-emerald-50/70 dark:border-emerald-600/40 dark:bg-emerald-900/20' : 'border-[var(--border)] bg-[var(--surface-soft)]'}`}
                   >
                     <p className='text-sm font-semibold text-[var(--foreground)]'>
                       {patient.fullName}
@@ -431,34 +550,9 @@ export default function InBodyManager() {
                       {patient.phone ? ` - ${patient.phone}` : ''}
                     </p>
                     <div className='mt-3 flex flex-wrap items-center gap-2 text-xs'>
-                      <span className='rounded-full bg-sky-100 px-2.5 py-1 font-semibold text-sky-700 dark:bg-sky-500/20 dark:text-sky-200'>
-                        {getSubscriptionLabel(totalSessions, locale)}
-                      </span>
-                      <span
-                        className={`rounded-full px-2.5 py-1 font-semibold ${getRemainingChipClass(remainingSessions)}`}
-                      >
-                        {remainingSessions}
-                      </span>
                       <span className='text-[var(--muted)]'>
                         {formatDate(patient.lastInBodyTestAt, locale)}
                       </span>
-                    </div>
-                    <div className='mt-3 flex flex-wrap gap-2'>
-                      <Link
-                        href={`/inbody/${patient.id}`}
-                        className='inline-flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-soft)]'
-                      >
-                        <Eye size={17} />
-                        {t.actions.viewProfile}
-                      </Link>
-                      <button
-                        onClick={() => confirmDeletePatient(patient)}
-                        disabled={deletingPatientId === patient.id}
-                        className='inline-flex items-center gap-1 rounded-lg border border-rose-300/70 bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60 dark:border-rose-500/35 dark:bg-rose-500/10 dark:text-rose-200'
-                      >
-                        <Trash2 size={14} />
-                        {t.actions.delete}
-                      </button>
                     </div>
                   </article>
                 )
@@ -466,28 +560,36 @@ export default function InBodyManager() {
             </div>
 
             <div className='mt-5 hidden overflow-x-auto lg:block'>
-              <table className='w-full min-w-[920px] table-fixed text-left text-sm'>
+              <table className='w-full text-left text-sm'>
                 <thead>
                   <tr className='border-b border-[var(--border)] text-[var(--muted)]'>
-                    <th className='px-4 py-3 font-medium'>{t.columns.patientId}</th>
+                    <th className='px-4 py-3 font-medium'>
+                      {t.columns.patientId}
+                    </th>
                     <th className='px-4 py-3 font-medium'>{t.columns.name}</th>
-                    <th className='px-4 py-3 font-medium'>{t.columns.subscription}</th>
-                    <th className='px-4 py-3 font-medium'>{t.columns.remaining}</th>
-                    <th className='px-4 py-3 font-medium'>{t.columns.lastTest}</th>
-                    <th className='px-4 py-3 text-right font-medium'>{t.columns.actions}</th>
+                    <th className='px-4 py-3 font-medium'>
+                      {t.columns.subscription}
+                    </th>
+                    <th className='px-4 py-3 font-medium'>
+                      {t.columns.lastTest}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredPatients.map(patient => {
-                    const totalSessions = Number(patient?.subscription?.totalSessions || 0)
+                    const totalSessions = Number(
+                      patient?.subscription?.totalSessions || 0
+                    )
                     const remainingSessions = Number(
                       patient?.subscription?.remainingSessions || 0
                     )
+                    const hasSub = totalSessions > 0 && remainingSessions > 0
 
                     return (
                       <tr
                         key={patient.id}
-                        className='border-b border-[var(--border)]/70 align-top transition hover:bg-[var(--surface-soft)]/70'
+                        onClick={() => router.push(`/inbody/${patient.id}`)}
+                        className={`border-[var(--border)]/70 cursor-pointer border-b align-top transition hover:brightness-95 ${hasSub ? 'bg-emerald-50/70 dark:bg-emerald-900/20' : ''}`}
                       >
                         <td className='px-4 py-3 text-[var(--muted)]'>
                           <p className='font-semibold text-[var(--foreground)]'>
@@ -497,41 +599,17 @@ export default function InBodyManager() {
                         </td>
                         <td className='px-4 py-3 text-[var(--foreground)]'>
                           <p className='font-medium'>{patient.fullName}</p>
-                          <p className='text-xs text-[var(--muted)]'>{patient.email || '-'}</p>
+                          <p className='text-xs text-[var(--muted)]'>
+                            {patient.email || '-'}
+                          </p>
                         </td>
                         <td className='px-4 py-3'>
                           <span className='inline-flex rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-700 dark:bg-sky-500/20 dark:text-sky-200'>
-                            {getSubscriptionLabel(totalSessions, locale)}
-                          </span>
-                        </td>
-                        <td className='px-4 py-3'>
-                          <span
-                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${getRemainingChipClass(remainingSessions)}`}
-                          >
-                            {remainingSessions}
+                            {getSubscriptionLabel(remainingSessions, locale)}
                           </span>
                         </td>
                         <td className='px-4 py-3 text-[var(--muted)]'>
                           {formatDate(patient.lastInBodyTestAt, locale)}
-                        </td>
-                        <td className='px-4 py-3'>
-                          <div className='flex justify-end gap-2'>
-                            <Link
-                              href={`/inbody/${patient.id}`}
-                              className='inline-flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-soft)]'
-                            >
-                              <Eye size={17} />
-                              {t.actions.viewProfile}
-                            </Link>
-                            <button
-                              onClick={() => confirmDeletePatient(patient)}
-                              disabled={deletingPatientId === patient.id}
-                              className='inline-flex items-center gap-1 rounded-lg border border-rose-300/70 bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60 dark:border-rose-500/35 dark:bg-rose-500/10 dark:text-rose-200'
-                            >
-                              <Trash2 size={14} />
-                              {t.actions.delete}
-                            </button>
-                          </div>
                         </td>
                       </tr>
                     )
@@ -543,6 +621,7 @@ export default function InBodyManager() {
         )}
       </section>
 
+      {isAdmin && (
       <section className='panel p-5 sm:p-6'>
         <div className='flex flex-col gap-1'>
           <h3 className='text-lg font-semibold text-[var(--foreground)]'>
@@ -572,9 +651,6 @@ export default function InBodyManager() {
                       <p className='text-sm font-semibold text-[var(--foreground)]'>
                         {member.name}
                       </p>
-                      <p className='text-xs uppercase tracking-[0.12em] text-[var(--muted)]'>
-                        {member.role}
-                      </p>
                     </div>
                     {!member.isActive && (
                       <span className='rounded-full bg-slate-200 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-700 dark:bg-slate-700 dark:text-slate-100'>
@@ -585,25 +661,33 @@ export default function InBodyManager() {
 
                   <div className='mt-4 grid grid-cols-2 gap-2 text-sm'>
                     <div className='rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3'>
-                      <p className='text-xs text-[var(--muted)]'>{t.stats.testsToday}</p>
+                      <p className='text-xs text-[var(--muted)]'>
+                        {t.stats.testsToday}
+                      </p>
                       <p className='mt-1 text-lg font-semibold text-[var(--foreground)]'>
                         {member.testsToday || 0}
                       </p>
                     </div>
                     <div className='rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3'>
-                      <p className='text-xs text-[var(--muted)]'>{t.stats.testsWeek}</p>
+                      <p className='text-xs text-[var(--muted)]'>
+                        {t.stats.testsWeek}
+                      </p>
                       <p className='mt-1 text-lg font-semibold text-[var(--foreground)]'>
                         {member.testsThisWeek || 0}
                       </p>
                     </div>
                     <div className='rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3'>
-                      <p className='text-xs text-[var(--muted)]'>{t.stats.testsMonth}</p>
+                      <p className='text-xs text-[var(--muted)]'>
+                        {t.stats.testsMonth}
+                      </p>
                       <p className='mt-1 text-lg font-semibold text-[var(--foreground)]'>
                         {member.testsThisMonth || 0}
                       </p>
                     </div>
                     <div className='rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3'>
-                      <p className='text-xs text-[var(--muted)]'>{t.stats.testsYear}</p>
+                      <p className='text-xs text-[var(--muted)]'>
+                        {t.stats.testsYear}
+                      </p>
                       <p className='mt-1 text-lg font-semibold text-[var(--foreground)]'>
                         {member.testsThisYear || 0}
                       </p>
@@ -616,38 +700,56 @@ export default function InBodyManager() {
                       {member.totalTests || 0}
                     </span>
                   </div>
+
+                  <div className='mt-2 flex items-center justify-between rounded-xl bg-gradient-to-r from-emerald-500/10 to-green-500/10 px-3 py-2 text-sm'>
+                    <span className='text-xs text-[var(--muted)]'>{t.stats.revenueLabel}</span>
+                    <span className='font-semibold text-emerald-700 dark:text-emerald-300'>
+                      {formatCurrency(member.estimatedRevenue)}
+                    </span>
+                  </div>
                 </article>
               ))}
             </div>
 
-            <div className='mt-5 hidden overflow-x-auto lg:block'>
-              <table className='w-full min-w-[860px] table-fixed text-left text-sm'>
+              <div className='mt-5 hidden overflow-x-auto lg:block'>
+              <table className='w-full text-left text-sm'>
                 <thead>
                   <tr className='border-b border-[var(--border)] text-[var(--muted)]'>
-                    <th className='px-4 py-3 font-medium'>{t.stats.staffName}</th>
-                    <th className='px-4 py-3 font-medium'>{t.stats.staffRole}</th>
-                    <th className='px-4 py-3 font-medium'>{t.stats.testsToday}</th>
-                    <th className='px-4 py-3 font-medium'>{t.stats.testsWeek}</th>
-                    <th className='px-4 py-3 font-medium'>{t.stats.testsMonth}</th>
-                    <th className='px-4 py-3 font-medium'>{t.stats.testsYear}</th>
+                    <th className='px-4 py-3 font-medium'>
+                      {t.stats.staffName}
+                    </th>
+                    <th className='px-4 py-3 font-medium'>
+                      {t.stats.testsToday}
+                    </th>
+                    <th className='px-4 py-3 font-medium'>
+                      {t.stats.testsWeek}
+                    </th>
+                    <th className='px-4 py-3 font-medium'>
+                      {t.stats.testsMonth}
+                    </th>
+                    <th className='px-4 py-3 font-medium'>
+                      {t.stats.testsYear}
+                    </th>
                     <th className='px-4 py-3 font-medium'>{t.stats.total}</th>
+                    <th className='px-4 py-3 font-medium'>{t.stats.revenueLabel}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {staffPerformance.map(member => (
                     <tr
                       key={member.id}
-                      className='border-b border-[var(--border)]/70 transition hover:bg-[var(--surface-soft)]/70'
+                      className='border-[var(--border)]/70 hover:bg-[var(--surface-soft)]/70 border-b transition'
                     >
                       <td className='px-4 py-3'>
-                        <p className='font-medium text-[var(--foreground)]'>{member.name}</p>
+                        <p className='font-medium text-[var(--foreground)]'>
+                          {member.name}
+                        </p>
                         {!member.isActive && (
                           <p className='text-xs text-[var(--muted)]'>
                             {t.stats.inactive}
                           </p>
                         )}
                       </td>
-                      <td className='px-4 py-3 text-[var(--muted)]'>{member.role}</td>
                       <td className='px-4 py-3 font-semibold text-[var(--foreground)]'>
                         {member.testsToday || 0}
                       </td>
@@ -663,6 +765,9 @@ export default function InBodyManager() {
                       <td className='px-4 py-3 font-semibold text-[var(--foreground)]'>
                         {member.totalTests || 0}
                       </td>
+                      <td className='px-4 py-3 font-semibold text-emerald-700 dark:text-emerald-300'>
+                        {formatCurrency(member.estimatedRevenue)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -671,124 +776,336 @@ export default function InBodyManager() {
           </>
         )}
       </section>
+      )}
 
-      {isCreateModalOpen && (
+      {quickTestOpen && (
         <div className='fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm'>
-          <article className='w-full max-w-xl rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-2xl'>
-            <h3 className='text-lg font-semibold text-[var(--foreground)]'>
-              {t.createPatientTitle}
-            </h3>
-            <p className='mt-1 text-sm text-[var(--muted)]'>{t.createPatientText}</p>
-
-            <div className='mt-4 grid gap-3 sm:grid-cols-2'>
-              <label className='text-sm text-[var(--muted)] sm:col-span-1'>
-                {t.fields.patientId}
+          <article className='w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-2xl'>
+            {quickTestStep === 'phone' ? (
+              <>
+                <h3 className='text-lg font-semibold text-[var(--foreground)]'>
+                  {locale === 'fr' ? 'Ajouter un test rapide' : 'Quick test'}
+                </h3>
+                <p className='mt-1 text-sm text-[var(--muted)]'>
+                  {locale === 'fr'
+                    ? 'Entrez le numero de telephone du patient.'
+                    : 'Enter the patient phone number.'}
+                </p>
                 <input
-                  value={patientForm.patientId}
-                  onChange={event => {
-                    const nextValue = digitsOnly(event.target.value)
-                    setPatientForm(prev => ({
-                      ...prev,
-                      patientId: nextValue,
-                      phone: prev.phone || nextValue
-                    }))
-                    if (nextValue) {
-                      setFormErrors(prev => ({ ...prev, patientId: '' }))
-                    }
-                  }}
-                  placeholder={t.placeholders.patientId}
-                  className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
+                  value={quickTestPhone}
+                  onChange={e => setQuickTestPhone(digitsOnly(e.target.value))}
+                  placeholder='0550000000'
+                  className='mt-4 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
                 />
-                {formErrors.patientId && (
-                  <p className='mt-1 text-xs text-red-600'>{formErrors.patientId}</p>
+                <div className='mt-5 flex justify-end gap-2'>
+                  <button
+                    onClick={() => {
+                      setQuickTestOpen(false)
+                      resetQuickTest()
+                    }}
+                    className='rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-soft)]'
+                  >
+                    {locale === 'fr' ? 'Annuler' : 'Cancel'}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!quickTestPhone) return
+                      setQuickTestLoading(true)
+                      const existing = patients.find(
+                        p =>
+                          p.phone === quickTestPhone ||
+                          p.patientId === quickTestPhone
+                      )
+                      if (existing) {
+                        setQuickTestPatient(existing)
+                        setQuickTestStep('test')
+                        setQuickTestLoading(false)
+                      } else {
+                        setQuickTestStep('name')
+                        setQuickTestLoading(false)
+                      }
+                    }}
+                    disabled={!quickTestPhone || quickTestLoading}
+                    className='rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50'
+                  >
+                    {quickTestLoading
+                      ? locale === 'fr'
+                        ? 'Recherche...'
+                        : 'Searching...'
+                      : locale === 'fr'
+                        ? 'Suivant'
+                        : 'Next'}
+                  </button>
+                </div>
+              </>
+            ) : quickTestStep === 'name' ? (
+              <>
+                <h3 className='text-lg font-semibold text-[var(--foreground)]'>
+                  {locale === 'fr' ? 'Nouveau patient' : 'New patient'}
+                </h3>
+                <p className='mt-1 text-sm text-[var(--muted)]'>
+                  {locale === 'fr'
+                    ? 'Patient introuvable. Entrez le nom pour creer un nouveau patient.'
+                    : 'Patient not found. Enter the name to create a new patient.'}
+                </p>
+                <input
+                  value={quickTestName}
+                  onChange={e => setQuickTestName(e.target.value)}
+                  placeholder={locale === 'fr' ? 'Nom complet' : 'Full name'}
+                  className='mt-3 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
+                />
+                <div className='mt-5 flex justify-end gap-2'>
+                  <button
+                    onClick={() => {
+                      setQuickTestStep('phone')
+                    }}
+                    className='rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-soft)]'
+                  >
+                    {locale === 'fr' ? 'Retour' : 'Back'}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!quickTestName.trim()) return
+                      setQuickTestLoading(true)
+                      try {
+                        const newPatient = await createPatient({
+                          patientId: quickTestPhone,
+                          fullName: quickTestName.trim(),
+                          phone: quickTestPhone
+                        })
+                        setQuickTestPatient(newPatient)
+                        setQuickTestStep('test')
+                      } finally {
+                        setQuickTestLoading(false)
+                      }
+                    }}
+                    disabled={!quickTestName.trim() || quickTestLoading}
+                    className='rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50'
+                  >
+                    {quickTestLoading
+                      ? locale === 'fr'
+                        ? 'Creation...'
+                        : 'Creating...'
+                      : locale === 'fr'
+                        ? 'Creer et continuer'
+                        : 'Create & continue'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className='text-lg font-semibold text-[var(--foreground)]'>
+                  {locale === 'fr'
+                    ? 'Ajouter une seance InBody'
+                    : 'Add InBody session'}
+                </h3>
+                <p className='mt-1 text-sm text-[var(--muted)]'>
+                  {quickTestPatient?.fullName}
+                </p>
+                <div className='mt-4 space-y-3'>
+                  <label className='block text-sm text-[var(--muted)]'>
+                    {locale === 'fr' ? 'Date du test' : 'Test date'}
+                    <input
+                      type='datetime-local'
+                      value={qtForm.testDate}
+                      onChange={e =>
+                        setQtForm(prev => ({
+                          ...prev,
+                          testDate: e.target.value
+                        }))
+                      }
+                      className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
+                    />
+                  </label>
+                  <label className='block text-sm text-[var(--muted)]'>
+                    {locale === 'fr' ? 'Operateur' : 'Operator'}
+                    <select
+                      value={qtOperator}
+                      onChange={e => setQtOperator(e.target.value)}
+                      className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
+                    >
+                      {staffMembers.length === 0 && (
+                        <option value=''>{user?.name || ''}</option>
+                      )}
+                      {staffMembers.map(name => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className='block text-sm text-[var(--muted)]'>
+                    {locale === 'fr'
+                      ? 'Notes (optionnelle)'
+                      : 'Notes (optional)'}
+                    <textarea
+                      rows={2}
+                      value={qtForm.notes}
+                      onChange={e =>
+                        setQtForm(prev => ({ ...prev, notes: e.target.value }))
+                      }
+                      className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
+                    />
+                  </label>
+                  <button
+                    onClick={() => setQtShowParams(prev => !prev)}
+                    className='inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface)]'
+                  >
+                    {qtShowParams ? (
+                      <ChevronUp size={15} />
+                    ) : (
+                      <ChevronDown size={15} />
+                    )}
+                    {locale === 'fr'
+                      ? 'Parametres InBody'
+                      : 'InBody parameters'}
+                  </button>
+                  {qtShowParams && (
+                    <div className='grid gap-3 sm:grid-cols-2'>
+                      <label className='block text-sm text-[var(--muted)]'>
+                        {locale === 'fr' ? 'Poids (kg)' : 'Weight (kg)'}
+                        <input
+                          type='number'
+                          step='0.1'
+                          value={qtForm.weight}
+                          onChange={e =>
+                            setQtForm(prev => ({
+                              ...prev,
+                              weight: e.target.value
+                            }))
+                          }
+                          className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
+                        />
+                      </label>
+                      <label className='block text-sm text-[var(--muted)]'>
+                        {locale === 'fr' ? 'Masse grasse (%)' : 'Body fat (%)'}
+                        <input
+                          type='number'
+                          step='0.1'
+                          value={qtForm.bodyFat}
+                          onChange={e =>
+                            setQtForm(prev => ({
+                              ...prev,
+                              bodyFat: e.target.value
+                            }))
+                          }
+                          className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
+                        />
+                      </label>
+                      <label className='block text-sm text-[var(--muted)]'>
+                        {locale === 'fr'
+                          ? 'Masse musculaire (kg)'
+                          : 'Muscle mass (kg)'}
+                        <input
+                          type='number'
+                          step='0.1'
+                          value={qtForm.muscleMass}
+                          onChange={e =>
+                            setQtForm(prev => ({
+                              ...prev,
+                              muscleMass: e.target.value
+                            }))
+                          }
+                          className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
+                        />
+                      </label>
+                      <label className='block text-sm text-[var(--muted)]'>
+                        IMC
+                        <input
+                          type='number'
+                          step='0.1'
+                          value={qtForm.bmi}
+                          onChange={e =>
+                            setQtForm(prev => ({
+                              ...prev,
+                              bmi: e.target.value
+                            }))
+                          }
+                          className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
+                        />
+                      </label>
+                      <label className='block text-sm text-[var(--muted)] sm:col-span-2'>
+                        {locale === 'fr'
+                          ? 'Eau corporelle (L)'
+                          : 'Body water (L)'}
+                        <input
+                          type='number'
+                          step='0.1'
+                          value={qtForm.bodyWater}
+                          onChange={e =>
+                            setQtForm(prev => ({
+                              ...prev,
+                              bodyWater: e.target.value
+                            }))
+                          }
+                          className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
+                {qtError && (
+                  <p className='mt-3 text-xs text-red-600'>{qtError}</p>
                 )}
-              </label>
-
-              <label className='text-sm text-[var(--muted)] sm:col-span-1'>
-                {t.fields.fullName}
-                <input
-                  value={patientForm.fullName}
-                  onChange={event => {
-                    const nextValue = event.target.value
-                    setPatientForm(prev => ({ ...prev, fullName: nextValue }))
-                    if (nextValue.trim()) {
-                      setFormErrors(prev => ({ ...prev, fullName: '' }))
-                    }
-                  }}
-                  placeholder={t.placeholders.fullName}
-                  className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
-                />
-                {formErrors.fullName && (
-                  <p className='mt-1 text-xs text-red-600'>{formErrors.fullName}</p>
-                )}
-              </label>
-
-              <label className='text-sm text-[var(--muted)]'>
-                {t.fields.phone}
-                <input
-                  value={patientForm.phone}
-                  onChange={event =>
-                    setPatientForm(prev => ({
-                      ...prev,
-                      phone: digitsOnly(event.target.value)
-                    }))
-                  }
-                  placeholder={t.placeholders.phone}
-                  className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
-                />
-              </label>
-
-              <label className='text-sm text-[var(--muted)]'>
-                {t.fields.email}
-                <input
-                  type='email'
-                  value={patientForm.email}
-                  onChange={event =>
-                    setPatientForm(prev => ({ ...prev, email: event.target.value }))
-                  }
-                  placeholder={t.placeholders.email}
-                  className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
-                />
-              </label>
-
-              <label className='text-sm text-[var(--muted)] sm:col-span-2'>
-                {t.fields.dateOfBirth}
-                <input
-                  type='date'
-                  value={patientForm.dateOfBirth}
-                  onChange={event =>
-                    setPatientForm(prev => ({
-                      ...prev,
-                      dateOfBirth: event.target.value
-                    }))
-                  }
-                  className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring'
-                />
-              </label>
-            </div>
-
-            <div className='mt-5 flex justify-end gap-2'>
-              <button
-                onClick={() => {
-                  setIsCreateModalOpen(false)
-                  resetFormState()
-                }}
-                className='rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-soft)]'
-              >
-                {t.cancel}
-              </button>
-              <button
-                onClick={() => void handleCreatePatient()}
-                disabled={isSubmittingPatient}
-                className='rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60'
-              >
-                {isSubmittingPatient ? t.loading : t.create}
-              </button>
-            </div>
+                <div className='mt-5 flex justify-end gap-2'>
+                  <button
+                    onClick={() => {
+                      setQuickTestOpen(false)
+                      resetQuickTest()
+                    }}
+                    className='rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-soft)]'
+                  >
+                    {locale === 'fr' ? 'Annuler' : 'Cancel'}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!quickTestPatient) return
+                      setQtSaving(true)
+                      setQtError('')
+                      try {
+                        await createPatientTest(quickTestPatient.id, {
+                          testedAt: qtForm.testDate
+                            ? new Date(qtForm.testDate).toISOString()
+                            : undefined,
+                          operator: qtOperator || user?.name || '',
+                          weight: n(qtForm.weight),
+                          bodyFat: n(qtForm.bodyFat),
+                          muscleMass: n(qtForm.muscleMass),
+                          bmi: n(qtForm.bmi),
+                          bodyWater: n(qtForm.bodyWater),
+                          notes: qtForm.notes.trim()
+                        })
+                        await loadOverview()
+                        setQuickTestOpen(false)
+                        resetQuickTest()
+                      } catch (err) {
+                        setQtError(
+                          err?.message ||
+                            (locale === 'fr'
+                              ? "Erreur lors de l'enregistrement."
+                              : 'Error saving the session.')
+                        )
+                      } finally {
+                        setQtSaving(false)
+                      }
+                    }}
+                    disabled={qtSaving}
+                    className='rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60'
+                  >
+                    {qtSaving
+                      ? locale === 'fr'
+                        ? 'Enregistrement...'
+                        : 'Saving...'
+                      : locale === 'fr'
+                        ? 'Enregistrer'
+                        : 'Save'}
+                  </button>
+                </div>
+              </>
+            )}
           </article>
         </div>
       )}
     </section>
   )
 }
-

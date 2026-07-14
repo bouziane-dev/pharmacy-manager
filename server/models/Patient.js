@@ -48,22 +48,11 @@ const patientSchema = new mongoose.Schema(
       },
     },
     subscription: {
-      totalSessions: {
-        type: Number,
-        min: 0,
-        max: 500,
-        default: 0,
-      },
-      remainingSessions: {
-        type: Number,
-        min: 0,
-        max: 500,
-        default: 0,
-      },
-      updatedAt: {
-        type: Date,
-        default: null,
-      },
+      totalSessions: { type: Number, min: 0, max: 500, default: 0 },
+      remainingSessions: { type: Number, min: 0, max: 500, default: 0 },
+      price: { type: Number, default: 0 },
+      lifetimeRevenue: { type: Number, default: 0, min: 0 },
+      updatedAt: { type: Date, default: null },
     },
     lastInBodyTestAt: {
       type: Date,

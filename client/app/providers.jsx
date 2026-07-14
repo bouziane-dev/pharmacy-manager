@@ -689,6 +689,24 @@ export function AppProviders({ children }) {
     return result.stats || null
   }
 
+  async function fetchInBodySettings() {
+    if (!authToken || !currentWorkspace) throw new Error('Active workspace is required')
+    const result = await apiRequest(
+      `/api/inbody/settings?pharmacyId=${currentWorkspace.id}`,
+      { token: authToken }
+    )
+    return result
+  }
+
+  async function updateInBodySettings(payload) {
+    if (!authToken || !currentWorkspace) throw new Error('Active workspace is required')
+    return await apiRequest('/api/inbody/settings', {
+      method: 'PATCH',
+      token: authToken,
+      body: { pharmacyId: currentWorkspace.id, ...payload }
+    })
+  }
+
   async function createPatient(payload) {
     if (!authToken || !currentWorkspace) {
       throw new Error('Active workspace is required')
@@ -2025,6 +2043,8 @@ export function AppProviders({ children }) {
       updatePreparation,
       deletePreparation,
       fetchInBodyOverview,
+      fetchInBodySettings,
+      updateInBodySettings,
       createPatient,
       fetchPatientProfile,
       updatePatientSubscription,
@@ -2082,6 +2102,8 @@ export function AppProviders({ children }) {
       updatePreparation,
       deletePreparation,
       fetchInBodyOverview,
+      fetchInBodySettings,
+      updateInBodySettings,
       createPatient,
       fetchPatientProfile,
       updatePatientSubscription,

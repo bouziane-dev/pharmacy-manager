@@ -254,11 +254,51 @@ async function connectToDatabase() {
     await ensureUniqueStringIndex("email_1", "email");
     isDatabaseReady = true;
     console.log("MongoDB connected successfully");
+    await runMigrations();
   } catch (error) {
     console.error("MongoDB connection failed:", error.message);
     server.close(() => {
       process.exit(1);
     });
+  }
+}
+
+async function runMigrations() {
+  try {
+    const Patient = require("./models/Patient");
+    const InBodyTest = require("./models/InBodyTest");
+
+    const subResult = await Patient.updateMany(
+      {
+        "subscription.remainingSessions": { $gt: 0 },
+        $or: [
+          { "subscription.totalSessions": { $exists: false } },
+          { "subscription.totalSessions": 0 },
+        ],
+      },
+      [
+        {
+          $set: {
+            "subscription.totalSessions": { $ifNull: ["$subscription.remainingSessions", 0] },
+            "subscription.updatedAt": { $ifNull: ["$createdAt", new Date(0)] },
+            "subscription.lifetimeRevenue": { $ifNull: ["$subscription.price", 0] },
+          },
+        },
+      ],
+    );
+    if (subResult.modifiedCount > 0) {
+      console.log(`[MIGRATION] Backfilled subscription fields for ${subResult.modifiedCount} patients`);
+    }
+
+    const testResult = await InBodyTest.updateMany(
+      { revenue: { $exists: false } },
+      { $set: { revenue: 0, consumedSession: false } },
+    );
+    if (testResult.modifiedCount > 0) {
+      console.log(`[MIGRATION] Backfilled revenue for ${testResult.modifiedCount} tests`);
+    }
+  } catch (err) {
+    console.error("[MIGRATION] Error:", err.message);
   }
 }
 

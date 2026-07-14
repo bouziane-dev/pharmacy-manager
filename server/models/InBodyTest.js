@@ -65,6 +65,11 @@ const inBodyTestSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    revenue: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
   },
   { timestamps: true }
 );
