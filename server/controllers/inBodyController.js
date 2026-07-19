@@ -469,16 +469,20 @@ async function getPatientProfile(req, res) {
       return res.status(404).json({ error: "Patient not found" });
     }
 
-    const latestTest = await InBodyTest.findOne({
-      pharmacyId: req.pharmacyId,
-      patientId: patient._id,
-    }).sort({ testedAt: -1, createdAt: -1 });
+    const [latestTest, pharmacy] = await Promise.all([
+      InBodyTest.findOne({
+        pharmacyId: req.pharmacyId,
+        patientId: patient._id,
+      }).sort({ testedAt: -1, createdAt: -1 }),
+      Pharmacy.findById(req.pharmacyId).select("subscriptionPacks").lean(),
+    ]);
 
     return res.status(200).json({
       patient: toClientPatient(patient, {
         lastInBodyTestAt: latestTest?.testedAt || patient.lastInBodyTestAt || null,
       }),
       latestTest: latestTest ? toClientTest(latestTest, patient) : null,
+      packs: pharmacy?.subscriptionPacks || [],
     });
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -814,9 +818,10 @@ async function deletePatient(req, res) {
 
 async function getSettings(req, res) {
   try {
-    const pharmacy = await Pharmacy.findById(req.pharmacyId).select("inbodyTestPrice").lean();
+    const pharmacy = await Pharmacy.findById(req.pharmacyId).select("inbodyTestPrice subscriptionPacks").lean();
     return res.status(200).json({
       testPrice: pharmacy?.inbodyTestPrice || 0,
+      packs: pharmacy?.subscriptionPacks || [],
     });
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -839,6 +844,58 @@ async function updateSettings(req, res) {
   }
 }
 
+async function saveSubscriptionPack(req, res) {
+  try {
+    const name = cleanSingleLine(req.body?.name);
+    const sessions = Math.round(Number(req.body?.sessions || 0));
+    const price = Math.max(0, Number(req.body?.price || 0));
+
+    if (!name) {
+      return res.status(400).json({ error: "Pack name is required" });
+    }
+    if (sessions < 1 || sessions > 500) {
+      return res.status(400).json({ error: "Sessions must be between 1 and 500" });
+    }
+
+    const packId = cleanString(req.body?._id);
+    if (packId && isValidObjectId(packId)) {
+      await Pharmacy.updateOne(
+        { _id: req.pharmacyId, "subscriptionPacks._id": packId },
+        { $set: { "subscriptionPacks.$.name": name, "subscriptionPacks.$.sessions": sessions, "subscriptionPacks.$.price": price } },
+      );
+    } else {
+      await Pharmacy.updateOne(
+        { _id: req.pharmacyId },
+        { $push: { subscriptionPacks: { name, sessions, price } } },
+      );
+    }
+
+    const pharmacy = await Pharmacy.findById(req.pharmacyId).select("subscriptionPacks").lean();
+    return res.status(200).json({ packs: pharmacy?.subscriptionPacks || [] });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+}
+
+async function deleteSubscriptionPack(req, res) {
+  try {
+    const packId = cleanString(req.params.packId);
+    if (!isValidObjectId(packId)) {
+      return res.status(400).json({ error: "Invalid pack ID" });
+    }
+
+    await Pharmacy.updateOne(
+      { _id: req.pharmacyId },
+      { $pull: { subscriptionPacks: { _id: packId } } },
+    );
+
+    const pharmacy = await Pharmacy.findById(req.pharmacyId).select("subscriptionPacks").lean();
+    return res.status(200).json({ packs: pharmacy?.subscriptionPacks || [] });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+}
+
 module.exports = {
   listPatients,
   getOverviewStats,
@@ -851,5 +908,7 @@ module.exports = {
   deletePatient,
   getSettings,
   updateSettings,
+  saveSubscriptionPack,
+  deleteSubscriptionPack,
 };
 

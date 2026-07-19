@@ -47,6 +47,11 @@ const pharmacySchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    subscriptionPacks: [{
+      name: { type: String, required: true, trim: true, maxlength: 80 },
+      sessions: { type: Number, required: true, min: 1, max: 500 },
+      price: { type: Number, required: true, min: 0 },
+    }],
   },
   { timestamps: true }
 );

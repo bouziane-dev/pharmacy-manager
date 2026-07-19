@@ -121,12 +121,15 @@ export default function InBodyPatientProfile({ patientId }) {
   const [testOpen, setTestOpen] = useState(false)
   const [subSessions, setSubSessions] = useState(4)
   const [subPrice, setSubPrice] = useState('')
+  const [selectedPack, setSelectedPack] = useState(null)
+  const [customMode, setCustomMode] = useState(false)
   const [savingPkg, setSavingPkg] = useState(false)
   const [savingTest, setSavingTest] = useState(false)
   const [deletingTestId, setDeletingTestId] = useState('')
   const [testError, setTestError] = useState('')
   const [staffMembers, setStaffMembers] = useState([])
   const [showInBodyParams, setShowInBodyParams] = useState(false)
+  const [packs, setPacks] = useState([])
   const [form, setForm] = useState({
     testDate: nowLocalDateTime(),
     operator: '',
@@ -196,6 +199,7 @@ export default function InBodyPatientProfile({ patientId }) {
       const rows = Array.isArray(testRows) ? testRows : []
       setTests(rows)
       setLatestTest(profile?.latestTest || rows[0] || null)
+      setPacks(profile?.packs || [])
     } catch (error) {
       setLoadError(error?.message || (isFr ? 'Patient introuvable.' : 'Patient not found.'))
       setTests([])
@@ -213,6 +217,8 @@ export default function InBodyPatientProfile({ patientId }) {
   useEffect(() => {
     setSubSessions(4)
     setSubPrice(String(patient?.subscription?.price || ''))
+    setSelectedPack(null)
+    setCustomMode(false)
   }, [patientId])
 
   useEffect(() => {
@@ -493,15 +499,32 @@ export default function InBodyPatientProfile({ patientId }) {
           <article className='w-full max-w-lg rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-2xl'>
             <h3 className='text-lg font-semibold text-[var(--foreground)]'>{isFr ? 'Creer / Modifier abonnement' : 'Create / Update subscription'}</h3>
             <p className='mt-1 text-sm text-[var(--muted)]'>{patient.fullName}</p>
-            <div className='mt-4 space-y-3'>
-              <label className='block text-sm text-[var(--muted)]'>
-                {isFr ? 'Nombre de seances' : 'Number of sessions'}
-                <input type='number' min='1' max='500' value={subSessions} onChange={event => setSubSessions(event.target.value)} className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring' />
-              </label>
-              <label className='block text-sm text-[var(--muted)]'>
-                {isFr ? 'Prix total (DZD)' : 'Total price (DZD)'}
-                <input type='number' min='0' step='0.01' value={subPrice} onChange={event => setSubPrice(event.target.value)} className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring' />
-              </label>
+            {packs.length > 0 && !customMode && (
+              <div className='mt-4 grid grid-cols-2 gap-2'>
+                {packs.map(p => (
+                  <button key={p._id} onClick={() => { setSelectedPack(p._id); setSubSessions(p.sessions); setSubPrice(String(p.price)) }} className={`rounded-xl border p-3 text-left transition ${selectedPack === p._id ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' : 'border-[var(--border)] bg-[var(--surface-soft)] hover:border-emerald-300'}`}>
+                    <p className='text-sm font-semibold text-[var(--foreground)]'>{p.name}</p>
+                    <p className='mt-1 text-xs text-[var(--muted)]'>{p.sessions} {isFr ? 'seances' : 'sessions'} - {p.price.toLocaleString()} DZD</p>
+                  </button>
+                ))}
+              </div>
+            )}
+            {customMode && (
+              <div className='mt-4 space-y-3'>
+                <label className='block text-sm text-[var(--muted)]'>
+                  {isFr ? 'Nombre de seances' : 'Number of sessions'}
+                  <input type='number' min='1' max='500' value={subSessions} onChange={event => setSubSessions(event.target.value)} className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring' />
+                </label>
+                <label className='block text-sm text-[var(--muted)]'>
+                  {isFr ? 'Prix total (DZD)' : 'Total price (DZD)'}
+                  <input type='number' min='0' step='0.01' value={subPrice} onChange={event => setSubPrice(event.target.value)} className='mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring' />
+                </label>
+              </div>
+            )}
+            <div className='mt-3'>
+              <button onClick={() => { setCustomMode(!customMode); if (!customMode) { setSelectedPack(null); setSubSessions(4); setSubPrice('') } else { setSubSessions(packs[0]?.sessions || 4); setSubPrice(String(packs[0]?.price || '')); setSelectedPack(packs[0]?._id || null) } }} className='text-xs text-emerald-600 hover:text-emerald-500 dark:text-emerald-400'>
+                {customMode ? (isFr ? 'Choisir un pack' : 'Pick a pack') : (isFr ? 'Ou saisir manuellement' : 'Or enter manually')}
+              </button>
             </div>
             <div className='mt-5 flex justify-end gap-2'>
               <button onClick={() => setSubscriptionOpen(false)} className='rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-soft)]'>{isFr ? 'Annuler' : 'Cancel'}</button>

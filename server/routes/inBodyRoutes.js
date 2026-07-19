@@ -13,6 +13,8 @@ router.use(requirePharmacyAccess(["owner", "staff"]));
 router.get("/overview", inBodyController.getOverviewStats);
 router.get("/settings", inBodyController.getSettings);
 router.patch("/settings", inBodyController.updateSettings);
+router.post("/settings/packs", inBodyController.saveSubscriptionPack);
+router.delete("/settings/packs/:packId", inBodyController.deleteSubscriptionPack);
 router.get("/patients", inBodyController.listPatients);
 router.post("/patients", inBodyController.createPatient);
 router.get("/patients/:patientId", inBodyController.getPatientProfile);

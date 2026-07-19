@@ -194,6 +194,8 @@ export default function InBodyManager() {
     fetchInBodyOverview,
     fetchInBodySettings,
     updateInBodySettings,
+    saveSubscriptionPack,
+    deleteSubscriptionPack,
     createPatient,
     createPatientTest,
     fetchStaffLoginUsers
@@ -208,6 +210,11 @@ export default function InBodyManager() {
   const [staffMembers, setStaffMembers] = useState([])
   const [testPrice, setTestPrice] = useState(0)
   const [savingTestPrice, setSavingTestPrice] = useState(false)
+  const [packs, setPacks] = useState([])
+  const [packName, setPackName] = useState('')
+  const [packSessions, setPackSessions] = useState(4)
+  const [packPrice, setPackPrice] = useState('')
+  const [savingPack, setSavingPack] = useState(false)
   const [quickTestOpen, setQuickTestOpen] = useState(false)
   const [quickTestPhone, setQuickTestPhone] = useState('')
   const [quickTestName, setQuickTestName] = useState('')
@@ -244,6 +251,7 @@ export default function InBodyManager() {
     try {
       const result = await fetchInBodySettings()
       setTestPrice(result?.testPrice ?? 0)
+      setPacks(result?.packs || [])
     } catch (_) {}
   }
 
@@ -485,6 +493,34 @@ export default function InBodyManager() {
             >
               {savingTestPrice ? '...' : (locale === 'fr' ? 'Appliquer' : 'Apply')}
             </button>
+          </div>
+          <div className='mt-4 border-t border-[var(--border)] pt-4'>
+            <p className='mb-2 text-xs font-semibold text-[var(--muted)]'>{locale === 'fr' ? 'Abonnements predefinis' : 'Subscription packs'}</p>
+            <div className='flex flex-wrap gap-2'>
+              {packs.map(p => (
+                <span key={p._id} className='inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-2.5 py-1.5 text-xs text-[var(--foreground)]'>
+                  {p.name}
+                  <button onClick={async () => { if (confirm(locale === 'fr' ? 'Supprimer ce pack?' : 'Delete this pack?')) { await deleteSubscriptionPack(p._id); await loadSettings() } }} className='text-red-500 hover:text-red-400'>&times;</button>
+                </span>
+              ))}
+            </div>
+            <div className='mt-2 flex flex-wrap items-center gap-2'>
+              <input value={packName} onChange={e => setPackName(e.target.value)} placeholder={locale === 'fr' ? 'Nom' : 'Name'} className='w-24 rounded-lg border border-[var(--border)] bg-transparent px-2 py-1.5 text-xs text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring' />
+              <input type='number' min='1' max='500' value={packSessions} onChange={e => setPackSessions(Number(e.target.value) || 1)} className='w-16 rounded-lg border border-[var(--border)] bg-transparent px-2 py-1.5 text-xs text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring' />
+              <input type='number' min='0' value={packPrice} onChange={e => setPackPrice(e.target.value)} placeholder='Prix' className='w-20 rounded-lg border border-[var(--border)] bg-transparent px-2 py-1.5 text-xs text-[var(--foreground)] outline-none ring-emerald-400/40 focus:ring' />
+              <button onClick={async () => {
+                setSavingPack(true)
+                try {
+                  await saveSubscriptionPack({ name: packName.trim(), sessions: packSessions, price: Number(packPrice) || 0 })
+                  setPackName('')
+                  setPackSessions(4)
+                  setPackPrice('')
+                  await loadSettings()
+                } finally { setSavingPack(false) }
+              }} disabled={savingPack || !packName.trim()} className='rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60'>
+                {savingPack ? '...' : '+'}
+              </button>
+            </div>
           </div>
         )}
       </header>
