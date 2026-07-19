@@ -707,6 +707,15 @@ export function AppProviders({ children }) {
     })
   }
 
+  async function fetchSubscriptionPacks() {
+    if (!authToken || !currentWorkspace) throw new Error('Active workspace is required')
+    const result = await apiRequest(
+      `/api/inbody/settings/packs?pharmacyId=${currentWorkspace.id}`,
+      { token: authToken }
+    )
+    return result.packs || []
+  }
+
   async function saveSubscriptionPack(pack) {
     if (!authToken || !currentWorkspace) throw new Error('Active workspace is required')
     return await apiRequest('/api/inbody/settings/packs', {
@@ -2063,6 +2072,7 @@ export function AppProviders({ children }) {
       fetchInBodyOverview,
       fetchInBodySettings,
       updateInBodySettings,
+      fetchSubscriptionPacks,
       saveSubscriptionPack,
       deleteSubscriptionPack,
       createPatient,
@@ -2124,6 +2134,7 @@ export function AppProviders({ children }) {
       fetchInBodyOverview,
       fetchInBodySettings,
       updateInBodySettings,
+      fetchSubscriptionPacks,
       saveSubscriptionPack,
       deleteSubscriptionPack,
       createPatient,

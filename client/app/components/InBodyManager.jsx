@@ -467,7 +467,7 @@ export default function InBodyManager() {
             </article>
           </div>
         )}
-        {isAdmin && (
+        {isAdmin && (<>
           <div className='mt-3 flex items-center gap-2 text-sm'>
             <span className='text-[var(--muted)]'>{t.stats.testPriceLabel}</span>
             <input
@@ -522,7 +522,7 @@ export default function InBodyManager() {
               </button>
             </div>
           </div>
-        )}
+        </>)}
       </header>
 
       <section className='panel p-5 sm:p-6'>

@@ -828,6 +828,15 @@ async function getSettings(req, res) {
   }
 }
 
+async function getSubscriptionPacks(req, res) {
+  try {
+    const pharmacy = await Pharmacy.findById(req.pharmacyId).select("subscriptionPacks").lean();
+    return res.status(200).json({ packs: pharmacy?.subscriptionPacks || [] });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+}
+
 async function updateSettings(req, res) {
   try {
     const testPrice = Math.max(0, Number(req.body?.testPrice || 0));
@@ -908,6 +917,7 @@ module.exports = {
   deletePatient,
   getSettings,
   updateSettings,
+  getSubscriptionPacks,
   saveSubscriptionPack,
   deleteSubscriptionPack,
 };
